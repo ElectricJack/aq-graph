@@ -151,6 +151,8 @@ def triage(path,name):
         category='aq_orchestration';reason='AQ routing, held hierarchy admission and defined-task recovery are separate from graph-intrinsic readiness.'
     if filename=='test_knowledge_service.py' and name in {'test_outbox_failure_rolls_back_revision_and_receipt','test_export_intent_is_private_metadata_only'}:
         category='optional_integration';reason='The assertion includes AQ export/outbox side effects absent from the synchronous v2 baseline; graph atomicity alone is only partial coverage.'
+    if category=='migration' and filename!='test_knowledge_redaction.py':
+        return category,'P2','excluded','Outside aq-graph product scope: v1 import, cutover, legacy identity and old-product schema compatibility are reference evidence only. AQ v2 is a fresh start; any optional owner-specific transfer is an external script, not a supported aq-graph feature.'
     if category in ('graph_core','knowledge_core'):
         return category,'P0' if filename in {'test_record_schema.py','test_record_links.py','test_knowledge_service.py','test_knowledge_authority.py','test_knowledge_authorization.py','test_knowledge_proposals.py'} else 'P1','needs_translation',reason+' No v2 behavioral equivalence is claimed until assertions and runtime results are verified.'
     return category,'P2' if category in ('migration','performance') else 'P3','deferred',reason+' Explicit scope/adapter work is required; this is not counted as v2 parity.'
@@ -186,7 +188,7 @@ def validate(data,source=None):
         ident=row['id']
         if ident in seen: errors.append('Duplicate id: '+ident)
         seen.add(ident)
-        if row['status'] not in ('needs_translation','existing_coverage','translated','deferred'): errors.append('Invalid status: '+ident)
+        if row['status'] not in ('needs_translation','existing_coverage','translated','deferred','excluded'): errors.append('Invalid status: '+ident)
         if not row.get('reason'): errors.append('Missing reason: '+ident)
         if row['status'] in ('existing_coverage','translated'):
             if not row.get('v2_tests') or row.get('verification',{}).get('result')!='passed' or not row.get('verification',{}).get('command'):

@@ -10,6 +10,8 @@ The design prioritizes fast answers under mixed traffic from dozens to hundreds 
 
 This is a separate component specification. It does not expand Agent Q's initial infrastructure phase to include task execution or knowledge management.
 
+**Fresh-start boundary:** Agent Q v2 starts with new data and a new contract. V1 behavior is a design and regression reference, not a full compatibility requirement. aq-graph will not include a v1 importer, legacy-history ingestion API, legacy database adapter, or supported migration workflow for other installations. Any later owner-specific transfer is a separately maintained external script, not a requirement for launching v2. Internal aq-graph schema upgrades and backup/restore remain supported operational responsibilities.
+
 ## Decisions and repository boundary
 
 The project and executable are named `aq-graph`. Develop them in their own repository with independent versions, CI, artifacts, and releases.
@@ -65,7 +67,9 @@ Use a versioned HTTP API with structured JSON initially. Reuse connections and p
 
 ### Records and relationships
 
-Give every record a stable opaque identity, a workspace, a kind, a current version token, and creation metadata. Maintain task and knowledge schemas with explicit fields and validation; do not encode all useful structure as unrestricted JSON. Namespaced extension metadata may use JSON where it does not obscure common query paths.
+Give every record a stable opaque identity, a workspace, a kind, a current version token, and creation metadata. The implementation already uses one `nodes` table and one Rust `Node` type, with kind-specific field validation. Keep queryable structure typed rather than encoding all useful fields as unrestricted JSON. Namespaced extension metadata may use JSON where it does not obscure common query paths.
+
+**Proposed simplification, not yet a runtime schema change:** use a common field contract for task and knowledge content, provenance, revision-bound summaries, validity windows, review dates, and replacement relationships. Optional fields belong to the common node structure when their meaning applies to either kind. Keep execution state and acceptance criteria as task-specific planning properties, and distinguish execution completion from evidence verification. A validity window is not a task deadline. Archival/retirement, verification, and execution should remain separate concepts even in one structure. This direction requires a follow-up field/validation design; it does not imply that the current API already accepts knowledge-only fields on tasks.
 
 Tasks contain durable planning content such as title, description, acceptance criteria, labels, and lifecycle state. Proposed minimum lifecycle states are draft, active, completed, and canceled. Graph readiness is derived separately. Reopening a task is a lifecycle transition, not deletion of its completion history.
 
@@ -81,7 +85,7 @@ Keep two relationship families explicit:
 | Structure | `parent-child` organizes tasks and has its own acyclicity rule; parenthood alone does not block execution. |
 | Informational | `references`, `motivated_by`, `produces`, `supports`, `contradicts`, and `supersedes` support retrieval without affecting readiness. |
 
-Define edge direction in the API: `A blocks B` means B depends on A. Richer dependency types from the current AQ, including waits and conditional blockers, require explicit semantics before migration. Unsupported types must be reported during import rather than silently reinterpreted.
+Define edge direction in the API: `A blocks B` means B depends on A. Richer dependency types, including waits and conditional blockers, require explicit v2 semantics before adoption. Unsupported types must be rejected rather than silently reinterpreted; v1 edge types do not create a compatibility obligation.
 
 ### Readiness and context
 
@@ -138,7 +142,7 @@ Support named drafts containing proposed node and edge edits, base-version refer
 
 Clients can inspect a diff, validate the proposed result, and apply the complete bounded change set atomically. Application rechecks authorization, expected versions, references, and graph invariants against the current database. Validation performed earlier is not permission to skip checks at commit.
 
-Reject stale conflicting proposals with enough information to revise them. Do not silently merge semantic changes. Large imports use an explicit staging and activation workflow with separately specified limits; they must not masquerade as unlimited interactive transactions.
+Reject stale conflicting proposals with enough information to revise them. Do not silently merge semantic changes. Large data loads must respect the ordinary bounded mutation contract. A dedicated bulk-ingestion feature would need a separate justified design; no legacy importer or staging workflow is promised.
 
 Drafts provide reviewable batches, not full database branches. The initial performance prototype can use direct atomic batches; named persistent drafts follow after the mutation contract is proven.
 
@@ -219,18 +223,14 @@ Dolt's documentation currently identifies serialized writes as a concurrency lim
 
 Full offline merging, if required later, is a new architecture decision. SQL-level merges alone would not enforce graph acyclicity or reconcile external execution side effects.
 
-## Implementation and migration sequence
+## Implementation and integration sequence
 
-1. **Contract and performance prototype:** establish the Rust workspace, local PostgreSQL stack, minimum schemas, actor scopes, and four operations: context retrieval, ready queries, version-checked mutation with history, and dependency insertion with cycle protection. Run concurrency and correctness benchmarks before expanding the feature set.
-2. **Standalone baseline:** complete task and knowledge commands, relationship operations, full-text search, history and diff, bounded atomic batches, local setup, migrations, and release artifacts. Validate restart, idempotency, authorization, and restoration.
+1. **Contract and performance prototype:** establish the Rust workspace, local PostgreSQL stack, minimum schema, actor scopes, and four operations: context retrieval, ready queries, version-checked mutation with history, and dependency insertion with cycle protection. Run concurrency and correctness benchmarks before expanding the feature set.
+2. **Standalone baseline:** complete node commands, relationship operations, full-text search, history and diff, bounded atomic batches, local setup, internal schema upgrades, and release artifacts. Validate restart, idempotency, authorization, and restoration.
 3. **Draft proposals:** add persistent draft change sets, diff/validation/application, and explicit conflict responses. Add asynchronous consumers only when required by an actual integration.
-4. **AQ pilot:** implement an AQ-side adapter and migrate one isolated project with an explicit source-of-truth cutover. Expand only after parity and operational verification.
+4. **Fresh AQ v2 integration:** implement an AQ-side adapter and begin with a new workspace. Validate the selected v2 workflows and operational requirements. No legacy import or v1 feature-parity gate is required.
 
-Before import, inventory legacy edge types, lifecycle semantics, authority rules, and available historical data. Preserve stable identities where possible; otherwise retain a durable legacy-ID mapping. Preserve available timestamps, provenance, and revisions without inventing missing history. Replace references to AQ database internals with stable external references.
-
-Use an export/import reconciliation report covering counts, relationships, content, revisions, and representative readiness and knowledge queries. Freeze legacy mutations for the pilot cutover, reconcile the final export, then route writes to aq-graph. Avoid application-level dual writes without a separately designed replication protocol. Shadow reads may compare behavior before cutover.
-
-A pilot rollback after new writes requires an explicit reverse export and reconciliation; merely switching AQ back to its old database would discard graph changes. Keep the existing production workspace unchanged while developing the standalone service.
+Keep the existing v1 installation unchanged. If its owner later chooses to transfer selected data, that work belongs to an external one-off script outside this repository. Such a script must use the supported graph contract and accurately distinguish newly created records from retained historical evidence; this does not justify adding v1-specific code or history-injection endpoints to aq-graph.
 
 ## Completion criteria and remaining decisions
 

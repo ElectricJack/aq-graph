@@ -30,13 +30,13 @@ Docker is unavailable in the implementation environment, so the Docker image and
 
 Production ingress must enforce connection and slow-client write/idle limits in addition to application request limits. Configure off-host backup storage and test recovery on the deployment target. Benchmark reference hardware, the production p99 budget, controlled cold-cache behavior, and larger growth scenarios remain to be validated before production acceptance.
 
-The [AQ integration guide](aq-integration.md) and Python adapter establish the client boundary. Wiring the adapter into a selected AQ project, implementing a legacy-history import/export format, and executing a reconciled pilot cutover remain separate migration work. No existing AQ code or database was changed.
+The [AQ integration guide](aq-integration.md) and Python adapter establish the client boundary. AQ v2 is a fresh start: wire the adapter to a new workspace and validate the v2 workflows. V1 import, legacy-history ingestion, and supported migration/cutover tooling are excluded from aq-graph. An optional owner-specific transfer would be an external one-off script. No existing AQ code or database was changed.
 
 Semantic search, asynchronous indexing, offline replicas and merging, whole-graph time travel, execution claims, and permanent erasure are deferred as specified. No synthetic benchmark history should be mistaken for a legacy migration capability.
 
 ## V1 compatibility boundary
 
-[Specification 0002](specs/0002-v1-behavioral-compatibility.md) records the first compatibility increment and supersedes the original organizational-only hierarchy behavior. The [source inventory](compatibility/README.md) tracks 793 test definitions from 48 pinned v1 files; it does not claim all were translated or executed. Schema 6 adds tested historical relationship restoration to the common revision engine. Remaining obligations include canonical content digests, richer knowledge fields/search, global sharing and source revocation, review authority, and migration tooling. Scheduling, claims, gates, and automatic container settlement remain AQ responsibilities.
+[Specification 0002](specs/0002-v1-behavioral-compatibility.md) records the first compatibility increment and supersedes the original organizational-only hierarchy behavior. The [source inventory](compatibility/README.md) tracks 793 test definitions from 48 pinned v1 files; it does not claim all were translated or executed. Schema 6 adds tested historical relationship restoration to the common revision engine. Remaining differences to evaluate for v2 include canonical content digests, richer shared node fields/search, global sharing and source revocation, and review authority. These are design candidates, not automatic v1-parity obligations; v1 migration tooling is excluded. Scheduling, claims, gates, and automatic container settlement remain AQ responsibilities.
 
 ## Common revision compatibility update
 
@@ -45,3 +45,7 @@ Semantic search, asynchronous indexing, offline replicas and merging, whole-grap
 Default restore preserves current lifecycle, retirement reason and tombstone; both task and knowledge commands expose `--include-lifecycle` for deliberate historical lifecycle restoration. Kind-specific validation and current authorization still apply, and meaningful knowledge restores reset verification. The schema-5 compatibility inventory and historical measurements remain provenance for that earlier increment; counts and passing scenarios are not automatically evidence for this revised contract.
 
 Current schema-6 runtime smoke: seven CLI unit tests and two process-contract tests passed, including exact revision reads and identical restore payloads/options for both kinds. The [schema-6 smoke](performance/schema6-smoke/README.md) seeded 1,000 nodes/5,000 edges with complete current baselines and passed 80 sequential ready/search/task-write/knowledge-write requests. Both kinds retained exact old snapshots and reused unchanged relationship sets. This debug-build smoke is operational evidence, not a concurrent production capacity claim.
+
+## Shared node structure under discussion
+
+The runtime already uses one `nodes` table and one Rust `Node` type. Its API still restricts several fields by kind. The proposed next simplification is a shared field contract for sources, summaries, validity/review dates and replacement relationships, with explicit task execution/planning properties where needed. This is a design direction, not an implemented expansion of the current schema.

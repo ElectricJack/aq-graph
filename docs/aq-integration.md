@@ -12,12 +12,12 @@ For completion, AQ persists the intended operation, expected version, and idempo
 
 AQ's execution database and aq-graph do not share a transaction. Use this durable delivery pattern to make completion retryable. It does not turn external Git, shell, or provider actions into exactly-once operations. Record evidence references separately from deciding whether an execution succeeded.
 
-## Migration preparation
+## Fresh-start integration
 
-No existing AQ project is cut over by this repository. The pilot needs a selected project, its exported schemas and history, a mapping report, and a maintenance window. The current generic mutation endpoint creates new history under the importing principal. It is not a legacy-history importer and must not be described as preserving original audit identities or timestamps.
+Agent Q v2 starts with a new workspace and new records. There is no v1 cutover or historical-data import prerequisite. The example adapter and published API establish the boundary; production AQ wiring and validation of v2 workflows remain integration work.
 
-Before a pilot, implement and review a dedicated migration format that preserves available record IDs or durable mappings, revision IDs, timestamps, provenance, edge directions, and tombstones. Reject unsupported legacy dependency types. Do not synthesize historical facts from current snapshots. Validate the import in an isolated database and compare record counts, relationships, revision references, readiness, and representative context queries against the source.
+aq-graph does not ship or support a v1 importer, legacy-history ingestion API, v1 database adapter, reconciliation/cutover tool, or migration service for other installations. V1 tests remain useful behavioral evidence, but full v1 parity is not a release criterion.
 
-Freeze writes in the selected source workspace before final reconciliation. After cutover, route authoritative graph writes to aq-graph only. If new writes occur after cutover, rollback requires reverse export and reconciliation rather than simply switching to an older source database.
+If the owner later chooses to transfer selected v1 data, use a separately maintained external one-off script outside this repository. Ordinary API writes create new history under the authenticated actor; they must not be presented as preserving original historical actors or timestamps. The optional script may retain legacy references as attributed data, without adding v1-specific semantics to the service.
 
-The example adapter and API establish the integration boundary. Production AQ adapter wiring, legacy import/export, and the actual pilot remain a separate deployment milestone; the existing AQ code and database are unchanged.
+Normal aq-graph schema upgrades, backup/restore, and node revision restoration remain supported. They manage data already owned by aq-graph and are distinct from importing a previous product. The existing v1 installation and database remain unchanged.

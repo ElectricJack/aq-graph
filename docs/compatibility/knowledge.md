@@ -65,9 +65,9 @@ This intentionally changes the initial aq-graph adaptation that kept unverified 
 
 The schema-5 `tests/integration.rs` results exercised selective history/no-op edits, optimistic concurrency, same-key concurrent retries, immutable pin retrieval, stale draft rejection, atomic batch rollback, bounded context, deleted search exclusion, and restart persistence. These support the graph portions of v1 `test_replay_precedes_stale_precondition_and_mismatch_is_atomic`, `test_two_connections_one_cas_winner`, `test_concurrent_same_key_creates_one_record`, `test_noop_missing_precondition_and_corrected_retry`, `test_caller_owned_transaction_rolls_back_all_effects`, `test_edit_before_accept_is_stale_not_merge`, and relationship history assertions. They do not establish the v1-specific database schema, outbox, snapshot hash format, alias format, or proposal decision API.
 
-## Remaining requirements and boundaries
+## Remaining differences and boundaries
 
-The following are source-backed gaps, not equivalent coverage:
+The following are source-backed differences, not equivalent coverage or an automatic v2 backlog. V1 import and migration tooling are outside aq-graph; optional owner-specific data transfer belongs in an external script.
 
 | Source behavior | Status / concrete next requirement |
 | --- | --- |
@@ -80,7 +80,7 @@ The following are source-backed gaps, not equivalent coverage:
 | `test_pool_bearer_resolves_live_task_for_reads_writes_and_task_visibility`, claim/instance/ended-session fences, `test_claim_revoked_during_write_rolls_back_without_task_lock` | AQ adapter responsibility. Graph credentials authenticate an actor/workspace; they do not claim worker/task ownership or import AQ execution tables. |
 | Global sharing/revocation, private task/review/artifact sources, `test_historical_link_and_source_filtering_under_current_access` | Current workspaces are isolated and cross-workspace graph edges fail. Cross-project global publication and per-source revocable visibility need an explicit sharing/source adapter, not copied public metadata. |
 | v1 append-only/direct-SQL trigger tests in `test_record_schema.py` | API history immutability can be translated; v1 table/trigger layout cannot. Define least-privilege service DB role and migration-role boundaries if defending against direct SQL writers; graph API tests alone do not prove database-owner immutability. |
-| Outbox failure injection, export intent privacy, legacy import, redaction/permanent erasure | No asynchronous outbox or erasure policy is introduced by these core translations. Keep explicitly unclaimed pending dedicated implementations. |
+| Outbox failure injection, export intent privacy, legacy import, redaction/permanent erasure | No asynchronous outbox or erasure policy is introduced by these core translations. Outbox and erasure need their own v2 justification; legacy import is excluded from aq-graph and any optional transfer belongs in an external script. |
 
 Run the new contract file with a disposable database:
 

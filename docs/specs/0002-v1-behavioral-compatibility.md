@@ -1,6 +1,8 @@
 # v1 behavioral compatibility
 
-aq-graph will use selected v1 tests as executable behavioral contracts. Preserve their preconditions, invariants, and observable outcomes while adapting transport, identities, and authentication to the standalone API. Do not reproduce database mocks, command dispatch plumbing, or orchestration dependencies solely to make old test code run.
+**Scope update:** AQ v2 is a fresh start. This document records selected adopted behaviors and their test evidence, not a commitment to implement every v1 feature. V1 import/history migration is excluded from aq-graph; any optional owner-specific transfer belongs in an external script. Internal aq-graph schema upgrades are separate.
+
+aq-graph will use selected, explicitly adopted v1 tests as executable behavioral contracts. Preserve their preconditions, invariants, and observable outcomes while adapting transport, identities, and authentication to the standalone API. Do not reproduce database mocks, command dispatch plumbing, or orchestration dependencies solely to make old test code run.
 
 The source inventory is pinned to a v1 Git revision and records individual test names. A translated case must link to that source and state any intentional adaptation. An inventory entry is not coverage evidence. Passing new tests does not establish compatibility with unported cases or a production migration.
 
@@ -8,7 +10,7 @@ The source inventory is pinned to a v1 Git revision and records individual test 
 
 Graph storage, hierarchy invariants, intrinsic readiness, knowledge ownership, evidence validation, and revision protection belong in aq-graph. Worker claims, scheduling, provider selection, execution gates, integration admission, and orchestration policy stay in Agent Q. External review decisions may later grant explicitly scoped authority through an adapter; aq-graph must not read AQ tables.
 
-The first compatibility increment covers graph and knowledge invariants that can be expressed without AQ runtime state. It does not claim to finish the full source inventory. Remaining graph features, global sharing, artifact retention, authority grants, redaction, richer context selection, and historical migration remain tracked gaps rather than assumed equivalence.
+The first compatibility increment covers graph and knowledge invariants that can be expressed without AQ runtime state. It does not claim to finish the full source inventory. Remaining graph features, global sharing, artifact retention, authority grants, redaction, and richer context selection are assessed against v2 needs rather than automatically scheduled for parity. Historical v1 migration is outside the product scope.
 
 ## Graph contracts replacing the initial baseline
 
