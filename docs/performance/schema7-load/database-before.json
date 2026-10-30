@@ -1,0 +1,118 @@
+{
+  "utc": "2026-10-30T17:16:31.672763+00:00",
+  "database_bytes": 2583328435,
+  "counts": {
+    "nodes": 100000,
+    "edges": 500000,
+    "revisions": 300000,
+    "history_entries": 800000,
+    "edge_versions": 500000,
+    "link_sets": 100000,
+    "link_memberships": 713221,
+    "changesets": 1
+  },
+  "tables": [
+    {
+      "relname": "_sqlx_migrations",
+      "heap_bytes": 8192,
+      "index_bytes": 16384,
+      "total_bytes": 32768
+    },
+    {
+      "relname": "change_sets",
+      "heap_bytes": 8192,
+      "index_bytes": 32768,
+      "total_bytes": 49152
+    },
+    {
+      "relname": "credentials",
+      "heap_bytes": 8192,
+      "index_bytes": 32768,
+      "total_bytes": 49152
+    },
+    {
+      "relname": "edge_versions",
+      "heap_bytes": 240943104,
+      "index_bytes": 37724160,
+      "total_bytes": 278757376
+    },
+    {
+      "relname": "edges",
+      "heap_bytes": 69517312,
+      "index_bytes": 242122752,
+      "total_bytes": 311697408
+    },
+    {
+      "relname": "history_entries",
+      "heap_bytes": 851369984,
+      "index_bytes": 100163584,
+      "total_bytes": 951803904
+    },
+    {
+      "relname": "idempotency_receipts",
+      "heap_bytes": 0,
+      "index_bytes": 8192,
+      "total_bytes": 16384
+    },
+    {
+      "relname": "link_set_members",
+      "heap_bytes": 60235776,
+      "index_bytes": 45629440,
+      "total_bytes": 105897984
+    },
+    {
+      "relname": "link_sets",
+      "heap_bytes": 8445952,
+      "index_bytes": 23568384,
+      "total_bytes": 32038912
+    },
+    {
+      "relname": "node_revisions",
+      "heap_bytes": 503955456,
+      "index_bytes": 40091648,
+      "total_bytes": 544219136
+    },
+    {
+      "relname": "nodes",
+      "heap_bytes": 271704064,
+      "index_bytes": 70328320,
+      "total_bytes": 350470144
+    },
+    {
+      "relname": "workspaces",
+      "heap_bytes": 8192,
+      "index_bytes": 16384,
+      "total_bytes": 24576
+    }
+  ],
+  "database_stats": {
+    "datid": "22287",
+    "datname": "aq_graph_bench_schema7",
+    "numbackends": 3,
+    "xact_commit": 186,
+    "xact_rollback": 0,
+    "blks_read": 1365171,
+    "blks_hit": 64654279,
+    "tup_returned": 14691846,
+    "tup_fetched": 8181944,
+    "tup_inserted": 3019721,
+    "tup_updated": 100625,
+    "tup_deleted": 209,
+    "conflicts": 0,
+    "temp_files": 68,
+    "temp_bytes": 268761952,
+    "deadlocks": 0,
+    "checksum_failures": null,
+    "checksum_last_failure": null,
+    "blk_read_time": 2312.418,
+    "blk_write_time": 4566.882,
+    "session_time": 109342.473,
+    "active_time": 99400.658,
+    "idle_in_transaction_time": 9.454,
+    "sessions": 8,
+    "sessions_abandoned": 0,
+    "sessions_fatal": 0,
+    "sessions_killed": 0,
+    "stats_reset": null
+  }
+}

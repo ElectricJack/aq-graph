@@ -1,0 +1,1 @@
+WITH matching AS MATERIALIZED (SELECT sequence FROM history_entries WHERE workspace_id=$1 AND node_ids @> ARRAY[$2]::uuid[]), selected AS MATERIALIZED (SELECT sequence FROM matching WHERE sequence>$3 ORDER BY sequence LIMIT $4) SELECT to_jsonb(h)-'workspace_id'-'node_ids' FROM selected s JOIN history_entries h ON h.sequence=s.sequence ORDER BY s.sequence

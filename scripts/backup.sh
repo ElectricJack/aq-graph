@@ -5,7 +5,7 @@ umask 077
 cd "$(dirname "$0")/.."
 if [[ $# -ne 1 ]]; then printf 'Usage: %s OUTPUT.dump\n' "$0" >&2; exit 2; fi
 output=$1
-if [[ -e "$output" ]]; then printf 'Refusing to overwrite %s\n' "$output" >&2; exit 2; fi
+if [[ -e "$output" || -e "${output}.sha256" ]]; then printf 'Refusing to overwrite %s\n' "$output" >&2; exit 2; fi
 mkdir -p "$(dirname "$output")"
 temporary=$(mktemp "${output}.partial.XXXXXX")
 trap 'rm -f "$temporary"' EXIT

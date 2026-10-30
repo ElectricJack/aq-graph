@@ -1,0 +1,1187 @@
+{
+  "measurement": "Service guard entry through response body serialization at request completion; includes admission/auth/DB/pool but not socket delivery. Assigned by completion timestamp, not request origin phase. Open-loop groups use non-overlapping arrival windows, may include prior phase tail. Mutation route combines all mutation subtypes. Raw logs retained compressed.",
+  "unassigned_requests": 1875,
+  "phases": [
+    {
+      "name": "first_touch",
+      "start_epoch_seconds": 1793380592.1106608,
+      "end_epoch_seconds": 1793380599.5452802,
+      "elapsed_seconds": 7.434619426727295,
+      "offered": 429,
+      "completed": 429,
+      "client_queue_dropped": 0,
+      "requests_per_second": 57.70302087794223,
+      "success_per_second": 55.28191510683976,
+      "errors": 18,
+      "failed_offers": 18,
+      "timeouts": 0,
+      "statuses": {
+        "200": 411,
+        "400": 7,
+        "409": 9,
+        "503": 2
+      },
+      "error_codes": {},
+      "all_request_latency": {
+        "p50_ms": 535.365227,
+        "p95_ms": 1905.7084909999999,
+        "p99_ms": 2815.473732
+      },
+      "successful_request_latency": {
+        "p50_ms": 538.2521529999999,
+        "p95_ms": 1846.8683179999998,
+        "p99_ms": 2815.473732
+      },
+      "response_bytes": 0,
+      "operations": {
+        "GET /v1/workspaces/{workspace}/nodes/{id}": {
+          "count": 101,
+          "errors": 0,
+          "statuses": {
+            "200": 101
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 325.13156100000003,
+            "p95_ms": 715.476311,
+            "p99_ms": 902.596289
+          },
+          "p50_ms": 325.13156100000003,
+          "p95_ms": 715.476311,
+          "p99_ms": 902.596289
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/history": {
+          "count": 37,
+          "errors": 0,
+          "statuses": {
+            "200": 37
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 521.526945,
+            "p95_ms": 906.977803,
+            "p99_ms": 1043.659288
+          },
+          "p50_ms": 521.526945,
+          "p95_ms": 906.977803,
+          "p99_ms": 1043.659288
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/context": {
+          "count": 67,
+          "errors": 0,
+          "statuses": {
+            "200": 67
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 330.333096,
+            "p95_ms": 731.965184,
+            "p99_ms": 1024.666062
+          },
+          "p50_ms": 330.333096,
+          "p95_ms": 731.965184,
+          "p99_ms": 1024.666062
+        },
+        "POST /v1/workspaces/{workspace}/mutations": {
+          "count": 80,
+          "errors": 16,
+          "statuses": {
+            "200": 64,
+            "400": 7,
+            "409": 9
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 411.83986500000003,
+            "p95_ms": 772.168524,
+            "p99_ms": 1021.957332
+          },
+          "p50_ms": 401.082176,
+          "p95_ms": 772.168524,
+          "p99_ms": 1021.957332
+        },
+        "GET /v1/workspaces/{workspace}/search": {
+          "count": 75,
+          "errors": 2,
+          "statuses": {
+            "200": 73,
+            "503": 2
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1087.088627,
+            "p95_ms": 2823.358558,
+            "p99_ms": 3119.733116
+          },
+          "p50_ms": 1099.289256,
+          "p95_ms": 2823.358558,
+          "p99_ms": 3119.733116
+        },
+        "GET /v1/workspaces/{workspace}/ready": {
+          "count": 69,
+          "errors": 0,
+          "statuses": {
+            "200": 69
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 746.670944,
+            "p95_ms": 1232.546291,
+            "p99_ms": 1459.597628
+          },
+          "p50_ms": 746.670944,
+          "p95_ms": 1232.546291,
+          "p99_ms": 1459.597628
+        }
+      }
+    },
+    {
+      "name": "warmup",
+      "start_epoch_seconds": 1793380599.6009247,
+      "end_epoch_seconds": 1793380610.0692852,
+      "elapsed_seconds": 10.468360424041748,
+      "offered": 1612,
+      "completed": 1612,
+      "client_queue_dropped": 0,
+      "requests_per_second": 153.98781993576222,
+      "success_per_second": 147.3965298764771,
+      "errors": 69,
+      "failed_offers": 69,
+      "timeouts": 0,
+      "statuses": {
+        "200": 1543,
+        "400": 27,
+        "409": 42
+      },
+      "error_codes": {},
+      "all_request_latency": {
+        "p50_ms": 236.105349,
+        "p95_ms": 764.356842,
+        "p99_ms": 1180.480019
+      },
+      "successful_request_latency": {
+        "p50_ms": 240.137351,
+        "p95_ms": 764.4388210000001,
+        "p99_ms": 1247.297447
+      },
+      "response_bytes": 0,
+      "operations": {
+        "GET /v1/workspaces/{workspace}/nodes/{id}": {
+          "count": 442,
+          "errors": 0,
+          "statuses": {
+            "200": 442
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 160.531183,
+            "p95_ms": 386.147788,
+            "p99_ms": 699.8228340000001
+          },
+          "p50_ms": 160.531183,
+          "p95_ms": 386.147788,
+          "p99_ms": 699.8228340000001
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/history": {
+          "count": 159,
+          "errors": 0,
+          "statuses": {
+            "200": 159
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 229.340144,
+            "p95_ms": 539.801243,
+            "p99_ms": 735.186338
+          },
+          "p50_ms": 229.340144,
+          "p95_ms": 539.801243,
+          "p99_ms": 735.186338
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/context": {
+          "count": 253,
+          "errors": 0,
+          "statuses": {
+            "200": 253
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 182.491027,
+            "p95_ms": 418.11877400000003,
+            "p99_ms": 826.361034
+          },
+          "p50_ms": 182.491027,
+          "p95_ms": 418.11877400000003,
+          "p99_ms": 826.361034
+        },
+        "POST /v1/workspaces/{workspace}/mutations": {
+          "count": 293,
+          "errors": 69,
+          "statuses": {
+            "200": 224,
+            "400": 27,
+            "409": 42
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 200.68750899999998,
+            "p95_ms": 419.985344,
+            "p99_ms": 766.158139
+          },
+          "p50_ms": 193.211953,
+          "p95_ms": 422.54826699999995,
+          "p99_ms": 830.241127
+        },
+        "GET /v1/workspaces/{workspace}/search": {
+          "count": 231,
+          "errors": 0,
+          "statuses": {
+            "200": 231
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 438.190538,
+            "p95_ms": 1407.8544900000002,
+            "p99_ms": 1842.244779
+          },
+          "p50_ms": 438.190538,
+          "p95_ms": 1407.8544900000002,
+          "p99_ms": 1842.244779
+        },
+        "GET /v1/workspaces/{workspace}/ready": {
+          "count": 234,
+          "errors": 0,
+          "statuses": {
+            "200": 234
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 627.362161,
+            "p95_ms": 954.1957749999999,
+            "p99_ms": 1247.297447
+          },
+          "p50_ms": 627.362161,
+          "p95_ms": 954.1957749999999,
+          "p99_ms": 1247.297447
+        }
+      }
+    },
+    {
+      "name": "warm_50",
+      "start_epoch_seconds": 1793380610.1284506,
+      "end_epoch_seconds": 1793380642.2665644,
+      "elapsed_seconds": 32.13811373710632,
+      "offered": 5196,
+      "completed": 5196,
+      "client_queue_dropped": 0,
+      "requests_per_second": 161.67719246076206,
+      "success_per_second": 154.14719235000294,
+      "errors": 242,
+      "failed_offers": 242,
+      "timeouts": 0,
+      "statuses": {
+        "200": 4954,
+        "400": 96,
+        "409": 146
+      },
+      "error_codes": {},
+      "all_request_latency": {
+        "p50_ms": 225.69724,
+        "p95_ms": 688.8706,
+        "p99_ms": 859.608284
+      },
+      "successful_request_latency": {
+        "p50_ms": 230.89966,
+        "p95_ms": 697.029237,
+        "p99_ms": 860.26862
+      },
+      "response_bytes": 0,
+      "operations": {
+        "GET /v1/workspaces/{workspace}/nodes/{id}": {
+          "count": 1403,
+          "errors": 0,
+          "statuses": {
+            "200": 1403
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 157.46506699999998,
+            "p95_ms": 292.03891300000004,
+            "p99_ms": 358.132797
+          },
+          "p50_ms": 157.46506699999998,
+          "p95_ms": 292.03891300000004,
+          "p99_ms": 358.132797
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/history": {
+          "count": 508,
+          "errors": 0,
+          "statuses": {
+            "200": 508
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 251.435187,
+            "p95_ms": 412.338964,
+            "p99_ms": 476.432115
+          },
+          "p50_ms": 251.435187,
+          "p95_ms": 412.338964,
+          "p99_ms": 476.432115
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/context": {
+          "count": 805,
+          "errors": 0,
+          "statuses": {
+            "200": 805
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 168.635188,
+            "p95_ms": 303.913073,
+            "p99_ms": 371.28167499999995
+          },
+          "p50_ms": 168.635188,
+          "p95_ms": 303.913073,
+          "p99_ms": 371.28167499999995
+        },
+        "POST /v1/workspaces/{workspace}/mutations": {
+          "count": 995,
+          "errors": 242,
+          "statuses": {
+            "200": 753,
+            "400": 96,
+            "409": 146
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 175.627599,
+            "p95_ms": 315.154247,
+            "p99_ms": 385.72414399999997
+          },
+          "p50_ms": 175.197244,
+          "p95_ms": 315.03075,
+          "p99_ms": 379.585324
+        },
+        "GET /v1/workspaces/{workspace}/search": {
+          "count": 747,
+          "errors": 0,
+          "statuses": {
+            "200": 747
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 452.469288,
+            "p95_ms": 604.68637,
+            "p99_ms": 686.448029
+          },
+          "p50_ms": 452.469288,
+          "p95_ms": 604.68637,
+          "p99_ms": 686.448029
+        },
+        "GET /v1/workspaces/{workspace}/ready": {
+          "count": 738,
+          "errors": 0,
+          "statuses": {
+            "200": 738
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 647.346376,
+            "p95_ms": 892.353583,
+            "p99_ms": 1082.462045
+          },
+          "p50_ms": 647.346376,
+          "p95_ms": 892.353583,
+          "p99_ms": 1082.462045
+        }
+      }
+    },
+    {
+      "name": "warm_100",
+      "start_epoch_seconds": 1793380642.4141383,
+      "end_epoch_seconds": 1793380674.8214908,
+      "elapsed_seconds": 32.407352447509766,
+      "offered": 5546,
+      "completed": 5546,
+      "client_queue_dropped": 0,
+      "requests_per_second": 171.13400451279887,
+      "success_per_second": 162.7717046168435,
+      "errors": 271,
+      "failed_offers": 271,
+      "timeouts": 0,
+      "statuses": {
+        "200": 5275,
+        "400": 102,
+        "409": 169
+      },
+      "error_codes": {},
+      "all_request_latency": {
+        "p50_ms": 490.557964,
+        "p95_ms": 933.185292,
+        "p99_ms": 1088.3017340000001
+      },
+      "successful_request_latency": {
+        "p50_ms": 496.827166,
+        "p95_ms": 937.634699,
+        "p99_ms": 1091.4531709999999
+      },
+      "response_bytes": 0,
+      "operations": {
+        "GET /v1/workspaces/{workspace}/nodes/{id}": {
+          "count": 1523,
+          "errors": 0,
+          "statuses": {
+            "200": 1523
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 415.746037,
+            "p95_ms": 601.0875,
+            "p99_ms": 681.304337
+          },
+          "p50_ms": 415.746037,
+          "p95_ms": 601.0875,
+          "p99_ms": 681.304337
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/history": {
+          "count": 577,
+          "errors": 0,
+          "statuses": {
+            "200": 577
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 630.223424,
+            "p95_ms": 862.081947,
+            "p99_ms": 949.30322
+          },
+          "p50_ms": 630.223424,
+          "p95_ms": 862.081947,
+          "p99_ms": 949.30322
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/context": {
+          "count": 833,
+          "errors": 0,
+          "statuses": {
+            "200": 833
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 420.427889,
+            "p95_ms": 607.9377470000001,
+            "p99_ms": 687.304574
+          },
+          "p50_ms": 420.427889,
+          "p95_ms": 607.9377470000001,
+          "p99_ms": 687.304574
+        },
+        "POST /v1/workspaces/{workspace}/mutations": {
+          "count": 1037,
+          "errors": 271,
+          "statuses": {
+            "400": 102,
+            "200": 766,
+            "409": 169
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 431.24482800000004,
+            "p95_ms": 617.570305,
+            "p99_ms": 686.1432010000001
+          },
+          "p50_ms": 430.12530599999997,
+          "p95_ms": 610.992965,
+          "p99_ms": 684.519354
+        },
+        "GET /v1/workspaces/{workspace}/search": {
+          "count": 796,
+          "errors": 0,
+          "statuses": {
+            "200": 796
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 691.810019,
+            "p95_ms": 911.800588,
+            "p99_ms": 1011.311007
+          },
+          "p50_ms": 691.810019,
+          "p95_ms": 911.800588,
+          "p99_ms": 1011.311007
+        },
+        "GET /v1/workspaces/{workspace}/ready": {
+          "count": 780,
+          "errors": 0,
+          "statuses": {
+            "200": 780
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 868.812143,
+            "p95_ms": 1117.862841,
+            "p99_ms": 1186.6597610000001
+          },
+          "p50_ms": 868.812143,
+          "p95_ms": 1117.862841,
+          "p99_ms": 1186.6597610000001
+        }
+      }
+    },
+    {
+      "name": "warm_200",
+      "start_epoch_seconds": 1793380675.0896904,
+      "end_epoch_seconds": 1793380707.863931,
+      "elapsed_seconds": 32.774240493774414,
+      "offered": 5306,
+      "completed": 5306,
+      "client_queue_dropped": 0,
+      "requests_per_second": 161.89543739412952,
+      "success_per_second": 152.8029307330947,
+      "errors": 298,
+      "failed_offers": 298,
+      "timeouts": 0,
+      "statuses": {
+        "200": 5008,
+        "400": 106,
+        "409": 192
+      },
+      "error_codes": {},
+      "all_request_latency": {
+        "p50_ms": 1112.687083,
+        "p95_ms": 1655.5537359999998,
+        "p99_ms": 1842.838479
+      },
+      "successful_request_latency": {
+        "p50_ms": 1123.2166750000001,
+        "p95_ms": 1663.0923790000002,
+        "p99_ms": 1844.202391
+      },
+      "response_bytes": 0,
+      "operations": {
+        "POST /v1/workspaces/{workspace}/mutations": {
+          "count": 1032,
+          "errors": 298,
+          "statuses": {
+            "200": 734,
+            "400": 106,
+            "409": 192
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1009.966581,
+            "p95_ms": 1313.7434400000002,
+            "p99_ms": 1432.924614
+          },
+          "p50_ms": 1002.564448,
+          "p95_ms": 1300.283634,
+          "p99_ms": 1424.3571290000002
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/context": {
+          "count": 808,
+          "errors": 0,
+          "statuses": {
+            "200": 808
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 990.045519,
+            "p95_ms": 1276.3411780000001,
+            "p99_ms": 1406.2696310000001
+          },
+          "p50_ms": 990.045519,
+          "p95_ms": 1276.3411780000001,
+          "p99_ms": 1406.2696310000001
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}": {
+          "count": 1465,
+          "errors": 0,
+          "statuses": {
+            "200": 1465
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 992.93215,
+            "p95_ms": 1279.5561260000002,
+            "p99_ms": 1408.687229
+          },
+          "p50_ms": 992.93215,
+          "p95_ms": 1279.5561260000002,
+          "p99_ms": 1408.687229
+        },
+        "GET /v1/workspaces/{workspace}/search": {
+          "count": 739,
+          "errors": 0,
+          "statuses": {
+            "200": 739
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1267.619767,
+            "p95_ms": 1564.5331709999998,
+            "p99_ms": 1706.346848
+          },
+          "p50_ms": 1267.619767,
+          "p95_ms": 1564.5331709999998,
+          "p99_ms": 1706.346848
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/history": {
+          "count": 502,
+          "errors": 0,
+          "statuses": {
+            "200": 502
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1475.632114,
+            "p95_ms": 1845.551778,
+            "p99_ms": 1930.937486
+          },
+          "p50_ms": 1475.632114,
+          "p95_ms": 1845.551778,
+          "p99_ms": 1930.937486
+        },
+        "GET /v1/workspaces/{workspace}/ready": {
+          "count": 760,
+          "errors": 0,
+          "statuses": {
+            "200": 760
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1468.39975,
+            "p95_ms": 1818.3637849999998,
+            "p99_ms": 1901.6408629999999
+          },
+          "p50_ms": 1468.39975,
+          "p95_ms": 1818.3637849999998,
+          "p99_ms": 1901.6408629999999
+        }
+      }
+    },
+    {
+      "name": "open_sustained_arrival_window",
+      "start_epoch_seconds": 1793380708.0451188,
+      "end_epoch_seconds": 1793380738.0451188,
+      "elapsed_seconds": 30.0,
+      "offered": 4850,
+      "completed": 4850,
+      "client_queue_dropped": 0,
+      "requests_per_second": 161.66666666666666,
+      "success_per_second": 152.36666666666667,
+      "errors": 279,
+      "failed_offers": 279,
+      "timeouts": 0,
+      "statuses": {
+        "200": 4571,
+        "400": 101,
+        "409": 178
+      },
+      "error_codes": {},
+      "all_request_latency": {
+        "p50_ms": 1015.2667040000001,
+        "p95_ms": 1664.433739,
+        "p99_ms": 2276.2675670000003
+      },
+      "successful_request_latency": {
+        "p50_ms": 1023.3102380000001,
+        "p95_ms": 1670.978139,
+        "p99_ms": 2294.437489
+      },
+      "response_bytes": 0,
+      "operations": {
+        "GET /v1/workspaces/{workspace}/nodes/{id}": {
+          "count": 1358,
+          "errors": 0,
+          "statuses": {
+            "200": 1358
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 933.026648,
+            "p95_ms": 1224.3490180000001,
+            "p99_ms": 1816.890428
+          },
+          "p50_ms": 933.026648,
+          "p95_ms": 1224.3490180000001,
+          "p99_ms": 1816.890428
+        },
+        "POST /v1/workspaces/{workspace}/mutations": {
+          "count": 947,
+          "errors": 279,
+          "statuses": {
+            "200": 668,
+            "400": 101,
+            "409": 178
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 946.0279539999999,
+            "p95_ms": 1261.8259919999998,
+            "p99_ms": 1822.936952
+          },
+          "p50_ms": 945.728297,
+          "p95_ms": 1258.525744,
+          "p99_ms": 1809.906706
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/context": {
+          "count": 727,
+          "errors": 0,
+          "statuses": {
+            "200": 727
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 931.473644,
+            "p95_ms": 1324.3873429999999,
+            "p99_ms": 1821.838129
+          },
+          "p50_ms": 931.473644,
+          "p95_ms": 1324.3873429999999,
+          "p99_ms": 1821.838129
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/history": {
+          "count": 457,
+          "errors": 0,
+          "statuses": {
+            "200": 457
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1393.342563,
+            "p95_ms": 2253.784978,
+            "p99_ms": 2418.62888
+          },
+          "p50_ms": 1393.342563,
+          "p95_ms": 2253.784978,
+          "p99_ms": 2418.62888
+        },
+        "GET /v1/workspaces/{workspace}/search": {
+          "count": 676,
+          "errors": 0,
+          "statuses": {
+            "200": 676
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1202.431441,
+            "p95_ms": 1560.477881,
+            "p99_ms": 2039.181304
+          },
+          "p50_ms": 1202.431441,
+          "p95_ms": 1560.477881,
+          "p99_ms": 2039.181304
+        },
+        "GET /v1/workspaces/{workspace}/ready": {
+          "count": 685,
+          "errors": 0,
+          "statuses": {
+            "200": 685
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1366.277881,
+            "p95_ms": 2147.075831,
+            "p99_ms": 2426.194519
+          },
+          "p50_ms": 1366.277881,
+          "p95_ms": 2147.075831,
+          "p99_ms": 2426.194519
+        }
+      }
+    },
+    {
+      "name": "open_burst_arrival_window",
+      "start_epoch_seconds": 1793380739.6934614,
+      "end_epoch_seconds": 1793380749.6934614,
+      "elapsed_seconds": 10.0,
+      "offered": 1760,
+      "completed": 1760,
+      "client_queue_dropped": 0,
+      "requests_per_second": 176.0,
+      "success_per_second": 166.5,
+      "errors": 95,
+      "failed_offers": 95,
+      "timeouts": 0,
+      "statuses": {
+        "200": 1665,
+        "409": 67,
+        "400": 28
+      },
+      "error_codes": {},
+      "all_request_latency": {
+        "p50_ms": 1064.5100140000002,
+        "p95_ms": 1654.2094029999998,
+        "p99_ms": 1989.034653
+      },
+      "successful_request_latency": {
+        "p50_ms": 1079.186013,
+        "p95_ms": 1665.229839,
+        "p99_ms": 1993.528532
+      },
+      "response_bytes": 0,
+      "operations": {
+        "GET /v1/workspaces/{workspace}/nodes/{id}/context": {
+          "count": 258,
+          "errors": 0,
+          "statuses": {
+            "200": 258
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 973.834182,
+            "p95_ms": 1314.689273,
+            "p99_ms": 1485.3102179999998
+          },
+          "p50_ms": 973.834182,
+          "p95_ms": 1314.689273,
+          "p99_ms": 1485.3102179999998
+        },
+        "GET /v1/workspaces/{workspace}/ready": {
+          "count": 230,
+          "errors": 0,
+          "statuses": {
+            "200": 230
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1466.712266,
+            "p95_ms": 1963.6983930000001,
+            "p99_ms": 2078.905565
+          },
+          "p50_ms": 1466.712266,
+          "p95_ms": 1963.6983930000001,
+          "p99_ms": 2078.905565
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}": {
+          "count": 478,
+          "errors": 0,
+          "statuses": {
+            "200": 478
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 980.4581909999999,
+            "p95_ms": 1305.1299809999998,
+            "p99_ms": 1525.539616
+          },
+          "p50_ms": 980.4581909999999,
+          "p95_ms": 1305.1299809999998,
+          "p99_ms": 1525.539616
+        },
+        "POST /v1/workspaces/{workspace}/mutations": {
+          "count": 359,
+          "errors": 95,
+          "statuses": {
+            "409": 67,
+            "200": 264,
+            "400": 28
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1004.5134609999999,
+            "p95_ms": 1474.188013,
+            "p99_ms": 1529.9701420000001
+          },
+          "p50_ms": 997.1696479999999,
+          "p95_ms": 1462.540358,
+          "p99_ms": 1529.9701420000001
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/history": {
+          "count": 178,
+          "errors": 0,
+          "statuses": {
+            "200": 178
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1465.077928,
+            "p95_ms": 1975.76303,
+            "p99_ms": 2083.41511
+          },
+          "p50_ms": 1465.077928,
+          "p95_ms": 1975.76303,
+          "p99_ms": 2083.41511
+        },
+        "GET /v1/workspaces/{workspace}/search": {
+          "count": 257,
+          "errors": 0,
+          "statuses": {
+            "200": 257
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1266.109449,
+            "p95_ms": 1693.3062699999998,
+            "p99_ms": 1834.434754
+          },
+          "p50_ms": 1266.109449,
+          "p95_ms": 1693.3062699999998,
+          "p99_ms": 1834.434754
+        }
+      }
+    },
+    {
+      "name": "open_recovery_arrival_window",
+      "start_epoch_seconds": 1793380749.694115,
+      "end_epoch_seconds": 1793380779.694115,
+      "elapsed_seconds": 30.0,
+      "offered": 4922,
+      "completed": 4922,
+      "client_queue_dropped": 0,
+      "requests_per_second": 164.06666666666666,
+      "success_per_second": 155.36666666666667,
+      "errors": 261,
+      "failed_offers": 261,
+      "timeouts": 0,
+      "statuses": {
+        "200": 4661,
+        "409": 167,
+        "400": 94
+      },
+      "error_codes": {},
+      "all_request_latency": {
+        "p50_ms": 1077.104686,
+        "p95_ms": 1580.079285,
+        "p99_ms": 1783.569216
+      },
+      "successful_request_latency": {
+        "p50_ms": 1093.888552,
+        "p95_ms": 1586.099562,
+        "p99_ms": 1792.020129
+      },
+      "response_bytes": 0,
+      "operations": {
+        "GET /v1/workspaces/{workspace}/nodes/{id}/context": {
+          "count": 744,
+          "errors": 0,
+          "statuses": {
+            "200": 744
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 982.1675290000001,
+            "p95_ms": 1215.132985,
+            "p99_ms": 1332.034678
+          },
+          "p50_ms": 982.1675290000001,
+          "p95_ms": 1215.132985,
+          "p99_ms": 1332.034678
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}": {
+          "count": 1341,
+          "errors": 0,
+          "statuses": {
+            "200": 1341
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 971.079352,
+            "p95_ms": 1216.934956,
+            "p99_ms": 1340.970716
+          },
+          "p50_ms": 971.079352,
+          "p95_ms": 1216.934956,
+          "p99_ms": 1340.970716
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/history": {
+          "count": 483,
+          "errors": 0,
+          "statuses": {
+            "200": 483
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1463.6396519999998,
+            "p95_ms": 1818.7355329999998,
+            "p99_ms": 1927.941745
+          },
+          "p50_ms": 1463.6396519999998,
+          "p95_ms": 1818.7355329999998,
+          "p99_ms": 1927.941745
+        },
+        "GET /v1/workspaces/{workspace}/ready": {
+          "count": 721,
+          "errors": 0,
+          "statuses": {
+            "200": 721
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1442.501562,
+            "p95_ms": 1717.207141,
+            "p99_ms": 1828.5666310000001
+          },
+          "p50_ms": 1442.501562,
+          "p95_ms": 1717.207141,
+          "p99_ms": 1828.5666310000001
+        },
+        "GET /v1/workspaces/{workspace}/search": {
+          "count": 695,
+          "errors": 0,
+          "statuses": {
+            "200": 695
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1252.8236530000001,
+            "p95_ms": 1507.9536409999998,
+            "p99_ms": 1681.244702
+          },
+          "p50_ms": 1252.8236530000001,
+          "p95_ms": 1507.9536409999998,
+          "p99_ms": 1681.244702
+        },
+        "POST /v1/workspaces/{workspace}/mutations": {
+          "count": 938,
+          "errors": 261,
+          "statuses": {
+            "200": 677,
+            "409": 167,
+            "400": 94
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 987.438995,
+            "p95_ms": 1243.1041650000002,
+            "p99_ms": 1355.823491
+          },
+          "p50_ms": 984.529314,
+          "p95_ms": 1235.5671610000002,
+          "p99_ms": 1355.823491
+        }
+      }
+    },
+    {
+      "name": "open_drain",
+      "start_epoch_seconds": 1793380779.694115,
+      "end_epoch_seconds": 1793380782.1622107,
+      "elapsed_seconds": 2.4680957794189453,
+      "offered": 453,
+      "completed": 453,
+      "client_queue_dropped": 0,
+      "requests_per_second": 183.54230973428758,
+      "success_per_second": 173.81821385432534,
+      "errors": 24,
+      "failed_offers": 24,
+      "timeouts": 0,
+      "statuses": {
+        "200": 429,
+        "409": 18,
+        "400": 6
+      },
+      "error_codes": {},
+      "all_request_latency": {
+        "p50_ms": 1021.20385,
+        "p95_ms": 1514.3632550000002,
+        "p99_ms": 1642.539661
+      },
+      "successful_request_latency": {
+        "p50_ms": 1027.271273,
+        "p95_ms": 1515.0140379999998,
+        "p99_ms": 1642.539661
+      },
+      "response_bytes": 0,
+      "operations": {
+        "GET /v1/workspaces/{workspace}/ready": {
+          "count": 67,
+          "errors": 0,
+          "statuses": {
+            "200": 67
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1339.239839,
+            "p95_ms": 1547.68939,
+            "p99_ms": 1642.539661
+          },
+          "p50_ms": 1339.239839,
+          "p95_ms": 1547.68939,
+          "p99_ms": 1642.539661
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/history": {
+          "count": 38,
+          "errors": 0,
+          "statuses": {
+            "200": 38
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1444.767261,
+            "p95_ms": 1735.8984189999999,
+            "p99_ms": 1745.865733
+          },
+          "p50_ms": 1444.767261,
+          "p95_ms": 1735.8984189999999,
+          "p99_ms": 1745.865733
+        },
+        "GET /v1/workspaces/{workspace}/search": {
+          "count": 61,
+          "errors": 0,
+          "statuses": {
+            "200": 61
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 1185.568444,
+            "p95_ms": 1395.146033,
+            "p99_ms": 1527.9079
+          },
+          "p50_ms": 1185.568444,
+          "p95_ms": 1395.146033,
+          "p99_ms": 1527.9079
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}": {
+          "count": 122,
+          "errors": 0,
+          "statuses": {
+            "200": 122
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 893.5754430000001,
+            "p95_ms": 1185.227731,
+            "p99_ms": 1278.364472
+          },
+          "p50_ms": 893.5754430000001,
+          "p95_ms": 1185.227731,
+          "p99_ms": 1278.364472
+        },
+        "POST /v1/workspaces/{workspace}/mutations": {
+          "count": 93,
+          "errors": 24,
+          "statuses": {
+            "409": 18,
+            "400": 6,
+            "200": 69
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 900.5200530000001,
+            "p95_ms": 1294.628085,
+            "p99_ms": 1303.159019
+          },
+          "p50_ms": 894.115279,
+          "p95_ms": 1283.899098,
+          "p99_ms": 1303.159019
+        },
+        "GET /v1/workspaces/{workspace}/nodes/{id}/context": {
+          "count": 72,
+          "errors": 0,
+          "statuses": {
+            "200": 72
+          },
+          "error_codes": {},
+          "successful_latency": {
+            "p50_ms": 906.122898,
+            "p95_ms": 1220.345647,
+            "p99_ms": 1283.157273
+          },
+          "p50_ms": 906.122898,
+          "p95_ms": 1220.345647,
+          "p99_ms": 1283.157273
+        }
+      }
+    }
+  ]
+}

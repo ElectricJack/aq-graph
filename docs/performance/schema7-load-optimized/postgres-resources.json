@@ -1,0 +1,5446 @@
+{
+  "measurement": "PostgreSQL container resources and cumulative stats; sampling subprocess overhead and 2s docker stats interval; no query text or credentials",
+  "samples": [
+    {
+      "epoch_seconds": 1793381526.008162,
+      "postgres": {
+        "utc": "2026-10-30T17:32:06.146015+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 208,
+          "xact_rollback": 0,
+          "blks_read": 1528365,
+          "blks_hit": 64648960,
+          "tup_returned": 16910021,
+          "tup_fetched": 8182310,
+          "tup_inserted": 3019722,
+          "tup_updated": 100625,
+          "tup_deleted": 209,
+          "conflicts": 0,
+          "temp_files": 68,
+          "temp_bytes": 268761952,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 3163.76,
+          "blk_write_time": 5285.051,
+          "session_time": 257751.979,
+          "active_time": 112146.712,
+          "idle_in_transaction_time": 8.632,
+          "sessions": 27,
+          "sessions_abandoned": 0,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 11
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 5
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 286
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 5
+          },
+          {
+            "mode": "RowShareLock",
+            "granted": true,
+            "count": 2
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "95.9MB / 29GB",
+        "CPUPerc": "641.04%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "7.92%",
+        "MemUsage": "2.481GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "145MB / 933MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381528.0083551,
+      "postgres": {
+        "utc": "2026-10-30T17:32:08.139734+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 431,
+          "xact_rollback": 0,
+          "blks_read": 1736947,
+          "blks_hit": 64979563,
+          "tup_returned": 18265732,
+          "tup_fetched": 8337169,
+          "tup_inserted": 3019722,
+          "tup_updated": 100625,
+          "tup_deleted": 209,
+          "conflicts": 0,
+          "temp_files": 76,
+          "temp_bytes": 289561952,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 3364.197,
+          "blk_write_time": 5290.515,
+          "session_time": 273073.358,
+          "active_time": 112564.445,
+          "idle_in_transaction_time": 17.434,
+          "sessions": 28,
+          "sessions_abandoned": 0,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 17
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 3
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 348
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 2
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "95.9MB / 29GB",
+        "CPUPerc": "559.47%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.02%",
+        "MemUsage": "2.514GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "145MB / 934MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381530.0085654,
+      "postgres": {
+        "utc": "2026-10-30T17:32:11.953369+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 662,
+          "xact_rollback": 1,
+          "blks_read": 2082845,
+          "blks_hit": 65433549,
+          "tup_returned": 20683827,
+          "tup_fetched": 8753794,
+          "tup_inserted": 3019740,
+          "tup_updated": 100638,
+          "tup_deleted": 209,
+          "conflicts": 0,
+          "temp_files": 82,
+          "temp_bytes": 305161952,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 3709.699,
+          "blk_write_time": 5292.561,
+          "session_time": 296186.414,
+          "active_time": 123487.392,
+          "idle_in_transaction_time": 83.648,
+          "sessions": 29,
+          "sessions_abandoned": 0,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 18
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 2
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 341
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 2
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "95.9MB / 29GB",
+        "CPUPerc": "272.43%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.00%",
+        "MemUsage": "2.507GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "145MB / 936MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381533.1238844,
+      "postgres": {
+        "utc": "2026-10-30T17:32:13.253228+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 807,
+          "xact_rollback": 7,
+          "blks_read": 2411612,
+          "blks_hit": 65927407,
+          "tup_returned": 23195361,
+          "tup_fetched": 8903140,
+          "tup_inserted": 3019794,
+          "tup_updated": 100660,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 89,
+          "temp_bytes": 323361952,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 3919.618,
+          "blk_write_time": 5293.647,
+          "session_time": 355087.277,
+          "active_time": 135487.476,
+          "idle_in_transaction_time": 151.826,
+          "sessions": 30,
+          "sessions_abandoned": 0,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 18
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 2
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 320
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 2
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "95.9MB / 29GB",
+        "CPUPerc": "269.11%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.07%",
+        "MemUsage": "2.528GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "145MB / 937MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381535.1297371,
+      "postgres": {
+        "utc": "2026-10-30T17:32:15.240615+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 937,
+          "xact_rollback": 14,
+          "blks_read": 2789015,
+          "blks_hit": 66541760,
+          "tup_returned": 26165009,
+          "tup_fetched": 9273554,
+          "tup_inserted": 3019826,
+          "tup_updated": 100681,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 97,
+          "temp_bytes": 344161952,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 4162.973,
+          "blk_write_time": 5294.816,
+          "session_time": 407088.142,
+          "active_time": 186889.351,
+          "idle_in_transaction_time": 247.338,
+          "sessions": 31,
+          "sessions_abandoned": 0,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 10
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 9
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 191
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 2
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "95.9MB / 29GB",
+        "CPUPerc": "368.27%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.14%",
+        "MemUsage": "2.552GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "145MB / 938MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381537.137259,
+      "postgres": {
+        "utc": "2026-10-30T17:32:17.266082+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 1013,
+          "xact_rollback": 18,
+          "blks_read": 3065234,
+          "blks_hit": 67014662,
+          "tup_returned": 28582644,
+          "tup_fetched": 9619874,
+          "tup_inserted": 3019846,
+          "tup_updated": 100694,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 101,
+          "temp_bytes": 354561952,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 4269.271,
+          "blk_write_time": 5295.12,
+          "session_time": 457039.703,
+          "active_time": 259506.48,
+          "idle_in_transaction_time": 288.756,
+          "sessions": 32,
+          "sessions_abandoned": 0,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 19
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 327
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 2
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "96.1MB / 29GB",
+        "CPUPerc": "418.38%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.23%",
+        "MemUsage": "2.578GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "145MB / 939MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381539.1909778,
+      "postgres": {
+        "utc": "2026-10-30T17:32:19.324738+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 1243,
+          "xact_rollback": 19,
+          "blks_read": 3288022,
+          "blks_hit": 67513881,
+          "tup_returned": 30546458,
+          "tup_fetched": 9882747,
+          "tup_inserted": 3019862,
+          "tup_updated": 100707,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 110,
+          "temp_bytes": 377961952,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 4362.906,
+          "blk_write_time": 5295.272,
+          "session_time": 488903.963,
+          "active_time": 285664.609,
+          "idle_in_transaction_time": 350.564,
+          "sessions": 33,
+          "sessions_abandoned": 0,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 18
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 2
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 355
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 2
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "96.1MB / 29GB",
+        "CPUPerc": "344.18%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.23%",
+        "MemUsage": "2.578GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "145MB / 940MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381541.2108653,
+      "postgres": {
+        "utc": "2026-10-30T17:32:21.341056+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 1356,
+          "xact_rollback": 27,
+          "blks_read": 3544018,
+          "blks_hit": 67986915,
+          "tup_returned": 32976270,
+          "tup_fetched": 9995253,
+          "tup_inserted": 3019864,
+          "tup_updated": 100709,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 114,
+          "temp_bytes": 388361952,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 4442.445,
+          "blk_write_time": 5295.327,
+          "session_time": 529266.529,
+          "active_time": 305668.059,
+          "idle_in_transaction_time": 358.164,
+          "sessions": 34,
+          "sessions_abandoned": 0,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 19
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 334
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 6
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "96.1MB / 29GB",
+        "CPUPerc": "318.94%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.24%",
+        "MemUsage": "2.583GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "145MB / 940MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381543.2164607,
+      "postgres": {
+        "utc": "2026-10-30T17:32:23.344848+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 1414,
+          "xact_rollback": 35,
+          "blks_read": 3840127,
+          "blks_hit": 68315877,
+          "tup_returned": 35146831,
+          "tup_fetched": 10060732,
+          "tup_inserted": 3019872,
+          "tup_updated": 100716,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 116,
+          "temp_bytes": 393561952,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 4553.477,
+          "blk_write_time": 5310.677,
+          "session_time": 568883.077,
+          "active_time": 334224.601,
+          "idle_in_transaction_time": 384.752,
+          "sessions": 35,
+          "sessions_abandoned": 0,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 19
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 306
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 4
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "96.1MB / 29GB",
+        "CPUPerc": "260.78%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.22%",
+        "MemUsage": "2.578GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "145MB / 941MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381545.222825,
+      "postgres": {
+        "utc": "2026-10-30T17:32:25.344272+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 1462,
+          "xact_rollback": 40,
+          "blks_read": 4099112,
+          "blks_hit": 68544327,
+          "tup_returned": 36819494,
+          "tup_fetched": 10390109,
+          "tup_inserted": 3019888,
+          "tup_updated": 100724,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 122,
+          "temp_bytes": 409161952,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 4665.276,
+          "blk_write_time": 5328.817,
+          "session_time": 602528.533,
+          "active_time": 366375.56,
+          "idle_in_transaction_time": 427.59,
+          "sessions": 36,
+          "sessions_abandoned": 0,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 19
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 311
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 4
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "96.1MB / 29GB",
+        "CPUPerc": "320.09%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.31%",
+        "MemUsage": "2.605GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "146MB / 941MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381548.0559106,
+      "postgres": {
+        "utc": "2026-10-30T17:32:28.18573+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 1520,
+          "xact_rollback": 52,
+          "blks_read": 4424313,
+          "blks_hit": 68824249,
+          "tup_returned": 38388752,
+          "tup_fetched": 10482891,
+          "tup_inserted": 3019900,
+          "tup_updated": 100731,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 129,
+          "temp_bytes": 426562976,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 4787.873,
+          "blk_write_time": 5329.086,
+          "session_time": 651274.715,
+          "active_time": 407455.799,
+          "idle_in_transaction_time": 453.515,
+          "sessions": 37,
+          "sessions_abandoned": 0,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 12
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 3
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 5
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 237
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 4
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "96.1MB / 29GB",
+        "CPUPerc": "298.95%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.21%",
+        "MemUsage": "2.574GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "146MB / 943MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381550.1120694,
+      "postgres": {
+        "utc": "2026-10-30T17:32:30.239163+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 1615,
+          "xact_rollback": 57,
+          "blks_read": 4940180,
+          "blks_hit": 69227080,
+          "tup_returned": 41701947,
+          "tup_fetched": 10976274,
+          "tup_inserted": 3019932,
+          "tup_updated": 100756,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 135,
+          "temp_bytes": 442162976,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 5123.554,
+          "blk_write_time": 5331.01,
+          "session_time": 713697.175,
+          "active_time": 489405.648,
+          "idle_in_transaction_time": 526.749,
+          "sessions": 38,
+          "sessions_abandoned": 0,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 19
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 309
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 4
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "96.1MB / 29.6GB",
+        "CPUPerc": "437.87%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.44%",
+        "MemUsage": "2.645GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "146MB / 943MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381552.1226902,
+      "postgres": {
+        "utc": "2026-10-30T17:32:32.247346+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 1682,
+          "xact_rollback": 57,
+          "blks_read": 5026989,
+          "blks_hit": 69405127,
+          "tup_returned": 42376983,
+          "tup_fetched": 11050799,
+          "tup_inserted": 3019932,
+          "tup_updated": 100756,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 139,
+          "temp_bytes": 452562976,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 5157.578,
+          "blk_write_time": 5331.578,
+          "session_time": 727917.847,
+          "active_time": 503023.238,
+          "idle_in_transaction_time": 526.749,
+          "sessions": 39,
+          "sessions_abandoned": 0,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 19
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 323
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 4
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "96.1MB / 29.6GB",
+        "CPUPerc": "346.07%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.27%",
+        "MemUsage": "2.591GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "146MB / 944MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381554.1289887,
+      "postgres": {
+        "utc": "2026-10-30T17:32:34.254848+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 1996,
+          "xact_rollback": 67,
+          "blks_read": 5480538,
+          "blks_hit": 69937836,
+          "tup_returned": 46581341,
+          "tup_fetched": 11719310,
+          "tup_inserted": 3019950,
+          "tup_updated": 100772,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 145,
+          "temp_bytes": 468162976,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 5421.684,
+          "blk_write_time": 5336.204,
+          "session_time": 794529.928,
+          "active_time": 547183.047,
+          "idle_in_transaction_time": 588.87,
+          "sessions": 40,
+          "sessions_abandoned": 0,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 19
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 286
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 4
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "96.1MB / 29.6GB",
+        "CPUPerc": "333.51%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.38%",
+        "MemUsage": "2.626GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "146MB / 945MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381556.1355479,
+      "postgres": {
+        "utc": "2026-10-30T17:32:36.264439+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 2049,
+          "xact_rollback": 69,
+          "blks_read": 5664113,
+          "blks_hit": 70198270,
+          "tup_returned": 47939285,
+          "tup_fetched": 11902324,
+          "tup_inserted": 3019958,
+          "tup_updated": 100777,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 149,
+          "temp_bytes": 478562976,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 5540.093,
+          "blk_write_time": 5336.885,
+          "session_time": 813337.059,
+          "active_time": 578290.471,
+          "idle_in_transaction_time": 624.889,
+          "sessions": 44,
+          "sessions_abandoned": 3,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 19
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 293
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 4
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "96.1MB / 29.6GB",
+        "CPUPerc": "217.59%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.27%",
+        "MemUsage": "2.592GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "146MB / 945MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381558.1464653,
+      "postgres": {
+        "utc": "2026-10-30T17:32:38.267253+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 2084,
+          "xact_rollback": 77,
+          "blks_read": 5978200,
+          "blks_hit": 70497057,
+          "tup_returned": 50544660,
+          "tup_fetched": 12413456,
+          "tup_inserted": 3019968,
+          "tup_updated": 100782,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 156,
+          "temp_bytes": 496762976,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 5667.979,
+          "blk_write_time": 5337.276,
+          "session_time": 857984.274,
+          "active_time": 614723.457,
+          "idle_in_transaction_time": 649.603,
+          "sessions": 45,
+          "sessions_abandoned": 3,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 19
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 284
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 4
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "96.1MB / 29.6GB",
+        "CPUPerc": "326.09%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.36%",
+        "MemUsage": "2.621GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "146MB / 946MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381560.2092116,
+      "postgres": {
+        "utc": "2026-10-30T17:32:40.345419+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 2183,
+          "xact_rollback": 92,
+          "blks_read": 6375866,
+          "blks_hit": 70868476,
+          "tup_returned": 53365931,
+          "tup_fetched": 12941502,
+          "tup_inserted": 3019992,
+          "tup_updated": 100796,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 164,
+          "temp_bytes": 517419360,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 5844.04,
+          "blk_write_time": 5337.733,
+          "session_time": 914861.945,
+          "active_time": 653317.462,
+          "idle_in_transaction_time": 694.68,
+          "sessions": 46,
+          "sessions_abandoned": 3,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 16
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 4
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 254
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 4
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "96.1MB / 29.6GB",
+        "CPUPerc": "253.04%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.32%",
+        "MemUsage": "2.608GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "146MB / 946MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381562.2199082,
+      "postgres": {
+        "utc": "2026-10-30T17:32:42.382981+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 2195,
+          "xact_rollback": 99,
+          "blks_read": 6577121,
+          "blks_hit": 71002471,
+          "tup_returned": 54543137,
+          "tup_fetched": 12952312,
+          "tup_inserted": 3019992,
+          "tup_updated": 100796,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 166,
+          "temp_bytes": 522613088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 5923.116,
+          "blk_write_time": 5338.152,
+          "session_time": 942904.472,
+          "active_time": 681141.353,
+          "idle_in_transaction_time": 698.04,
+          "sessions": 47,
+          "sessions_abandoned": 3,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 19
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 245
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 4
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "96.1MB / 29.6GB",
+        "CPUPerc": "380.11%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.33%",
+        "MemUsage": "2.612GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "146MB / 946MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381564.2386909,
+      "postgres": {
+        "utc": "2026-10-30T17:32:44.3995+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 2290,
+          "xact_rollback": 112,
+          "blks_read": 6834461,
+          "blks_hit": 71251377,
+          "tup_returned": 56470302,
+          "tup_fetched": 13329411,
+          "tup_inserted": 3020012,
+          "tup_updated": 100811,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 167,
+          "temp_bytes": 525213088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 6052.033,
+          "blk_write_time": 5339.024,
+          "session_time": 993918.101,
+          "active_time": 732365.404,
+          "idle_in_transaction_time": 744.133,
+          "sessions": 48,
+          "sessions_abandoned": 3,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 17
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 3
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 314
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 4
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "96.1MB / 29.6GB",
+        "CPUPerc": "226.67%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.35%",
+        "MemUsage": "2.616GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "146MB / 948MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381566.238875,
+      "postgres": {
+        "utc": "2026-10-30T17:32:46.375555+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 2341,
+          "xact_rollback": 120,
+          "blks_read": 7041070,
+          "blks_hit": 71427698,
+          "tup_returned": 57911510,
+          "tup_fetched": 13626067,
+          "tup_inserted": 3020040,
+          "tup_updated": 100830,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 171,
+          "temp_bytes": 535613088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 6268.944,
+          "blk_write_time": 5342.224,
+          "session_time": 1023290.674,
+          "active_time": 764654.5,
+          "idle_in_transaction_time": 794.441,
+          "sessions": 49,
+          "sessions_abandoned": 3,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 19
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 296
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 4
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "97.4MB / 30.2GB",
+        "CPUPerc": "344.62%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.41%",
+        "MemUsage": "2.635GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "146MB / 949MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381568.2448668,
+      "postgres": {
+        "utc": "2026-10-30T17:32:48.383204+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 2442,
+          "xact_rollback": 130,
+          "blks_read": 7363405,
+          "blks_hit": 71635335,
+          "tup_returned": 59868493,
+          "tup_fetched": 13739998,
+          "tup_inserted": 3020068,
+          "tup_updated": 100848,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 172,
+          "temp_bytes": 538213088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 6540.865,
+          "blk_write_time": 5344.887,
+          "session_time": 1062231.716,
+          "active_time": 803660.992,
+          "idle_in_transaction_time": 853.795,
+          "sessions": 50,
+          "sessions_abandoned": 3,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileWrite",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 14
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 5
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 250
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 4
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "97.4MB / 30.2GB",
+        "CPUPerc": "245.16%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.40%",
+        "MemUsage": "2.633GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "147MB / 951MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381570.3140697,
+      "postgres": {
+        "utc": "2026-10-30T17:32:50.44876+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 2572,
+          "xact_rollback": 133,
+          "blks_read": 7837194,
+          "blks_hit": 72097275,
+          "tup_returned": 64135635,
+          "tup_fetched": 15268325,
+          "tup_inserted": 3020100,
+          "tup_updated": 100872,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 185,
+          "temp_bytes": 572013088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 7136.96,
+          "blk_write_time": 5357.662,
+          "session_time": 1106352.072,
+          "active_time": 855020.195,
+          "idle_in_transaction_time": 944.668,
+          "sessions": 51,
+          "sessions_abandoned": 3,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 19
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 2
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 248
+          },
+          {
+            "mode": "ExclusiveLock",
+            "granted": true,
+            "count": 1
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 4
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "97.4MB / 30.2GB",
+        "CPUPerc": "380.11%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.47%",
+        "MemUsage": "2.654GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "147MB / 952MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381572.3202238,
+      "postgres": {
+        "utc": "2026-10-30T17:32:52.450131+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 2731,
+          "xact_rollback": 141,
+          "blks_read": 8269824,
+          "blks_hit": 72570950,
+          "tup_returned": 68052624,
+          "tup_fetched": 16400897,
+          "tup_inserted": 3020144,
+          "tup_updated": 100901,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 197,
+          "temp_bytes": 603213088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 7395.243,
+          "blk_write_time": 5362.47,
+          "session_time": 1165925.207,
+          "active_time": 912129.359,
+          "idle_in_transaction_time": 1058.827,
+          "sessions": 52,
+          "sessions_abandoned": 3,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 18
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 2
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 223
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 11
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "97.4MB / 30.2GB",
+        "CPUPerc": "341.54%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.46%",
+        "MemUsage": "2.65GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "147MB / 952MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381574.326276,
+      "postgres": {
+        "utc": "2026-10-30T17:32:54.455745+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 2767,
+          "xact_rollback": 144,
+          "blks_read": 8383569,
+          "blks_hit": 72674583,
+          "tup_returned": 68873509,
+          "tup_fetched": 16455395,
+          "tup_inserted": 3020146,
+          "tup_updated": 100903,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 197,
+          "temp_bytes": 603213088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 7458.634,
+          "blk_write_time": 5363.585,
+          "session_time": 1179424.895,
+          "active_time": 927764.854,
+          "idle_in_transaction_time": 1065.726,
+          "sessions": 53,
+          "sessions_abandoned": 3,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 16
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 4
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 200
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 11
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "97.4MB / 30.2GB",
+        "CPUPerc": "1117.99%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.45%",
+        "MemUsage": "2.649GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "147MB / 956MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381576.3832753,
+      "postgres": {
+        "utc": "2026-10-30T17:32:56.906807+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 3087,
+          "xact_rollback": 156,
+          "blks_read": 9439790,
+          "blks_hit": 73728797,
+          "tup_returned": 77652634,
+          "tup_fetched": 19184758,
+          "tup_inserted": 3020220,
+          "tup_updated": 100947,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 217,
+          "temp_bytes": 655213088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 13178.229,
+          "blk_write_time": 6288.514,
+          "session_time": 1256911.601,
+          "active_time": 1042088.601,
+          "idle_in_transaction_time": 1275.913,
+          "sessions": 54,
+          "sessions_abandoned": 3,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 3
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 7
+          },
+          {
+            "state": "active",
+            "wait_event_type": "LWLock",
+            "wait_event": "BufferMapping",
+            "count": 9
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 2
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 257
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 11
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "114MB / 30.3GB",
+        "CPUPerc": "1049.46%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.51%",
+        "MemUsage": "2.667GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "147MB / 959MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381580.3206232,
+      "postgres": {
+        "utc": "2026-10-30T17:33:00.577179+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 3312,
+          "xact_rollback": 166,
+          "blks_read": 10153422,
+          "blks_hit": 74378624,
+          "tup_returned": 83211503,
+          "tup_fetched": 20947421,
+          "tup_inserted": 3020284,
+          "tup_updated": 100985,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 231,
+          "temp_bytes": 691613088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 22126.107,
+          "blk_write_time": 6819.821,
+          "session_time": 1327197.364,
+          "active_time": 1083678.103,
+          "idle_in_transaction_time": 1621.493,
+          "sessions": 55,
+          "sessions_abandoned": 3,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 15
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 4
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 209
+          },
+          {
+            "mode": "ExclusiveLock",
+            "granted": true,
+            "count": 1
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 11
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 30.3GB",
+        "CPUPerc": "311.93%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.53%",
+        "MemUsage": "2.672GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "147MB / 961MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381582.322939,
+      "postgres": {
+        "utc": "2026-10-30T17:33:02.504751+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 3456,
+          "xact_rollback": 169,
+          "blks_read": 10611523,
+          "blks_hit": 74902817,
+          "tup_returned": 87540899,
+          "tup_fetched": 22484066,
+          "tup_inserted": 3020302,
+          "tup_updated": 100998,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 243,
+          "temp_bytes": 722813088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 24896.119,
+          "blk_write_time": 6895.332,
+          "session_time": 1358166.654,
+          "active_time": 1140761.38,
+          "idle_in_transaction_time": 1722.543,
+          "sessions": 56,
+          "sessions_abandoned": 3,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 4
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 3
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 13
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 104
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 11
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31GB",
+        "CPUPerc": "358.38%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.54%",
+        "MemUsage": "2.677GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "148MB / 963MB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381584.3311672,
+      "postgres": {
+        "utc": "2026-10-30T17:33:04.478884+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 3530,
+          "xact_rollback": 171,
+          "blks_read": 10946385,
+          "blks_hit": 75140626,
+          "tup_returned": 89791244,
+          "tup_fetched": 23112844,
+          "tup_inserted": 3020332,
+          "tup_updated": 101020,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 247,
+          "temp_bytes": 733213088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 25899.09,
+          "blk_write_time": 6904.068,
+          "session_time": 1389388.601,
+          "active_time": 1168657.266,
+          "idle_in_transaction_time": 1968.879,
+          "sessions": 57,
+          "sessions_abandoned": 3,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 15
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 5
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 376
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 11
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.1GB",
+        "CPUPerc": "1238.06%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.59%",
+        "MemUsage": "2.692GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "148MB / 966MB",
+        "PIDs": "28"
+      }
+    },
+    {
+      "epoch_seconds": 1793381586.3350182,
+      "postgres": {
+        "utc": "2026-10-30T17:33:06.456713+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 23,
+          "xact_commit": 4221,
+          "xact_rollback": 173,
+          "blks_read": 11847597,
+          "blks_hit": 76089639,
+          "tup_returned": 96745364,
+          "tup_fetched": 25559328,
+          "tup_inserted": 3020352,
+          "tup_updated": 101033,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 263,
+          "temp_bytes": 774813088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 28234.232,
+          "blk_write_time": 6919.287,
+          "session_time": 1452534.65,
+          "active_time": 1194392.044,
+          "idle_in_transaction_time": 2059.255,
+          "sessions": 60,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 15
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 5
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 280
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 12
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 2
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.1GB",
+        "CPUPerc": "272.25%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.60%",
+        "MemUsage": "2.695GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "148MB / 967MB",
+        "PIDs": "28"
+      }
+    },
+    {
+      "epoch_seconds": 1793381588.3401597,
+      "postgres": {
+        "utc": "2026-10-30T17:33:08.482404+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 23,
+          "xact_commit": 4277,
+          "xact_rollback": 174,
+          "blks_read": 11963008,
+          "blks_hit": 76275383,
+          "tup_returned": 98155275,
+          "tup_fetched": 26568192,
+          "tup_inserted": 3020364,
+          "tup_updated": 101041,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 272,
+          "temp_bytes": 798213088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 28520.294,
+          "blk_write_time": 6927.729,
+          "session_time": 1461706.365,
+          "active_time": 1216272.315,
+          "idle_in_transaction_time": 2105.576,
+          "sessions": 61,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 18
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 2
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 376
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 5
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 2
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.1GB",
+        "CPUPerc": "496.65%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.55%",
+        "MemUsage": "2.678GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "148MB / 970MB",
+        "PIDs": "28"
+      }
+    },
+    {
+      "epoch_seconds": 1793381590.4063504,
+      "postgres": {
+        "utc": "2026-10-30T17:33:10.577398+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 23,
+          "xact_commit": 4560,
+          "xact_rollback": 193,
+          "blks_read": 12485893,
+          "blks_hit": 76932818,
+          "tup_returned": 103830712,
+          "tup_fetched": 28089869,
+          "tup_inserted": 3020436,
+          "tup_updated": 101081,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 283,
+          "temp_bytes": 826813088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 29330.947,
+          "blk_write_time": 6939.438,
+          "session_time": 1521752.104,
+          "active_time": 1263654.718,
+          "idle_in_transaction_time": 2263.594,
+          "sessions": 62,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 11
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 7
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 2
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 188
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 2
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 2
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.1GB",
+        "CPUPerc": "1476.29%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.59%",
+        "MemUsage": "2.693GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "149MB / 983MB",
+        "PIDs": "28"
+      }
+    },
+    {
+      "epoch_seconds": 1793381592.4235816,
+      "postgres": {
+        "utc": "2026-10-30T17:33:12.657852+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 23,
+          "xact_commit": 5442,
+          "xact_rollback": 215,
+          "blks_read": 13139941,
+          "blks_hit": 78521221,
+          "tup_returned": 126033031,
+          "tup_fetched": 37929808,
+          "tup_inserted": 3020682,
+          "tup_updated": 101242,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 347,
+          "temp_bytes": 993213088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 31492.546,
+          "blk_write_time": 7055.932,
+          "session_time": 1579314.662,
+          "active_time": 1354974.322,
+          "idle_in_transaction_time": 3202.081,
+          "sessions": 63,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 6
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 14
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 129
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 2
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 2
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.1GB",
+        "CPUPerc": "1670.73%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.56%",
+        "MemUsage": "2.684GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "151MB / 1GB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381594.4379826,
+      "postgres": {
+        "utc": "2026-10-30T17:33:14.690256+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 6694,
+          "xact_rollback": 244,
+          "blks_read": 13725526,
+          "blks_hit": 80676466,
+          "tup_returned": 150296700,
+          "tup_fetched": 50417366,
+          "tup_inserted": 3020966,
+          "tup_updated": 101432,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 434,
+          "temp_bytes": 1219413088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 33733.044,
+          "blk_write_time": 8068.984,
+          "session_time": 1620826.651,
+          "active_time": 1397090.327,
+          "idle_in_transaction_time": 4293.36,
+          "sessions": 64,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 3
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 7
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 6
+          },
+          {
+            "state": "idle",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 3
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 148
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 1
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.1GB",
+        "CPUPerc": "1704.60%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.50%",
+        "MemUsage": "2.664GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "152MB / 1.02GB",
+        "PIDs": "27"
+      }
+    },
+    {
+      "epoch_seconds": 1793381596.442381,
+      "postgres": {
+        "utc": "2026-10-30T17:33:16.656247+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 22,
+          "xact_commit": 7872,
+          "xact_rollback": 290,
+          "blks_read": 14028936,
+          "blks_hit": 82242904,
+          "tup_returned": 174939911,
+          "tup_fetched": 62375795,
+          "tup_inserted": 3021266,
+          "tup_updated": 101615,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 510,
+          "temp_bytes": 1417013088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 35294.942,
+          "blk_write_time": 8170.437,
+          "session_time": 1661426.776,
+          "active_time": 1434478.924,
+          "idle_in_transaction_time": 5504.713,
+          "sessions": 65,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "Timeout",
+            "wait_event": "VacuumDelay",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 13
+          },
+          {
+            "state": "idle",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 2
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 196
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 6
+          },
+          {
+            "mode": "RowShareLock",
+            "granted": true,
+            "count": 3
+          },
+          {
+            "mode": "ShareUpdateExclusiveLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.1GB",
+        "CPUPerc": "1661.76%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.55%",
+        "MemUsage": "2.679GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "153MB / 1.03GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381598.4527175,
+      "postgres": {
+        "utc": "2026-10-30T17:33:18.681952+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 8996,
+          "xact_rollback": 325,
+          "blks_read": 14374374,
+          "blks_hit": 83785445,
+          "tup_returned": 199175648,
+          "tup_fetched": 73975612,
+          "tup_inserted": 3021563,
+          "tup_updated": 101809,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 584,
+          "temp_bytes": 1609413088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 37470.23,
+          "blk_write_time": 8293.527,
+          "session_time": 1701243.948,
+          "active_time": 1470660.572,
+          "idle_in_transaction_time": 6536.812,
+          "sessions": 66,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 3
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 16
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 191
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.2GB",
+        "CPUPerc": "1655.96%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.68%",
+        "MemUsage": "2.721GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "155MB / 1.05GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381600.5491319,
+      "postgres": {
+        "utc": "2026-10-30T17:33:20.750489+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 10171,
+          "xact_rollback": 360,
+          "blks_read": 14708719,
+          "blks_hit": 85465347,
+          "tup_returned": 224629127,
+          "tup_fetched": 86842602,
+          "tup_inserted": 3021841,
+          "tup_updated": 101985,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 668,
+          "temp_bytes": 1827813088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 39027.51,
+          "blk_write_time": 8309.225,
+          "session_time": 1741747.948,
+          "active_time": 1507814.001,
+          "idle_in_transaction_time": 7502.293,
+          "sessions": 67,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFilePrefetch",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 4
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "WalSync",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 9
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 4
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 101
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 11
+          },
+          {
+            "mode": "RowShareLock",
+            "granted": true,
+            "count": 8
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.2GB",
+        "CPUPerc": "1693.03%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.62%",
+        "MemUsage": "2.702GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "156MB / 1.07GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381602.5627403,
+      "postgres": {
+        "utc": "2026-10-30T17:33:22.80954+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 11342,
+          "xact_rollback": 409,
+          "blks_read": 15051699,
+          "blks_hit": 87154543,
+          "tup_returned": 249113691,
+          "tup_fetched": 99577700,
+          "tup_inserted": 3022175,
+          "tup_updated": 102195,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 755,
+          "temp_bytes": 2054013088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 40678.958,
+          "blk_write_time": 8328.536,
+          "session_time": 1781241.188,
+          "active_time": 1544321.83,
+          "idle_in_transaction_time": 8632,
+          "sessions": 68,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 3
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "WalSync",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 10
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 3
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 142
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 5
+          },
+          {
+            "mode": "RowShareLock",
+            "granted": true,
+            "count": 3
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.2GB",
+        "CPUPerc": "1683.08%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.59%",
+        "MemUsage": "2.694GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "157MB / 1.08GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381604.573751,
+      "postgres": {
+        "utc": "2026-10-30T17:33:24.807348+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 12434,
+          "xact_rollback": 450,
+          "blks_read": 15317690,
+          "blks_hit": 88824997,
+          "tup_returned": 274500177,
+          "tup_fetched": 111946410,
+          "tup_inserted": 3022467,
+          "tup_updated": 102384,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 834,
+          "temp_bytes": 2259413088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 41869.295,
+          "blk_write_time": 8345.689,
+          "session_time": 1821809.212,
+          "active_time": 1581401.517,
+          "idle_in_transaction_time": 9666.597,
+          "sessions": 69,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 17
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 239
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.2GB",
+        "CPUPerc": "1701.38%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.70%",
+        "MemUsage": "2.725GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "159MB / 1.1GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381606.5812967,
+      "postgres": {
+        "utc": "2026-10-30T17:33:26.787437+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 13741,
+          "xact_rollback": 498,
+          "blks_read": 15682827,
+          "blks_hit": 90714209,
+          "tup_returned": 302026406,
+          "tup_fetched": 126126176,
+          "tup_inserted": 3022799,
+          "tup_updated": 102590,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 930,
+          "temp_bytes": 2509013088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 43451.721,
+          "blk_write_time": 8363.44,
+          "session_time": 1863739.227,
+          "active_time": 1620340.528,
+          "idle_in_transaction_time": 10742.45,
+          "sessions": 70,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 14
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 2
+          },
+          {
+            "state": "idle",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 163
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 2
+          },
+          {
+            "mode": "RowShareLock",
+            "granted": true,
+            "count": 3
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.2GB",
+        "CPUPerc": "1649.03%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.68%",
+        "MemUsage": "2.719GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "160MB / 1.12GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381608.649288,
+      "postgres": {
+        "utc": "2026-10-30T17:33:28.874287+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 14993,
+          "xact_rollback": 549,
+          "blks_read": 16073882,
+          "blks_hit": 92300040,
+          "tup_returned": 327624762,
+          "tup_fetched": 138696197,
+          "tup_inserted": 3023130,
+          "tup_updated": 102788,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 1011,
+          "temp_bytes": 2719613088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 45051.288,
+          "blk_write_time": 8381.475,
+          "session_time": 1905034.335,
+          "active_time": 1657652.033,
+          "idle_in_transaction_time": 11832.937,
+          "sessions": 71,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 3
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 17
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 239
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.2GB",
+        "CPUPerc": "1619.04%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.60%",
+        "MemUsage": "2.695GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "162MB / 1.13GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381612.3712993,
+      "postgres": {
+        "utc": "2026-10-30T17:33:32.592626+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 16167,
+          "xact_rollback": 597,
+          "blks_read": 16367405,
+          "blks_hit": 94135120,
+          "tup_returned": 353919590,
+          "tup_fetched": 152111857,
+          "tup_inserted": 3023426,
+          "tup_updated": 102962,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 1101,
+          "temp_bytes": 2953613088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 46243.683,
+          "blk_write_time": 8398.086,
+          "session_time": 1980233.834,
+          "active_time": 1730049.453,
+          "idle_in_transaction_time": 12937.911,
+          "sessions": 72,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 6
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 10
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 3
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 133
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.2GB",
+        "CPUPerc": "1752.99%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.64%",
+        "MemUsage": "2.708GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "163MB / 1.15GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381614.3790233,
+      "postgres": {
+        "utc": "2026-10-30T17:33:34.604612+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 17453,
+          "xact_rollback": 646,
+          "blks_read": 16638846,
+          "blks_hit": 95901058,
+          "tup_returned": 380906468,
+          "tup_fetched": 165109115,
+          "tup_inserted": 3023812,
+          "tup_updated": 103210,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 1183,
+          "temp_bytes": 3166813088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 47507.68,
+          "blk_write_time": 8416.359,
+          "session_time": 2019508.367,
+          "active_time": 1765757.175,
+          "idle_in_transaction_time": 14139.891,
+          "sessions": 73,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 3
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 17
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 207
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.3GB",
+        "CPUPerc": "1655.42%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.63%",
+        "MemUsage": "2.705GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "165MB / 1.17GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381616.4025664,
+      "postgres": {
+        "utc": "2026-10-30T17:33:36.648934+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 19144,
+          "xact_rollback": 659,
+          "blks_read": 16867790,
+          "blks_hit": 97304682,
+          "tup_returned": 401053032,
+          "tup_fetched": 175390296,
+          "tup_inserted": 3024004,
+          "tup_updated": 103343,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 1252,
+          "temp_bytes": 3346213088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 48489.783,
+          "blk_write_time": 8428.488,
+          "session_time": 2055970.411,
+          "active_time": 1793692.509,
+          "idle_in_transaction_time": 14797.852,
+          "sessions": 74,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 3
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 14
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 172
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.3GB",
+        "CPUPerc": "1757.41%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.61%",
+        "MemUsage": "2.698GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "166MB / 1.18GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381618.437581,
+      "postgres": {
+        "utc": "2026-10-30T17:33:38.661267+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 20330,
+          "xact_rollback": 710,
+          "blks_read": 17123161,
+          "blks_hit": 98995719,
+          "tup_returned": 428403909,
+          "tup_fetched": 187870726,
+          "tup_inserted": 3024342,
+          "tup_updated": 103532,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 1327,
+          "temp_bytes": 3541213088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 49603.631,
+          "blk_write_time": 8446.612,
+          "session_time": 2096694.35,
+          "active_time": 1831350.064,
+          "idle_in_transaction_time": 15972.031,
+          "sessions": 75,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 3
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 13
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 3
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 131
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.3GB",
+        "CPUPerc": "1626.20%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.65%",
+        "MemUsage": "2.71GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "167MB / 1.2GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381620.5079188,
+      "postgres": {
+        "utc": "2026-10-30T17:33:40.686488+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 21574,
+          "xact_rollback": 758,
+          "blks_read": 17450246,
+          "blks_hit": 100885833,
+          "tup_returned": 455122875,
+          "tup_fetched": 201818306,
+          "tup_inserted": 3024738,
+          "tup_updated": 103778,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 1421,
+          "temp_bytes": 3785613088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 50949.791,
+          "blk_write_time": 8464.048,
+          "session_time": 2138155.666,
+          "active_time": 1868983.221,
+          "idle_in_transaction_time": 17308.79,
+          "sessions": 76,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 3
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 17
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 159
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.3GB",
+        "CPUPerc": "1641.75%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.67%",
+        "MemUsage": "2.719GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "169MB / 1.22GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381622.5151424,
+      "postgres": {
+        "utc": "2026-10-30T17:33:42.746631+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 22882,
+          "xact_rollback": 792,
+          "blks_read": 17723962,
+          "blks_hit": 102889872,
+          "tup_returned": 484300312,
+          "tup_fetched": 216221517,
+          "tup_inserted": 3025068,
+          "tup_updated": 103991,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 1514,
+          "temp_bytes": 4027413088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 52075.056,
+          "blk_write_time": 8485.263,
+          "session_time": 2182056.939,
+          "active_time": 1909382.867,
+          "idle_in_transaction_time": 18464.371,
+          "sessions": 77,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 3
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 16
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 172
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.3GB",
+        "CPUPerc": "1668.50%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.71%",
+        "MemUsage": "2.73GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "170MB / 1.23GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381624.531846,
+      "postgres": {
+        "utc": "2026-10-30T17:33:44.75062+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 24215,
+          "xact_rollback": 833,
+          "blks_read": 18038816,
+          "blks_hit": 104668768,
+          "tup_returned": 511187020,
+          "tup_fetched": 229443116,
+          "tup_inserted": 3025434,
+          "tup_updated": 104222,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 1599,
+          "temp_bytes": 4248413088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 53337.415,
+          "blk_write_time": 8505.963,
+          "session_time": 2223961.077,
+          "active_time": 1947112.181,
+          "idle_in_transaction_time": 19702.657,
+          "sessions": 78,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 3
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 16
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 172
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.3GB",
+        "CPUPerc": "1718.12%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.66%",
+        "MemUsage": "2.713GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "172MB / 1.25GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381626.5454252,
+      "postgres": {
+        "utc": "2026-10-30T17:33:46.727153+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 25361,
+          "xact_rollback": 886,
+          "blks_read": 18296340,
+          "blks_hit": 106408941,
+          "tup_returned": 538433830,
+          "tup_fetched": 242237289,
+          "tup_inserted": 3025734,
+          "tup_updated": 104397,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 1677,
+          "temp_bytes": 4451213088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 54410.555,
+          "blk_write_time": 8521.695,
+          "session_time": 2260032.757,
+          "active_time": 1981142.979,
+          "idle_in_transaction_time": 20593.682,
+          "sessions": 79,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFilePrefetch",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 3
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 16
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 159
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.3GB",
+        "CPUPerc": "1719.30%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.73%",
+        "MemUsage": "2.736GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "173MB / 1.27GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381628.6027625,
+      "postgres": {
+        "utc": "2026-10-30T17:33:48.841272+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 26640,
+          "xact_rollback": 939,
+          "blks_read": 18559155,
+          "blks_hit": 108302515,
+          "tup_returned": 564448644,
+          "tup_fetched": 255676377,
+          "tup_inserted": 3026120,
+          "tup_updated": 104636,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 1768,
+          "temp_bytes": 4687813088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 55489.705,
+          "blk_write_time": 8541.226,
+          "session_time": 2300570.996,
+          "active_time": 2017294.986,
+          "idle_in_transaction_time": 21866.333,
+          "sessions": 80,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "BuffileWrite",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 4
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 13
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 156
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.3GB",
+        "CPUPerc": "1752.14%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.72%",
+        "MemUsage": "2.733GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "175MB / 1.28GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381630.6568992,
+      "postgres": {
+        "utc": "2026-10-30T17:33:51.069789+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 27968,
+          "xact_rollback": 986,
+          "blks_read": 18908974,
+          "blks_hit": 110312910,
+          "tup_returned": 595340114,
+          "tup_fetched": 270665740,
+          "tup_inserted": 3026420,
+          "tup_updated": 104821,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 1863,
+          "temp_bytes": 4934813088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 57093.331,
+          "blk_write_time": 8561.858,
+          "session_time": 2345750.716,
+          "active_time": 2059751.165,
+          "idle_in_transaction_time": 22919.61,
+          "sessions": 81,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "WalSync",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "LWLock",
+            "wait_event": "WALWrite",
+            "count": 6
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 10
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 2
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 132
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 24
+          },
+          {
+            "mode": "RowShareLock",
+            "granted": true,
+            "count": 19
+          },
+          {
+            "mode": "SIReadLock",
+            "granted": true,
+            "count": 8
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.6GB",
+        "CPUPerc": "1663.68%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.70%",
+        "MemUsage": "2.726GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "176MB / 1.3GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381632.6661541,
+      "postgres": {
+        "utc": "2026-10-30T17:33:52.893503+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 29021,
+          "xact_rollback": 1016,
+          "blks_read": 19165090,
+          "blks_hit": 111706685,
+          "tup_returned": 616919887,
+          "tup_fetched": 281109998,
+          "tup_inserted": 3026710,
+          "tup_updated": 105011,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 1929,
+          "temp_bytes": 5106413088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 58170.796,
+          "blk_write_time": 8581.254,
+          "session_time": 2380363.009,
+          "active_time": 2090250.671,
+          "idle_in_transaction_time": 23850.983,
+          "sessions": 82,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 6
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 14
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 143
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.6GB",
+        "CPUPerc": "1594.35%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.70%",
+        "MemUsage": "2.728GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "177MB / 1.32GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381634.6799529,
+      "postgres": {
+        "utc": "2026-10-30T17:33:54.894681+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 30252,
+          "xact_rollback": 1065,
+          "blks_read": 19537555,
+          "blks_hit": 113464737,
+          "tup_returned": 642100123,
+          "tup_fetched": 294330005,
+          "tup_inserted": 3027044,
+          "tup_updated": 105220,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 2020,
+          "temp_bytes": 5343013088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 59745.019,
+          "blk_write_time": 8601.886,
+          "session_time": 2424885.046,
+          "active_time": 2131028.827,
+          "idle_in_transaction_time": 25041.463,
+          "sessions": 83,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "LWLock",
+            "wait_event": "WALWrite",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 12
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 2
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 104
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 10
+          },
+          {
+            "mode": "RowShareLock",
+            "granted": true,
+            "count": 8
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.6GB",
+        "CPUPerc": "1453.10%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.64%",
+        "MemUsage": "2.708GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "179MB / 1.33GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381636.694564,
+      "postgres": {
+        "utc": "2026-10-30T17:33:57.033704+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 31392,
+          "xact_rollback": 1108,
+          "blks_read": 19811091,
+          "blks_hit": 115096105,
+          "tup_returned": 667252367,
+          "tup_fetched": 306431797,
+          "tup_inserted": 3027318,
+          "tup_updated": 105390,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 2096,
+          "temp_bytes": 5540613088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 61333.279,
+          "blk_write_time": 8626.08,
+          "session_time": 2466618.757,
+          "active_time": 2169228.691,
+          "idle_in_transaction_time": 26168.397,
+          "sessions": 84,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": "LWLock",
+            "wait_event": "BufferMapping",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 15
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 188
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 2
+          },
+          {
+            "mode": "RowShareLock",
+            "granted": true,
+            "count": 3
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.6GB",
+        "CPUPerc": "1278.21%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.72%",
+        "MemUsage": "2.732GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "180MB / 1.34GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381638.7641609,
+      "postgres": {
+        "utc": "2026-10-30T17:33:59.165757+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 32234,
+          "xact_rollback": 1145,
+          "blks_read": 19974295,
+          "blks_hit": 116356948,
+          "tup_returned": 682469287,
+          "tup_fetched": 315086097,
+          "tup_inserted": 3027558,
+          "tup_updated": 105541,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 2160,
+          "temp_bytes": 5707013088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 63351.833,
+          "blk_write_time": 8669.879,
+          "session_time": 2511163.459,
+          "active_time": 2206805.83,
+          "idle_in_transaction_time": 28194.837,
+          "sessions": 85,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "WalSync",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "LWLock",
+            "wait_event": "BufferMapping",
+            "count": 3
+          },
+          {
+            "state": "active",
+            "wait_event_type": "LWLock",
+            "wait_event": "WALWrite",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 12
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 250
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 30
+          },
+          {
+            "mode": "RowShareLock",
+            "granted": true,
+            "count": 24
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.6GB",
+        "CPUPerc": "1414.25%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.63%",
+        "MemUsage": "2.704GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "181MB / 1.35GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381640.849421,
+      "postgres": {
+        "utc": "2026-10-30T17:34:02.941301+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 33058,
+          "xact_rollback": 1178,
+          "blks_read": 20139418,
+          "blks_hit": 117436153,
+          "tup_returned": 700007141,
+          "tup_fetched": 323080738,
+          "tup_inserted": 3027784,
+          "tup_updated": 105679,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 2207,
+          "temp_bytes": 5829213088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 65130.931,
+          "blk_write_time": 8695.61,
+          "session_time": 2563275.885,
+          "active_time": 2240822.355,
+          "idle_in_transaction_time": 30116.789,
+          "sessions": 86,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFilePrefetch",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 6
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 11
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 159
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.6GB",
+        "CPUPerc": "1628.74%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.59%",
+        "MemUsage": "2.694GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "182MB / 1.37GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381644.6416223,
+      "postgres": {
+        "utc": "2026-10-30T17:34:04.851055+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 33764,
+          "xact_rollback": 1204,
+          "blks_read": 20357843,
+          "blks_hit": 118431984,
+          "tup_returned": 716694192,
+          "tup_fetched": 330854971,
+          "tup_inserted": 3027972,
+          "tup_updated": 105800,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 2254,
+          "temp_bytes": 5951413088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 66718.401,
+          "blk_write_time": 8711.858,
+          "session_time": 2619661.649,
+          "active_time": 2305778.231,
+          "idle_in_transaction_time": 31178.3,
+          "sessions": 87,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 6
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 14
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 111
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.6GB",
+        "CPUPerc": "1456.30%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.65%",
+        "MemUsage": "2.711GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "183MB / 1.38GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381646.6519284,
+      "postgres": {
+        "utc": "2026-10-30T17:34:06.89145+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 34768,
+          "xact_rollback": 1247,
+          "blks_read": 20693717,
+          "blks_hit": 120081297,
+          "tup_returned": 740218738,
+          "tup_fetched": 343198456,
+          "tup_inserted": 3028228,
+          "tup_updated": 105953,
+          "tup_deleted": 210,
+          "conflicts": 0,
+          "temp_files": 2339,
+          "temp_bytes": 6172413088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 68487.544,
+          "blk_write_time": 8736.132,
+          "session_time": 2664994.74,
+          "active_time": 2348739.158,
+          "idle_in_transaction_time": 32610.751,
+          "sessions": 88,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": "LWLock",
+            "wait_event": "BufferMapping",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 14
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 2
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 116
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 8
+          },
+          {
+            "mode": "RowShareLock",
+            "granted": true,
+            "count": 8
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.6GB",
+        "CPUPerc": "1078.97%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.61%",
+        "MemUsage": "2.699GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "184MB / 1.39GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381648.6850793,
+      "postgres": {
+        "utc": "2026-10-30T17:34:08.928455+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 36320,
+          "xact_rollback": 1273,
+          "blks_read": 20942278,
+          "blks_hit": 121535862,
+          "tup_returned": 761051841,
+          "tup_fetched": 353813739,
+          "tup_inserted": 3028464,
+          "tup_updated": 106118,
+          "tup_deleted": 220,
+          "conflicts": 0,
+          "temp_files": 2410,
+          "temp_bytes": 6357013088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 69790.308,
+          "blk_write_time": 8766.398,
+          "session_time": 2708424.719,
+          "active_time": 2380604.588,
+          "idle_in_transaction_time": 33637.994,
+          "sessions": 89,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 18
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 186
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 12
+          },
+          {
+            "mode": "RowShareLock",
+            "granted": true,
+            "count": 9
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.6GB",
+        "CPUPerc": "569.74%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.63%",
+        "MemUsage": "2.704GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "185MB / 1.4GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381650.7271395,
+      "postgres": {
+        "utc": "2026-10-30T17:34:10.887511+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 37149,
+          "xact_rollback": 1291,
+          "blks_read": 21259194,
+          "blks_hit": 122645776,
+          "tup_returned": 780685828,
+          "tup_fetched": 362937548,
+          "tup_inserted": 3028688,
+          "tup_updated": 106266,
+          "tup_deleted": 220,
+          "conflicts": 0,
+          "temp_files": 2465,
+          "temp_bytes": 6500013088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 70884.25,
+          "blk_write_time": 8776.625,
+          "session_time": 2747210.868,
+          "active_time": 2401476.667,
+          "idle_in_transaction_time": 34214.583,
+          "sessions": 90,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 5
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 14
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 53
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.6GB",
+        "CPUPerc": "732.41%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.63%",
+        "MemUsage": "2.705GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "186MB / 1.41GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381652.739727,
+      "postgres": {
+        "utc": "2026-10-30T17:34:12.921269+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 37945,
+          "xact_rollback": 1308,
+          "blks_read": 21576934,
+          "blks_hit": 123459852,
+          "tup_returned": 796012378,
+          "tup_fetched": 370138315,
+          "tup_inserted": 3028874,
+          "tup_updated": 106393,
+          "tup_deleted": 220,
+          "conflicts": 0,
+          "temp_files": 2509,
+          "temp_bytes": 6614413088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 71980.104,
+          "blk_write_time": 8785.701,
+          "session_time": 2785492.985,
+          "active_time": 2413198.115,
+          "idle_in_transaction_time": 34674.018,
+          "sessions": 91,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 2
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 13
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 5
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 162
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.6GB",
+        "CPUPerc": "1146.94%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.66%",
+        "MemUsage": "2.714GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "187MB / 1.43GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381654.748508,
+      "postgres": {
+        "utc": "2026-10-30T17:34:14.904309+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 38723,
+          "xact_rollback": 1337,
+          "blks_read": 21876876,
+          "blks_hit": 124647449,
+          "tup_returned": 814445558,
+          "tup_fetched": 379467014,
+          "tup_inserted": 3029106,
+          "tup_updated": 106540,
+          "tup_deleted": 220,
+          "conflicts": 0,
+          "temp_files": 2571,
+          "temp_bytes": 6775613088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 73381.128,
+          "blk_write_time": 8798.4,
+          "session_time": 2824890.454,
+          "active_time": 2434036.515,
+          "idle_in_transaction_time": 35344.596,
+          "sessions": 92,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 5
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 13
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 40
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.6GB",
+        "CPUPerc": "960.24%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.63%",
+        "MemUsage": "2.705GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "188MB / 1.44GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381656.7611012,
+      "postgres": {
+        "utc": "2026-10-30T17:34:16.950269+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 39482,
+          "xact_rollback": 1361,
+          "blks_read": 22184926,
+          "blks_hit": 125727761,
+          "tup_returned": 830876708,
+          "tup_fetched": 388058944,
+          "tup_inserted": 3029326,
+          "tup_updated": 106681,
+          "tup_deleted": 220,
+          "conflicts": 0,
+          "temp_files": 2630,
+          "temp_bytes": 6929013088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 74584.686,
+          "blk_write_time": 8808.773,
+          "session_time": 2862131.63,
+          "active_time": 2453794.972,
+          "idle_in_transaction_time": 35880.113,
+          "sessions": 93,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 14
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 5
+          },
+          {
+            "state": "idle in transaction",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 1
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 176
+          },
+          {
+            "mode": "RowExclusiveLock",
+            "granted": true,
+            "count": 1
+          },
+          {
+            "mode": "RowShareLock",
+            "granted": true,
+            "count": 1
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.6GB",
+        "CPUPerc": "661.54%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.58%",
+        "MemUsage": "2.69GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "189MB / 1.45GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381658.804159,
+      "postgres": {
+        "utc": "2026-10-30T17:34:18.963752+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 40333,
+          "xact_rollback": 1396,
+          "blks_read": 22559488,
+          "blks_hit": 126795654,
+          "tup_returned": 850620452,
+          "tup_fetched": 397281969,
+          "tup_inserted": 3029521,
+          "tup_updated": 106796,
+          "tup_deleted": 220,
+          "conflicts": 0,
+          "temp_files": 2686,
+          "temp_bytes": 7074613088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 76061.107,
+          "blk_write_time": 8819.678,
+          "session_time": 2902580.34,
+          "active_time": 2473818.801,
+          "idle_in_transaction_time": 36415.052,
+          "sessions": 94,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 2
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 16
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 44
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.6GB",
+        "CPUPerc": "1036.65%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.63%",
+        "MemUsage": "2.706GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "190MB / 1.46GB",
+        "PIDs": "26"
+      }
+    },
+    {
+      "epoch_seconds": 1793381660.849314,
+      "postgres": {
+        "utc": "2026-10-30T17:34:20.992811+00:00",
+        "database": {
+          "datid": "37039",
+          "datname": "aq_graph_bench_schema7",
+          "numbackends": 21,
+          "xact_commit": 41142,
+          "xact_rollback": 1432,
+          "blks_read": 22902515,
+          "blks_hit": 127873913,
+          "tup_returned": 867794414,
+          "tup_fetched": 406137364,
+          "tup_inserted": 3029720,
+          "tup_updated": 106915,
+          "tup_deleted": 220,
+          "conflicts": 0,
+          "temp_files": 2746,
+          "temp_bytes": 7230613088,
+          "deadlocks": 0,
+          "checksum_failures": null,
+          "checksum_last_failure": null,
+          "blk_read_time": 77570.287,
+          "blk_write_time": 8831.051,
+          "session_time": 2943906.185,
+          "active_time": 2491624.47,
+          "idle_in_transaction_time": 36953.866,
+          "sessions": 95,
+          "sessions_abandoned": 5,
+          "sessions_fatal": 0,
+          "sessions_killed": 0,
+          "stats_reset": null
+        },
+        "activity": [
+          {
+            "state": "active",
+            "wait_event_type": "IO",
+            "wait_event": "DataFileRead",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": "IPC",
+            "wait_event": "BufferIo",
+            "count": 1
+          },
+          {
+            "state": "active",
+            "wait_event_type": null,
+            "wait_event": null,
+            "count": 5
+          },
+          {
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "count": 13
+          }
+        ],
+        "locks": [
+          {
+            "mode": "AccessShareLock",
+            "granted": true,
+            "count": 40
+          }
+        ]
+      },
+      "container": {
+        "BlockIO": "122MB / 31.6GB",
+        "CPUPerc": "588.85%",
+        "Container": "aq-graph-schema7-load-pg",
+        "ID": "f21f781086f9",
+        "MemPerc": "8.60%",
+        "MemUsage": "2.694GiB / 31.34GiB",
+        "Name": "aq-graph-schema7-load-pg",
+        "NetIO": "190MB / 1.47GB",
+        "PIDs": "26"
+      }
+    }
+  ]
+}

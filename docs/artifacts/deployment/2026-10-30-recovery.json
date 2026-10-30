@@ -1,0 +1,41 @@
+{
+  "result": "passed",
+  "image": "aq-graph:validation",
+  "project": "aq-graph-validation",
+  "port": 18746,
+  "checks": [
+    "credential rerun",
+    "nonroot/read-only",
+    "private PostgreSQL",
+    "fresh start",
+    "restart",
+    "same-schema recreate",
+    "exact revisions/links/history/draft/summary",
+    "receipt replay",
+    "backup/restore",
+    "invalid restore",
+    "existing destination refusal",
+    "restored write"
+  ],
+  "database_snapshot": {
+    "_sqlx_migrations": "7|d672f25fb0d9f88516e08dc8c962278b",
+    "change_sets": "3|20896ab08f38b42c5d554b4d0d7d6a1e",
+    "credentials": "1|f71ca536eabac7ec144c2931eed6d0ee",
+    "edge_versions": "1|44c5d1d4fe0275d60bbb5826733d3ba0",
+    "edges": "1|fd8d4c8708c0a5a5c6297ccfaeb9d572",
+    "history_entries": "6|8a7f1ce2fd56d221637103e45d2de732",
+    "idempotency_receipts": "3|bfbf5ada5b4694ad34a72e1b031a0c49",
+    "link_set_members": "1|11512ce476abbdc491d42efb7044af29",
+    "link_sets": "3|0acddd890decad7c0cb9dba65aabb6b6",
+    "node_revisions": "4|c7b2de459392d1bbec58c4b2511f593a",
+    "nodes": "2|8e70a0bc165aa5624063c7d0a2d86a05",
+    "workspaces": "1|d6f94f48023914751c537c823f4f301e"
+  },
+  "image_id": "sha256:5497465739a0dc0202856c39d5086dde45b78f60be84dc0e9698681c24ccdfc6",
+  "postgres_version": "17.11 (Debian 17.11-1.pgdg12+2)",
+  "elapsed_seconds": 35.05,
+  "run_date_utc": "2026-10-30",
+  "build_command": "docker build -t aq-graph:validation .",
+  "drill_command": "AQ_GRAPH_SMOKE_SKIP_BUILD=1 python3 scripts/deployment-smoke.py",
+  "notes": "Production Dockerfile cold build succeeded. Final added guards/permissions/checksum-only assertions await parent independent frozen-script rerun; base recovery behavior passed twice."
+}

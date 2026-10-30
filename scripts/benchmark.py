@@ -115,11 +115,19 @@ INSERT INTO edge_versions(workspace_id,id,version,snapshot)
 SELECT workspace_id,id,version,to_jsonb(e) FROM edges e WHERE workspace_id='{WORKSPACE}';
 INSERT INTO link_sets(id,workspace_id,node_id)
 SELECT md5('benchmark-link-set:'||id)::uuid,workspace_id,id FROM nodes WHERE workspace_id='{WORKSPACE}';
+-- Refresh estimates before joining newly bulk-loaded relations. Split the
+-- outgoing/incoming arms so PostgreSQL can use equality joins rather than a
+-- quadratic OR join. Self-links are excluded above, so the arms are disjoint.
+ANALYZE edges;
+ANALYZE link_sets;
 INSERT INTO link_set_members(workspace_id,set_id,edge_id,edge_version)
 SELECT s.workspace_id,s.id,e.id,e.version FROM link_sets s
-JOIN edges e ON e.workspace_id=s.workspace_id
- AND (e.source=s.node_id OR (e.target=s.node_id AND e.edge_type IN ('blocks','parent-child')))
-WHERE s.workspace_id='{WORKSPACE}' AND NOT e.deleted;
+JOIN edges e ON e.workspace_id=s.workspace_id AND e.source=s.node_id
+WHERE s.workspace_id='{WORKSPACE}' AND NOT e.deleted
+UNION ALL
+SELECT s.workspace_id,s.id,e.id,e.version FROM link_sets s
+JOIN edges e ON e.workspace_id=s.workspace_id AND e.target=s.node_id
+WHERE s.workspace_id='{WORKSPACE}' AND NOT e.deleted AND e.edge_type IN ('blocks','parent-child');
 UPDATE nodes SET version=version+1,content_revision=content_revision+1,
  updated_at='2026-01-01T00:00:12Z' WHERE workspace_id='{WORKSPACE}';
 INSERT INTO node_revisions(workspace_id,node_id,revision,snapshot,actor_id,operation,reason,change_set_id,link_set_id,created_at)
@@ -143,7 +151,7 @@ SELECT json_build_object('nodes',(SELECT count(*) FROM nodes),'edges',(SELECT co
         # Avoid exposing connection-string diagnostics from libpq.
         raise SystemExit('Offline fixture failed. Writes are transactional, but a post-commit analyze/report failure may leave a committed fixture; inspect the isolated database before retrying.')
     counts = json.loads(result.stdout.strip().splitlines()[-1])
-    configuration=json.loads(sql("SELECT json_build_object('postgres_version',version(),'fsync',current_setting('fsync'),'synchronous_commit',current_setting('synchronous_commit'),'full_page_writes',current_setting('full_page_writes'),'track_io_timing',current_setting('track_io_timing'),'timezone',current_setting('TimeZone'),'max_connections',current_setting('max_connections'),'schema_version',(SELECT max(version) FROM _sqlx_migrations))"))
+    configuration=json.loads(sql("SELECT json_build_object('postgres_version',version(),'fsync',current_setting('fsync'),'synchronous_commit',current_setting('synchronous_commit'),'full_page_writes',current_setting('full_page_writes'),'track_io_timing',current_setting('track_io_timing'),'jit',current_setting('jit'),'jit_above_cost',current_setting('jit_above_cost'),'timezone',current_setting('TimeZone'),'max_connections',current_setting('max_connections'),'schema_version',(SELECT max(version) FROM _sqlx_migrations))"))
     manifest = {'postgres_configuration':configuration,'format_version':4,'baseline_revision_offset':1,'semantic_profile':'schema7 shared fields: common classifications/typed sources/unverified defaults,25percent validity windows,20percent review markers; complete relationship baselines and three-level forest','seed':42,'workspace':WORKSPACE,'nodes':args.nodes,'edges_requested':args.edges,'counts':counts,'fixture_method':'offline SQL, synthetic snapshots and relationship history; not ingestion throughput','elapsed_seconds':time.monotonic()-started}
     pathlib.Path(args.manifest).write_text(json.dumps(manifest, indent=2)+'\n')
     print(json.dumps(manifest, indent=2))
@@ -201,6 +209,8 @@ class Worker:
             status,value,elapsed,size=self.request('GET','/nodes/'+node_id(record))
             if isinstance(status,int) and 200<=status<300 and isinstance(value,dict) and 'version' in value:
                 self.node_versions[record]=value['version']
+            else:
+                self.needs_refresh.add(record)
             records.append({'operation':'setup_version_get','status':str(status),'error_code':value.get('error',{}).get('code'),'latency_ms':elapsed*1000,'bytes':size})
         return records
 
@@ -237,14 +247,14 @@ class Worker:
                 # Disjoint per-worker records; versions are refreshed from successful
                 # mutation output. A stale initial version remains a reported error.
                 record = min(total, 1+self.index*2)
-                version = self.node_versions.get(record,(11 if record%10==0 else 1)+self.manifest.get('baseline_revision_offset',0))
+                version = self.node_versions[record]
                 kind = 'independent_write'
                 body = {'idempotency_key':key,'operations':[{'op':'update_node','id':node_id(record),'expected_version':version,'patch':{'title':f'Benchmark worker {self.index} edit {self.counter}'}}]}
                 self.receipt = body
             elif choice < 94:
                 kind = 'hot_write'
                 record = 2
-                version = self.node_versions.get(record,1+self.manifest.get('baseline_revision_offset',0))
+                version = self.node_versions[record]
                 body = {'idempotency_key':key,'operations':[{'op':'update_node','id':node_id(record),'expected_version':version,'patch':{'title':f'Hot record {self.index}/{self.counter}'}}]}
             elif choice < 97 and self.receipt:
                 kind,body = 'same_key_retry',self.receipt
@@ -261,8 +271,10 @@ class Worker:
                 # API result is the current node, or a result containing its version.
                 results = value.get('results',[])
                 first = results[0] if results else {}
-                if isinstance(first,dict):
-                    self.node_versions[record] = first.get('version',version+1)
+                if isinstance(first,dict) and isinstance(first.get('version'),int):
+                    self.node_versions[record] = first['version']
+                else:
+                    self.needs_refresh.add(record)
             elif status == 409:
                 # Refresh on the next measured operation. Do not guess version
                 # advancement or hide recovery HTTP traffic from request counts.
@@ -288,18 +300,25 @@ def summarize(samples,elapsed,offered=None,dropped=0):
     for sample in samples:
         groups[sample['operation']].append(sample)
     result = {'elapsed_seconds':elapsed,'offered':len(samples)+dropped if offered is None else offered,'completed':len(samples),'client_queue_dropped':dropped,'requests_per_second':len(samples)/elapsed,'success_per_second':len(successes)/elapsed,'errors':len(samples)-len(successes),'failed_offers':len(samples)-len(successes)+dropped,'timeouts':sum(r['status']=='timeout' for r in samples),'statuses':dict(Counter(r['status'] for r in samples)),'error_codes':dict(Counter(r['error_code'] for r in samples if r['error_code'])),'all_request_latency':distribution(latencies),'successful_request_latency':distribution(successes),'response_bytes':sum(r['bytes'] for r in samples),'operations':{}}
+    for metric in ('http_latency_ms','client_queue_ms'):
+        values=[r[metric] for r in samples if metric in r]
+        if values:
+            result[metric.removesuffix('_ms')]=distribution(values)
     for name,rows in groups.items():
-        result['operations'][name] = {'count':len(rows),'errors':sum(not r['status'].startswith('2') for r in rows),'statuses':dict(Counter(r['status'] for r in rows)),'successful_latency':distribution([r['latency_ms'] for r in rows if r['status'].startswith('2')]),**distribution([r['latency_ms'] for r in rows])}
+        result['operations'][name] = {'count':len(rows),'errors':sum(not r['status'].startswith('2') for r in rows),'statuses':dict(Counter(r['status'] for r in rows)),'error_codes':dict(Counter(r['error_code'] for r in rows if r['error_code'])),'successful_latency':distribution([r['latency_ms'] for r in rows if r['status'].startswith('2')]),**distribution([r['latency_ms'] for r in rows])}
     return result
 
 def fixed(args,manifest,concurrency,duration):
-    barrier = threading.Barrier(concurrency+1)
+    clock={}
+    def start_phase():
+        clock.update(monotonic=time.monotonic(),epoch=time.time())
+    barrier = threading.Barrier(concurrency+1,action=start_phase)
     def client(index):
         worker = Worker(args,manifest,index)
         setup=worker.prepare()
         records=[]
         barrier.wait()
-        deadline=time.monotonic()+duration
+        deadline=clock['monotonic']+duration
         while time.monotonic()<deadline:
             records.append(worker.operation())
         worker.close()
@@ -307,11 +326,14 @@ def fixed(args,manifest,concurrency,duration):
     with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as pool:
         futures=[pool.submit(client,index) for index in range(concurrency)]
         barrier.wait()
-        started=time.monotonic()
+        started=clock['monotonic']
+        started_epoch=clock['epoch']
         results=[future.result() for future in futures]
         samples=[r for rows,_ in results for r in rows]
         setup=[r for _,rows in results for r in rows]
     result=summarize(samples,time.monotonic()-started)
+    result['started_epoch_seconds']=started_epoch
+    result['finished_epoch_seconds']=time.time()
     result['setup_requests']={'count':len(setup),'statuses':dict(Counter(r['status'] for r in setup)),'latency':{'p95_ms':percentile([r['latency_ms'] for r in setup],95)},'timing':'before measured interval; explicit version reads'}
     return result
 
@@ -331,7 +353,9 @@ def arrival(args,manifest):
                 local.worker=workers[next(next_index)]
         sample=local.worker.operation()
         completed=time.monotonic()
+        sample['http_latency_ms']=sample['latency_ms']
         sample['latency_ms']=(completed-scheduled)*1000
+        sample['client_queue_ms']=max(0,sample['latency_ms']-sample['http_latency_ms'])
         sample['_completed_at']=completed
         return sample
     phases=[('sustained',args.rate,args.duration),('burst',args.rate*5,args.burst_seconds),('recovery',args.rate,args.duration)]
@@ -343,6 +367,7 @@ def arrival(args,manifest):
             phase_futures=[]
             dropped=0
             started=time.monotonic()
+            started_epoch=time.time()
             offered=math.ceil(rate*duration)
             for index in range(offered):
                 scheduled=started+index/rate
@@ -359,17 +384,17 @@ def arrival(args,manifest):
                 phase_futures.append(future)
             # Requests may overlap the next phase; collect after all arrivals rather
             # than inserting a recovery pause between burst and recovery.
-            output.append((name,started,duration,offered,dropped,phase_futures))
+            output.append((name,started,started_epoch,duration,offered,dropped,phase_futures))
             remaining=started+duration-time.monotonic()
             if remaining>0:
                 time.sleep(remaining)
         phases_result=[]
-        for name,started,duration,offered,dropped,futures in output:
+        for name,started,started_epoch,duration,offered,dropped,futures in output:
             samples=[future.result() for future in futures]
             # Include tail completion in throughput, while arrivals in the next
             # phase remain continuous. Phase completion windows can overlap.
             completion_window=max(duration,max((sample['_completed_at']-started for sample in samples),default=duration))
-            phases_result.append({'name':name,'arrival_duration_seconds':duration,'tail_seconds':completion_window-duration,**summarize(samples,completion_window,offered,dropped)})
+            phases_result.append({'name':name,'started_epoch_seconds':started_epoch,'arrival_finished_epoch_seconds':started_epoch+duration,'completion_finished_epoch_seconds':started_epoch+completion_window,'arrival_duration_seconds':duration,'tail_seconds':completion_window-duration,**summarize(samples,completion_window,offered,dropped)})
     for worker in workers:
         worker.close()
     return {'setup_requests':{'count':len(setup),'statuses':dict(Counter(r['status'] for r in setup)),'timing':'before scheduled arrivals'},'phases':phases_result}
@@ -396,7 +421,9 @@ def hardware():
 def run(args):
     args.token=credential(args)
     manifest=json.loads(pathlib.Path(args.manifest).read_text())
-    output={'format_version':1,'started_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'fixture':manifest,'machine':hardware(),'method':{'seed':42,'duration_seconds':args.duration,'concurrency':args.concurrency,'arrival_rate':args.rate,'burst_multiplier':5,'burst_seconds':args.burst_seconds,'open_workers':args.open_workers,'timeout_seconds':args.timeout,'read_write_ratio':'80/20 base selection in expectation; measured version_refresh reads add recovery traffic','latency':'client-observed HTTP, persistent per-thread connections; all-response and success-only distributions','cold_phase':'first application requests; OS/PostgreSQL caches are not forcibly cleared','writes':'independent updates, hot conflict, identical-payload same-key retries and competing dependency insertions; expected validation/conflict errors remain reported','service_latency':'not instrumented by this harness; do not infer service acceptance latency from HTTP client times'},'phases':[]}
+    if manifest['nodes'] < 2*max(args.concurrency+[args.open_workers]):
+        raise SystemExit('Fixture needs at least twice the largest client count for disjoint independent records')
+    output={'format_version':2,'started_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'fixture':manifest,'machine':hardware(),'method':{'seed':42,'duration_seconds':args.duration,'concurrency':args.concurrency,'arrival_rate':args.rate,'burst_multiplier':5,'burst_seconds':args.burst_seconds,'open_workers':args.open_workers,'timeout_seconds':args.timeout,'read_write_ratio':'80/20 base selection in expectation; measured version_refresh reads add recovery traffic','latency':'client-observed HTTP, persistent per-thread connections; all-response and success-only distributions','cold_phase':'first application requests; OS/PostgreSQL caches are not forcibly cleared','writes':'independent updates, hot conflict, identical-payload same-key retries and competing dependency insertions; expected validation/conflict errors remain reported','service_latency':'not instrumented by this harness; do not infer service acceptance latency from HTTP client times'},'phases':[]}
     for label,duration,concurrency in [('first_touch',min(5,args.duration),args.concurrency[0]),('warmup',args.warmup,args.concurrency[0])]+[(f'warm_{c}',args.duration,c) for c in args.concurrency]:
         print(f'Running {label}: {concurrency} clients / {duration}s',flush=True)
         output['phases'].append({'name':label,'concurrency':concurrency,**fixed(args,manifest,concurrency,duration)})

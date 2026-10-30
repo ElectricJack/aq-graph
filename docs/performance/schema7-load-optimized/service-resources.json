@@ -1,0 +1,2328 @@
+{
+  "measurement": "Linux service process only; excludes PostgreSQL and client generator",
+  "interval_seconds": 1,
+  "peak_rss_kib": 48488,
+  "samples": [
+    {
+      "elapsed_seconds": 0.00012802399578504264,
+      "sample_utc": "2026-10-30T17:32:06Z",
+      "high_water_rss_kib": 8668,
+      "rss_kib": 8668,
+      "threads": 25,
+      "cpu_seconds": 0.01,
+      "io": {
+        "rchar": 11185,
+        "wchar": 101,
+        "syscr": 22,
+        "syscw": 4,
+        "read_bytes": 0,
+        "write_bytes": 4096,
+        "cancelled_write_bytes": 0
+      }
+    },
+    {
+      "elapsed_seconds": 1.0005961110000499,
+      "sample_utc": "2026-10-30T17:32:07Z",
+      "high_water_rss_kib": 15220,
+      "rss_kib": 15220,
+      "threads": 25,
+      "cpu_seconds": 0.16,
+      "io": {
+        "rchar": 11186,
+        "wchar": 1185462,
+        "syscr": 23,
+        "syscw": 366,
+        "read_bytes": 0,
+        "write_bytes": 28672,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 14.992981979979994
+    },
+    {
+      "elapsed_seconds": 2.001164000001154,
+      "sample_utc": "2026-10-30T17:32:08Z",
+      "high_water_rss_kib": 15304,
+      "rss_kib": 15304,
+      "threads": 25,
+      "cpu_seconds": 0.2,
+      "io": {
+        "rchar": 11186,
+        "wchar": 1866524,
+        "syscr": 23,
+        "syscw": 432,
+        "read_bytes": 0,
+        "write_bytes": 40960,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 3.9977297332550976
+    },
+    {
+      "elapsed_seconds": 3.001911213999847,
+      "sample_utc": "2026-10-30T17:32:09Z",
+      "high_water_rss_kib": 15616,
+      "rss_kib": 15616,
+      "threads": 25,
+      "cpu_seconds": 0.24,
+      "io": {
+        "rchar": 11186,
+        "wchar": 2553416,
+        "syscr": 23,
+        "syscw": 481,
+        "read_bytes": 0,
+        "write_bytes": 57344,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 3.997013375652749
+    },
+    {
+      "elapsed_seconds": 4.0025339419953525,
+      "sample_utc": "2026-10-30T17:32:10Z",
+      "high_water_rss_kib": 15640,
+      "rss_kib": 15640,
+      "threads": 25,
+      "cpu_seconds": 0.24,
+      "io": {
+        "rchar": 11186,
+        "wchar": 2761965,
+        "syscr": 23,
+        "syscw": 496,
+        "read_bytes": 0,
+        "write_bytes": 61440,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.0
+    },
+    {
+      "elapsed_seconds": 5.00304638799571,
+      "sample_utc": "2026-10-30T17:32:12Z",
+      "high_water_rss_kib": 16000,
+      "rss_kib": 16000,
+      "threads": 25,
+      "cpu_seconds": 0.29,
+      "io": {
+        "rchar": 11186,
+        "wchar": 3497386,
+        "syscr": 23,
+        "syscw": 576,
+        "read_bytes": 0,
+        "write_bytes": 81920,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 4.9974390823302315
+    },
+    {
+      "elapsed_seconds": 6.003648227997473,
+      "sample_utc": "2026-10-30T17:32:13Z",
+      "high_water_rss_kib": 16192,
+      "rss_kib": 16192,
+      "threads": 25,
+      "cpu_seconds": 0.32,
+      "io": {
+        "rchar": 11186,
+        "wchar": 4184458,
+        "syscr": 23,
+        "syscw": 630,
+        "read_bytes": 0,
+        "write_bytes": 94208,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 2.9981955659752852
+    },
+    {
+      "elapsed_seconds": 7.004263185997843,
+      "sample_utc": "2026-10-30T17:32:14Z",
+      "high_water_rss_kib": 16280,
+      "rss_kib": 16280,
+      "threads": 25,
+      "cpu_seconds": 0.34,
+      "io": {
+        "rchar": 11186,
+        "wchar": 4643366,
+        "syscr": 23,
+        "syscw": 666,
+        "read_bytes": 0,
+        "write_bytes": 110592,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 1.9987708398811102
+    },
+    {
+      "elapsed_seconds": 8.00491148099536,
+      "sample_utc": "2026-10-30T17:32:15Z",
+      "high_water_rss_kib": 16288,
+      "rss_kib": 16288,
+      "threads": 25,
+      "cpu_seconds": 0.34,
+      "io": {
+        "rchar": 11186,
+        "wchar": 4916837,
+        "syscr": 23,
+        "syscw": 687,
+        "read_bytes": 0,
+        "write_bytes": 118784,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.0
+    },
+    {
+      "elapsed_seconds": 9.005642477997753,
+      "sample_utc": "2026-10-30T17:32:16Z",
+      "high_water_rss_kib": 17012,
+      "rss_kib": 17012,
+      "threads": 25,
+      "cpu_seconds": 0.46,
+      "io": {
+        "rchar": 11186,
+        "wchar": 6139835,
+        "syscr": 23,
+        "syscw": 1102,
+        "read_bytes": 0,
+        "write_bytes": 151552,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 11.991234443566766
+    },
+    {
+      "elapsed_seconds": 10.006319706000795,
+      "sample_utc": "2026-10-30T17:32:17Z",
+      "high_water_rss_kib": 17012,
+      "rss_kib": 17012,
+      "threads": 25,
+      "cpu_seconds": 0.46,
+      "io": {
+        "rchar": 11186,
+        "wchar": 6139835,
+        "syscr": 23,
+        "syscw": 1102,
+        "read_bytes": 0,
+        "write_bytes": 151552,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.0
+    },
+    {
+      "elapsed_seconds": 11.0069598150003,
+      "sample_utc": "2026-10-30T17:32:18Z",
+      "high_water_rss_kib": 17196,
+      "rss_kib": 17196,
+      "threads": 25,
+      "cpu_seconds": 0.5,
+      "io": {
+        "rchar": 11186,
+        "wchar": 6704950,
+        "syscr": 23,
+        "syscw": 1211,
+        "read_bytes": 0,
+        "write_bytes": 172032,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 3.9974412019116636
+    },
+    {
+      "elapsed_seconds": 12.007796655001584,
+      "sample_utc": "2026-10-30T17:32:19Z",
+      "high_water_rss_kib": 17200,
+      "rss_kib": 17200,
+      "threads": 25,
+      "cpu_seconds": 0.5,
+      "io": {
+        "rchar": 11186,
+        "wchar": 6799815,
+        "syscr": 23,
+        "syscw": 1219,
+        "read_bytes": 0,
+        "write_bytes": 176128,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.0
+    },
+    {
+      "elapsed_seconds": 13.00896510000166,
+      "sample_utc": "2026-10-30T17:32:20Z",
+      "high_water_rss_kib": 17360,
+      "rss_kib": 17360,
+      "threads": 25,
+      "cpu_seconds": 0.54,
+      "io": {
+        "rchar": 11186,
+        "wchar": 7284415,
+        "syscr": 23,
+        "syscw": 1292,
+        "read_bytes": 0,
+        "write_bytes": 200704,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 3.9953316746810748
+    },
+    {
+      "elapsed_seconds": 14.009647100996517,
+      "sample_utc": "2026-10-30T17:32:21Z",
+      "high_water_rss_kib": 17360,
+      "rss_kib": 17360,
+      "threads": 25,
+      "cpu_seconds": 0.54,
+      "io": {
+        "rchar": 11186,
+        "wchar": 7284415,
+        "syscr": 23,
+        "syscw": 1292,
+        "read_bytes": 0,
+        "write_bytes": 200704,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.0
+    },
+    {
+      "elapsed_seconds": 15.01032584499626,
+      "sample_utc": "2026-10-30T17:32:22Z",
+      "high_water_rss_kib": 17392,
+      "rss_kib": 17392,
+      "threads": 25,
+      "cpu_seconds": 0.57,
+      "io": {
+        "rchar": 11186,
+        "wchar": 7518429,
+        "syscr": 23,
+        "syscw": 1391,
+        "read_bytes": 0,
+        "write_bytes": 217088,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 2.9979651491435817
+    },
+    {
+      "elapsed_seconds": 16.01096582399623,
+      "sample_utc": "2026-10-30T17:32:23Z",
+      "high_water_rss_kib": 17584,
+      "rss_kib": 17584,
+      "threads": 25,
+      "cpu_seconds": 0.59,
+      "io": {
+        "rchar": 11186,
+        "wchar": 8190181,
+        "syscr": 23,
+        "syscw": 1452,
+        "read_bytes": 0,
+        "write_bytes": 233472,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 1.9987208606223987
+    },
+    {
+      "elapsed_seconds": 17.0117112769949,
+      "sample_utc": "2026-10-30T17:32:24Z",
+      "high_water_rss_kib": 17584,
+      "rss_kib": 17584,
+      "threads": 25,
+      "cpu_seconds": 0.62,
+      "io": {
+        "rchar": 11186,
+        "wchar": 8479951,
+        "syscr": 23,
+        "syscw": 1485,
+        "read_bytes": 0,
+        "write_bytes": 245760,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 2.9977653068626853
+    },
+    {
+      "elapsed_seconds": 18.012418067999533,
+      "sample_utc": "2026-10-30T17:32:25Z",
+      "high_water_rss_kib": 17584,
+      "rss_kib": 17584,
+      "threads": 25,
+      "cpu_seconds": 0.62,
+      "io": {
+        "rchar": 11186,
+        "wchar": 8483583,
+        "syscr": 23,
+        "syscw": 1503,
+        "read_bytes": 0,
+        "write_bytes": 245760,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.0
+    },
+    {
+      "elapsed_seconds": 19.013113182998495,
+      "sample_utc": "2026-10-30T17:32:27Z",
+      "high_water_rss_kib": 17584,
+      "rss_kib": 17584,
+      "threads": 25,
+      "cpu_seconds": 0.65,
+      "io": {
+        "rchar": 11186,
+        "wchar": 8639943,
+        "syscr": 23,
+        "syscw": 1584,
+        "read_bytes": 0,
+        "write_bytes": 262144,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 2.997916103550793
+    },
+    {
+      "elapsed_seconds": 20.013923900994996,
+      "sample_utc": "2026-10-30T17:32:28Z",
+      "high_water_rss_kib": 17588,
+      "rss_kib": 17588,
+      "threads": 25,
+      "cpu_seconds": 0.67,
+      "io": {
+        "rchar": 11186,
+        "wchar": 8927340,
+        "syscr": 23,
+        "syscw": 1623,
+        "read_bytes": 0,
+        "write_bytes": 282624,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 1.9983798774694903
+    },
+    {
+      "elapsed_seconds": 21.014672396995593,
+      "sample_utc": "2026-10-30T17:32:29Z",
+      "high_water_rss_kib": 17644,
+      "rss_kib": 17644,
+      "threads": 25,
+      "cpu_seconds": 0.78,
+      "io": {
+        "rchar": 11186,
+        "wchar": 10006865,
+        "syscr": 23,
+        "syscw": 2038,
+        "read_bytes": 0,
+        "write_bytes": 315392,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 10.991772702093014
+    },
+    {
+      "elapsed_seconds": 22.015383164995,
+      "sample_utc": "2026-10-30T17:32:30Z",
+      "high_water_rss_kib": 17644,
+      "rss_kib": 17644,
+      "threads": 25,
+      "cpu_seconds": 0.78,
+      "io": {
+        "rchar": 11186,
+        "wchar": 10006865,
+        "syscr": 23,
+        "syscw": 2038,
+        "read_bytes": 0,
+        "write_bytes": 315392,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.0
+    },
+    {
+      "elapsed_seconds": 23.016189299996768,
+      "sample_utc": "2026-10-30T17:32:31Z",
+      "high_water_rss_kib": 17800,
+      "rss_kib": 17800,
+      "threads": 25,
+      "cpu_seconds": 0.8,
+      "io": {
+        "rchar": 11186,
+        "wchar": 10207781,
+        "syscr": 23,
+        "syscw": 2121,
+        "read_bytes": 0,
+        "write_bytes": 323584,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 1.9983890286568526
+    },
+    {
+      "elapsed_seconds": 24.017543967995152,
+      "sample_utc": "2026-10-30T17:32:32Z",
+      "high_water_rss_kib": 17808,
+      "rss_kib": 17808,
+      "threads": 25,
+      "cpu_seconds": 0.81,
+      "io": {
+        "rchar": 11186,
+        "wchar": 10554237,
+        "syscr": 23,
+        "syscw": 2149,
+        "read_bytes": 0,
+        "write_bytes": 331776,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.9986471646443786
+    },
+    {
+      "elapsed_seconds": 25.018404361995636,
+      "sample_utc": "2026-10-30T17:32:33Z",
+      "high_water_rss_kib": 17820,
+      "rss_kib": 17820,
+      "threads": 25,
+      "cpu_seconds": 0.86,
+      "io": {
+        "rchar": 11186,
+        "wchar": 11133249,
+        "syscr": 23,
+        "syscw": 2231,
+        "read_bytes": 0,
+        "write_bytes": 360448,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 4.995701728204849
+    },
+    {
+      "elapsed_seconds": 26.019439338997472,
+      "sample_utc": "2026-10-30T17:32:34Z",
+      "high_water_rss_kib": 17820,
+      "rss_kib": 17820,
+      "threads": 25,
+      "cpu_seconds": 0.86,
+      "io": {
+        "rchar": 11186,
+        "wchar": 11178822,
+        "syscr": 23,
+        "syscw": 2236,
+        "read_bytes": 0,
+        "write_bytes": 360448,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.0
+    },
+    {
+      "elapsed_seconds": 27.021760979994724,
+      "sample_utc": "2026-10-30T17:32:35Z",
+      "high_water_rss_kib": 17892,
+      "rss_kib": 17892,
+      "threads": 25,
+      "cpu_seconds": 0.89,
+      "io": {
+        "rchar": 11186,
+        "wchar": 11664383,
+        "syscr": 23,
+        "syscw": 2293,
+        "read_bytes": 0,
+        "write_bytes": 372736,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 2.9930512096049067
+    },
+    {
+      "elapsed_seconds": 28.02249098399625,
+      "sample_utc": "2026-10-30T17:32:36Z",
+      "high_water_rss_kib": 17904,
+      "rss_kib": 17904,
+      "threads": 25,
+      "cpu_seconds": 0.93,
+      "io": {
+        "rchar": 11186,
+        "wchar": 12461688,
+        "syscr": 23,
+        "syscw": 2370,
+        "read_bytes": 0,
+        "write_bytes": 393216,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 3.9970821140623096
+    },
+    {
+      "elapsed_seconds": 29.023477404000005,
+      "sample_utc": "2026-10-30T17:32:37Z",
+      "high_water_rss_kib": 17904,
+      "rss_kib": 17904,
+      "threads": 25,
+      "cpu_seconds": 0.93,
+      "io": {
+        "rchar": 11186,
+        "wchar": 12529725,
+        "syscr": 23,
+        "syscw": 2385,
+        "read_bytes": 0,
+        "write_bytes": 401408,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.0
+    },
+    {
+      "elapsed_seconds": 30.024214509001467,
+      "sample_utc": "2026-10-30T17:32:38Z",
+      "high_water_rss_kib": 17904,
+      "rss_kib": 17904,
+      "threads": 25,
+      "cpu_seconds": 0.94,
+      "io": {
+        "rchar": 11186,
+        "wchar": 12539710,
+        "syscr": 23,
+        "syscw": 2430,
+        "read_bytes": 0,
+        "write_bytes": 405504,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.9992634379221289
+    },
+    {
+      "elapsed_seconds": 31.025009967001097,
+      "sample_utc": "2026-10-30T17:32:39Z",
+      "high_water_rss_kib": 17904,
+      "rss_kib": 17904,
+      "threads": 25,
+      "cpu_seconds": 0.95,
+      "io": {
+        "rchar": 11186,
+        "wchar": 12592387,
+        "syscr": 23,
+        "syscw": 2454,
+        "read_bytes": 0,
+        "write_bytes": 413696,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.9992051742508711
+    },
+    {
+      "elapsed_seconds": 32.02594398999645,
+      "sample_utc": "2026-10-30T17:32:40Z",
+      "high_water_rss_kib": 17964,
+      "rss_kib": 17964,
+      "threads": 25,
+      "cpu_seconds": 1.01,
+      "io": {
+        "rchar": 11186,
+        "wchar": 13138617,
+        "syscr": 23,
+        "syscw": 2550,
+        "read_bytes": 0,
+        "write_bytes": 438272,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 5.9944010915371395
+    },
+    {
+      "elapsed_seconds": 33.02703735999967,
+      "sample_utc": "2026-10-30T17:32:41Z",
+      "high_water_rss_kib": 17964,
+      "rss_kib": 17964,
+      "threads": 25,
+      "cpu_seconds": 1.03,
+      "io": {
+        "rchar": 11186,
+        "wchar": 13255300,
+        "syscr": 23,
+        "syscw": 2581,
+        "read_bytes": 0,
+        "write_bytes": 442368,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 1.9978156482981906
+    },
+    {
+      "elapsed_seconds": 34.02834421499574,
+      "sample_utc": "2026-10-30T17:32:42Z",
+      "high_water_rss_kib": 17964,
+      "rss_kib": 17964,
+      "threads": 25,
+      "cpu_seconds": 1.03,
+      "io": {
+        "rchar": 11186,
+        "wchar": 13307928,
+        "syscr": 23,
+        "syscw": 2593,
+        "read_bytes": 0,
+        "write_bytes": 446464,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.0
+    },
+    {
+      "elapsed_seconds": 35.02932885899645,
+      "sample_utc": "2026-10-30T17:32:43Z",
+      "high_water_rss_kib": 17964,
+      "rss_kib": 17964,
+      "threads": 25,
+      "cpu_seconds": 1.06,
+      "io": {
+        "rchar": 11186,
+        "wchar": 13414123,
+        "syscr": 23,
+        "syscw": 2651,
+        "read_bytes": 0,
+        "write_bytes": 454656,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 2.9970489737082056
+    },
+    {
+      "elapsed_seconds": 36.030574286000046,
+      "sample_utc": "2026-10-30T17:32:44Z",
+      "high_water_rss_kib": 18064,
+      "rss_kib": 18064,
+      "threads": 25,
+      "cpu_seconds": 1.11,
+      "io": {
+        "rchar": 11186,
+        "wchar": 13830703,
+        "syscr": 23,
+        "syscw": 2744,
+        "read_bytes": 0,
+        "write_bytes": 475136,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 4.9937806107773035
+    },
+    {
+      "elapsed_seconds": 37.032278088001476,
+      "sample_utc": "2026-10-30T17:32:45Z",
+      "high_water_rss_kib": 18144,
+      "rss_kib": 18144,
+      "threads": 25,
+      "cpu_seconds": 1.17,
+      "io": {
+        "rchar": 11186,
+        "wchar": 14508873,
+        "syscr": 23,
+        "syscw": 2822,
+        "read_bytes": 0,
+        "write_bytes": 487424,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 5.989794576013236
+    },
+    {
+      "elapsed_seconds": 38.03318630699505,
+      "sample_utc": "2026-10-30T17:32:46Z",
+      "high_water_rss_kib": 18144,
+      "rss_kib": 18144,
+      "threads": 25,
+      "cpu_seconds": 1.17,
+      "io": {
+        "rchar": 11186,
+        "wchar": 14563990,
+        "syscr": 23,
+        "syscw": 2836,
+        "read_bytes": 0,
+        "write_bytes": 491520,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.0
+    },
+    {
+      "elapsed_seconds": 39.034354160001385,
+      "sample_utc": "2026-10-30T17:32:47Z",
+      "high_water_rss_kib": 18368,
+      "rss_kib": 18368,
+      "threads": 25,
+      "cpu_seconds": 1.21,
+      "io": {
+        "rchar": 11186,
+        "wchar": 15171945,
+        "syscr": 23,
+        "syscw": 2892,
+        "read_bytes": 0,
+        "write_bytes": 499712,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 3.9953340371334156
+    },
+    {
+      "elapsed_seconds": 40.03568774899759,
+      "sample_utc": "2026-10-30T17:32:48Z",
+      "high_water_rss_kib": 18776,
+      "rss_kib": 18776,
+      "threads": 25,
+      "cpu_seconds": 1.28,
+      "io": {
+        "rchar": 11186,
+        "wchar": 16409249,
+        "syscr": 23,
+        "syscw": 3009,
+        "read_bytes": 0,
+        "write_bytes": 536576,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 6.990677309663822
+    },
+    {
+      "elapsed_seconds": 41.03792193099798,
+      "sample_utc": "2026-10-30T17:32:49Z",
+      "high_water_rss_kib": 19436,
+      "rss_kib": 19436,
+      "threads": 25,
+      "cpu_seconds": 1.32,
+      "io": {
+        "rchar": 11186,
+        "wchar": 17121549,
+        "syscr": 23,
+        "syscw": 3068,
+        "read_bytes": 0,
+        "write_bytes": 544768,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 3.991083193766416
+    },
+    {
+      "elapsed_seconds": 42.038825684001495,
+      "sample_utc": "2026-10-30T17:32:50Z",
+      "high_water_rss_kib": 19436,
+      "rss_kib": 19436,
+      "threads": 25,
+      "cpu_seconds": 1.32,
+      "io": {
+        "rchar": 11186,
+        "wchar": 17169420,
+        "syscr": 23,
+        "syscw": 3071,
+        "read_bytes": 0,
+        "write_bytes": 544768,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.0
+    },
+    {
+      "elapsed_seconds": 43.039897214999655,
+      "sample_utc": "2026-10-30T17:32:51Z",
+      "high_water_rss_kib": 19548,
+      "rss_kib": 19548,
+      "threads": 25,
+      "cpu_seconds": 1.34,
+      "io": {
+        "rchar": 11186,
+        "wchar": 17423741,
+        "syscr": 23,
+        "syscw": 3125,
+        "read_bytes": 0,
+        "write_bytes": 557056,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 1.9978592319030546
+    },
+    {
+      "elapsed_seconds": 44.04077772399614,
+      "sample_utc": "2026-10-30T17:32:52Z",
+      "high_water_rss_kib": 19728,
+      "rss_kib": 19728,
+      "threads": 25,
+      "cpu_seconds": 1.39,
+      "io": {
+        "rchar": 11186,
+        "wchar": 18265491,
+        "syscr": 23,
+        "syscw": 3234,
+        "read_bytes": 0,
+        "write_bytes": 581632,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 4.995601328087751
+    },
+    {
+      "elapsed_seconds": 45.04183210300107,
+      "sample_utc": "2026-10-30T17:32:53Z",
+      "high_water_rss_kib": 19868,
+      "rss_kib": 19868,
+      "threads": 25,
+      "cpu_seconds": 1.4,
+      "io": {
+        "rchar": 11186,
+        "wchar": 18387058,
+        "syscr": 23,
+        "syscw": 3259,
+        "read_bytes": 0,
+        "write_bytes": 589824,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.9989467315392248
+    },
+    {
+      "elapsed_seconds": 46.042873763995885,
+      "sample_utc": "2026-10-30T17:32:54Z",
+      "high_water_rss_kib": 20432,
+      "rss_kib": 20432,
+      "threads": 25,
+      "cpu_seconds": 1.5,
+      "io": {
+        "rchar": 11186,
+        "wchar": 19599457,
+        "syscr": 23,
+        "syscw": 3421,
+        "read_bytes": 0,
+        "write_bytes": 614400,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 9.98959422933727
+    },
+    {
+      "elapsed_seconds": 47.04613745499955,
+      "sample_utc": "2026-10-30T17:32:55Z",
+      "high_water_rss_kib": 20320,
+      "rss_kib": 20320,
+      "threads": 25,
+      "cpu_seconds": 1.57,
+      "io": {
+        "rchar": 11186,
+        "wchar": 20390140,
+        "syscr": 23,
+        "syscw": 3493,
+        "read_bytes": 0,
+        "write_bytes": 630784,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 6.977228482172204
+    },
+    {
+      "elapsed_seconds": 48.05067694599711,
+      "sample_utc": "2026-10-30T17:32:56Z",
+      "high_water_rss_kib": 20928,
+      "rss_kib": 20928,
+      "threads": 25,
+      "cpu_seconds": 1.76,
+      "io": {
+        "rchar": 11186,
+        "wchar": 22200613,
+        "syscr": 23,
+        "syscw": 3696,
+        "read_bytes": 0,
+        "write_bytes": 671744,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 18.914139434311377
+    },
+    {
+      "elapsed_seconds": 49.054345557997294,
+      "sample_utc": "2026-10-30T17:32:59Z",
+      "high_water_rss_kib": 21192,
+      "rss_kib": 21192,
+      "threads": 25,
+      "cpu_seconds": 1.89,
+      "io": {
+        "rchar": 11186,
+        "wchar": 24001675,
+        "syscr": 23,
+        "syscw": 3803,
+        "read_bytes": 0,
+        "write_bytes": 700416,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 12.952482367753499
+    },
+    {
+      "elapsed_seconds": 50.058030938998854,
+      "sample_utc": "2026-10-30T17:33:00Z",
+      "high_water_rss_kib": 21232,
+      "rss_kib": 21232,
+      "threads": 25,
+      "cpu_seconds": 1.96,
+      "io": {
+        "rchar": 11186,
+        "wchar": 24828697,
+        "syscr": 23,
+        "syscw": 3884,
+        "read_bytes": 0,
+        "write_bytes": 720896,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 6.974297058122758
+    },
+    {
+      "elapsed_seconds": 51.060180483000295,
+      "sample_utc": "2026-10-30T17:33:01Z",
+      "high_water_rss_kib": 21748,
+      "rss_kib": 21748,
+      "threads": 25,
+      "cpu_seconds": 2.08,
+      "io": {
+        "rchar": 11186,
+        "wchar": 26384082,
+        "syscr": 23,
+        "syscw": 4006,
+        "read_bytes": 0,
+        "write_bytes": 749568,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 11.974260799526693
+    },
+    {
+      "elapsed_seconds": 52.06204222099768,
+      "sample_utc": "2026-10-30T17:33:02Z",
+      "high_water_rss_kib": 21748,
+      "rss_kib": 21748,
+      "threads": 25,
+      "cpu_seconds": 2.09,
+      "io": {
+        "rchar": 11186,
+        "wchar": 26478030,
+        "syscr": 23,
+        "syscw": 4011,
+        "read_bytes": 0,
+        "write_bytes": 749568,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.9981417216300635
+    },
+    {
+      "elapsed_seconds": 53.064090576001036,
+      "sample_utc": "2026-10-30T17:33:03Z",
+      "high_water_rss_kib": 23388,
+      "rss_kib": 23388,
+      "threads": 25,
+      "cpu_seconds": 2.28,
+      "io": {
+        "rchar": 11186,
+        "wchar": 28400456,
+        "syscr": 23,
+        "syscw": 4719,
+        "read_bytes": 0,
+        "write_bytes": 798720,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 18.96116081138262
+    },
+    {
+      "elapsed_seconds": 54.06528726199758,
+      "sample_utc": "2026-10-30T17:33:04Z",
+      "high_water_rss_kib": 23480,
+      "rss_kib": 23480,
+      "threads": 25,
+      "cpu_seconds": 2.29,
+      "io": {
+        "rchar": 11186,
+        "wchar": 28527477,
+        "syscr": 23,
+        "syscw": 4732,
+        "read_bytes": 0,
+        "write_bytes": 802816,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.9988047443491528
+    },
+    {
+      "elapsed_seconds": 55.06714407399704,
+      "sample_utc": "2026-10-30T17:33:05Z",
+      "high_water_rss_kib": 23660,
+      "rss_kib": 23660,
+      "threads": 25,
+      "cpu_seconds": 2.39,
+      "io": {
+        "rchar": 11186,
+        "wchar": 29025349,
+        "syscr": 23,
+        "syscw": 4915,
+        "read_bytes": 0,
+        "write_bytes": 831488,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 9.981466293613815
+    },
+    {
+      "elapsed_seconds": 56.069758910998644,
+      "sample_utc": "2026-10-30T17:33:06Z",
+      "high_water_rss_kib": 23924,
+      "rss_kib": 23924,
+      "threads": 25,
+      "cpu_seconds": 2.52,
+      "io": {
+        "rchar": 11186,
+        "wchar": 30894938,
+        "syscr": 23,
+        "syscw": 5071,
+        "read_bytes": 0,
+        "write_bytes": 864256,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 12.966095773006431
+    },
+    {
+      "elapsed_seconds": 57.07078480999917,
+      "sample_utc": "2026-10-30T17:33:07Z",
+      "high_water_rss_kib": 23732,
+      "rss_kib": 23732,
+      "threads": 25,
+      "cpu_seconds": 2.57,
+      "io": {
+        "rchar": 11186,
+        "wchar": 31810726,
+        "syscr": 23,
+        "syscw": 5139,
+        "read_bytes": 0,
+        "write_bytes": 872448,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 4.994875761948076
+    },
+    {
+      "elapsed_seconds": 58.071838997995656,
+      "sample_utc": "2026-10-30T17:33:08Z",
+      "high_water_rss_kib": 23732,
+      "rss_kib": 23732,
+      "threads": 25,
+      "cpu_seconds": 2.57,
+      "io": {
+        "rchar": 11186,
+        "wchar": 31899371,
+        "syscr": 23,
+        "syscw": 5193,
+        "read_bytes": 0,
+        "write_bytes": 876544,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 0.0
+    },
+    {
+      "elapsed_seconds": 59.07326190499589,
+      "sample_utc": "2026-10-30T17:33:09Z",
+      "high_water_rss_kib": 24100,
+      "rss_kib": 24100,
+      "threads": 25,
+      "cpu_seconds": 2.64,
+      "io": {
+        "rchar": 11186,
+        "wchar": 32942423,
+        "syscr": 23,
+        "syscw": 5334,
+        "read_bytes": 0,
+        "write_bytes": 897024,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 6.990053803510979
+    },
+    {
+      "elapsed_seconds": 60.075903496996034,
+      "sample_utc": "2026-10-30T17:33:10Z",
+      "high_water_rss_kib": 24516,
+      "rss_kib": 24516,
+      "threads": 25,
+      "cpu_seconds": 2.78,
+      "io": {
+        "rchar": 11186,
+        "wchar": 34890060,
+        "syscr": 23,
+        "syscw": 5558,
+        "read_bytes": 0,
+        "write_bytes": 933888,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 13.963115146731285
+    },
+    {
+      "elapsed_seconds": 61.0784704339967,
+      "sample_utc": "2026-10-30T17:33:11Z",
+      "high_water_rss_kib": 24584,
+      "rss_kib": 24584,
+      "threads": 25,
+      "cpu_seconds": 3.18,
+      "io": {
+        "rchar": 11186,
+        "wchar": 40591708,
+        "syscr": 23,
+        "syscw": 6024,
+        "read_bytes": 0,
+        "write_bytes": 978944,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 39.89758541176932
+    },
+    {
+      "elapsed_seconds": 62.08310403199721,
+      "sample_utc": "2026-10-30T17:33:12Z",
+      "high_water_rss_kib": 24652,
+      "rss_kib": 24652,
+      "threads": 25,
+      "cpu_seconds": 3.56,
+      "io": {
+        "rchar": 11186,
+        "wchar": 46225059,
+        "syscr": 23,
+        "syscw": 6443,
+        "read_bytes": 0,
+        "write_bytes": 1007616,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 37.824735381765244
+    },
+    {
+      "elapsed_seconds": 63.08549399000185,
+      "sample_utc": "2026-10-30T17:33:13Z",
+      "high_water_rss_kib": 26484,
+      "rss_kib": 26484,
+      "threads": 25,
+      "cpu_seconds": 4.05,
+      "io": {
+        "rchar": 11186,
+        "wchar": 54057786,
+        "syscr": 23,
+        "syscw": 7072,
+        "read_bytes": 0,
+        "write_bytes": 1052672,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 48.88317127352257
+    },
+    {
+      "elapsed_seconds": 64.0875528760007,
+      "sample_utc": "2026-10-30T17:33:14Z",
+      "high_water_rss_kib": 29272,
+      "rss_kib": 29272,
+      "threads": 25,
+      "cpu_seconds": 4.55,
+      "io": {
+        "rchar": 11186,
+        "wchar": 61995679,
+        "syscr": 23,
+        "syscw": 7740,
+        "read_bytes": 0,
+        "write_bytes": 1097728,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 49.89726721514989
+    },
+    {
+      "elapsed_seconds": 65.09082720199513,
+      "sample_utc": "2026-10-30T17:33:15Z",
+      "high_water_rss_kib": 31164,
+      "rss_kib": 31164,
+      "threads": 25,
+      "cpu_seconds": 4.98,
+      "io": {
+        "rchar": 11186,
+        "wchar": 68140529,
+        "syscr": 23,
+        "syscw": 8299,
+        "read_bytes": 0,
+        "write_bytes": 1138688,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 42.859663489723275
+    },
+    {
+      "elapsed_seconds": 66.0935031869958,
+      "sample_utc": "2026-10-30T17:33:16Z",
+      "high_water_rss_kib": 31504,
+      "rss_kib": 31504,
+      "threads": 25,
+      "cpu_seconds": 5.39,
+      "io": {
+        "rchar": 11186,
+        "wchar": 74443791,
+        "syscr": 23,
+        "syscw": 8809,
+        "read_bytes": 0,
+        "write_bytes": 1171456,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 40.89057742813324
+    },
+    {
+      "elapsed_seconds": 67.09613153200189,
+      "sample_utc": "2026-10-30T17:33:17Z",
+      "high_water_rss_kib": 31988,
+      "rss_kib": 31988,
+      "threads": 25,
+      "cpu_seconds": 5.89,
+      "io": {
+        "rchar": 11186,
+        "wchar": 81453845,
+        "syscr": 23,
+        "syscw": 9395,
+        "read_bytes": 0,
+        "write_bytes": 1212416,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 49.868927254092775
+    },
+    {
+      "elapsed_seconds": 68.09862009200151,
+      "sample_utc": "2026-10-30T17:33:18Z",
+      "high_water_rss_kib": 32788,
+      "rss_kib": 32788,
+      "threads": 25,
+      "cpu_seconds": 6.44,
+      "io": {
+        "rchar": 11186,
+        "wchar": 89338714,
+        "syscr": 23,
+        "syscw": 10024,
+        "read_bytes": 0,
+        "write_bytes": 1257472,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 54.86346896569161
+    },
+    {
+      "elapsed_seconds": 69.10157010999683,
+      "sample_utc": "2026-10-30T17:33:19Z",
+      "high_water_rss_kib": 33896,
+      "rss_kib": 33896,
+      "threads": 25,
+      "cpu_seconds": 6.93,
+      "io": {
+        "rchar": 11186,
+        "wchar": 96209120,
+        "syscr": 23,
+        "syscw": 10578,
+        "read_bytes": 0,
+        "write_bytes": 1298432,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 48.85587429166263
+    },
+    {
+      "elapsed_seconds": 70.1048029550002,
+      "sample_utc": "2026-10-30T17:33:20Z",
+      "high_water_rss_kib": 34560,
+      "rss_kib": 34560,
+      "threads": 25,
+      "cpu_seconds": 7.44,
+      "io": {
+        "rchar": 11186,
+        "wchar": 103209885,
+        "syscr": 23,
+        "syscw": 11133,
+        "read_bytes": 0,
+        "write_bytes": 1335296,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 50.83565620285171
+    },
+    {
+      "elapsed_seconds": 71.10773807999794,
+      "sample_utc": "2026-10-30T17:33:21Z",
+      "high_water_rss_kib": 34032,
+      "rss_kib": 34032,
+      "threads": 25,
+      "cpu_seconds": 7.94,
+      "io": {
+        "rchar": 11186,
+        "wchar": 111220843,
+        "syscr": 23,
+        "syscw": 11740,
+        "read_bytes": 0,
+        "write_bytes": 1380352,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 49.85367323745119
+    },
+    {
+      "elapsed_seconds": 72.11044376000063,
+      "sample_utc": "2026-10-30T17:33:22Z",
+      "high_water_rss_kib": 34116,
+      "rss_kib": 34116,
+      "threads": 25,
+      "cpu_seconds": 8.46,
+      "io": {
+        "rchar": 11186,
+        "wchar": 118325590,
+        "syscr": 23,
+        "syscw": 12345,
+        "read_bytes": 0,
+        "write_bytes": 1421312,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 51.859684289272636
+    },
+    {
+      "elapsed_seconds": 73.11414286199579,
+      "sample_utc": "2026-10-30T17:33:23Z",
+      "high_water_rss_kib": 34516,
+      "rss_kib": 34516,
+      "threads": 25,
+      "cpu_seconds": 8.92,
+      "io": {
+        "rchar": 11186,
+        "wchar": 124555162,
+        "syscr": 23,
+        "syscw": 12883,
+        "read_bytes": 0,
+        "write_bytes": 1458176,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 45.83046842281836
+    },
+    {
+      "elapsed_seconds": 74.12243790100183,
+      "sample_utc": "2026-10-30T17:33:24Z",
+      "high_water_rss_kib": 34360,
+      "rss_kib": 34360,
+      "threads": 25,
+      "cpu_seconds": 9.39,
+      "io": {
+        "rchar": 11186,
+        "wchar": 131526026,
+        "syscr": 23,
+        "syscw": 13448,
+        "read_bytes": 0,
+        "write_bytes": 1499136,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 46.61334052216665
+    },
+    {
+      "elapsed_seconds": 75.12563394400058,
+      "sample_utc": "2026-10-30T17:33:25Z",
+      "high_water_rss_kib": 34948,
+      "rss_kib": 34948,
+      "threads": 25,
+      "cpu_seconds": 9.9,
+      "io": {
+        "rchar": 11186,
+        "wchar": 139818127,
+        "syscr": 23,
+        "syscw": 14088,
+        "read_bytes": 0,
+        "write_bytes": 1544192,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 50.83752109662522
+    },
+    {
+      "elapsed_seconds": 76.12829091499589,
+      "sample_utc": "2026-10-30T17:33:26Z",
+      "high_water_rss_kib": 35908,
+      "rss_kib": 35908,
+      "threads": 25,
+      "cpu_seconds": 10.39,
+      "io": {
+        "rchar": 11186,
+        "wchar": 146788545,
+        "syscr": 23,
+        "syscw": 14701,
+        "read_bytes": 0,
+        "write_bytes": 1589248,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 48.870153419827474
+    },
+    {
+      "elapsed_seconds": 77.13115463899885,
+      "sample_utc": "2026-10-30T17:33:27Z",
+      "high_water_rss_kib": 35616,
+      "rss_kib": 35616,
+      "threads": 25,
+      "cpu_seconds": 10.87,
+      "io": {
+        "rchar": 11186,
+        "wchar": 153417667,
+        "syscr": 23,
+        "syscw": 15291,
+        "read_bytes": 0,
+        "write_bytes": 1630208,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 47.86293376771712
+    },
+    {
+      "elapsed_seconds": 78.13502536500164,
+      "sample_utc": "2026-10-30T17:33:28Z",
+      "high_water_rss_kib": 35692,
+      "rss_kib": 35692,
+      "threads": 25,
+      "cpu_seconds": 11.35,
+      "io": {
+        "rchar": 11186,
+        "wchar": 161475835,
+        "syscr": 23,
+        "syscw": 15890,
+        "read_bytes": 0,
+        "write_bytes": 1671168,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 47.814921539874355
+    },
+    {
+      "elapsed_seconds": 79.13791442699585,
+      "sample_utc": "2026-10-30T17:33:31Z",
+      "high_water_rss_kib": 36288,
+      "rss_kib": 36288,
+      "threads": 25,
+      "cpu_seconds": 11.8,
+      "io": {
+        "rchar": 11186,
+        "wchar": 169044443,
+        "syscr": 23,
+        "syscw": 16422,
+        "read_bytes": 0,
+        "write_bytes": 1712128,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 44.870366728817494
+    },
+    {
+      "elapsed_seconds": 80.14069319499686,
+      "sample_utc": "2026-10-30T17:33:32Z",
+      "high_water_rss_kib": 37612,
+      "rss_kib": 37612,
+      "threads": 25,
+      "cpu_seconds": 12.31,
+      "io": {
+        "rchar": 11186,
+        "wchar": 176307469,
+        "syscr": 23,
+        "syscw": 17052,
+        "read_bytes": 0,
+        "write_bytes": 1753088,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 50.85867553983626
+    },
+    {
+      "elapsed_seconds": 81.14303439299692,
+      "sample_utc": "2026-10-30T17:33:33Z",
+      "high_water_rss_kib": 38008,
+      "rss_kib": 38008,
+      "threads": 25,
+      "cpu_seconds": 12.89,
+      "io": {
+        "rchar": 11186,
+        "wchar": 183902032,
+        "syscr": 23,
+        "syscw": 17746,
+        "read_bytes": 0,
+        "write_bytes": 1802240,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 57.86452768351252
+    },
+    {
+      "elapsed_seconds": 82.14604026899906,
+      "sample_utc": "2026-10-30T17:33:34Z",
+      "high_water_rss_kib": 37636,
+      "rss_kib": 37636,
+      "threads": 25,
+      "cpu_seconds": 13.39,
+      "io": {
+        "rchar": 11186,
+        "wchar": 191584781,
+        "syscr": 23,
+        "syscw": 18381,
+        "read_bytes": 0,
+        "write_bytes": 1847296,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 49.85015661054172
+    },
+    {
+      "elapsed_seconds": 83.14887879399612,
+      "sample_utc": "2026-10-30T17:33:35Z",
+      "high_water_rss_kib": 40164,
+      "rss_kib": 40164,
+      "threads": 25,
+      "cpu_seconds": 13.97,
+      "io": {
+        "rchar": 11186,
+        "wchar": 197998340,
+        "syscr": 23,
+        "syscw": 19983,
+        "read_bytes": 0,
+        "write_bytes": 1937408,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 57.83583154642972
+    },
+    {
+      "elapsed_seconds": 84.15285328999744,
+      "sample_utc": "2026-10-30T17:33:36Z",
+      "high_water_rss_kib": 42864,
+      "rss_kib": 42864,
+      "threads": 25,
+      "cpu_seconds": 14.44,
+      "io": {
+        "rchar": 11186,
+        "wchar": 204231933,
+        "syscr": 23,
+        "syscw": 20483,
+        "read_bytes": 0,
+        "write_bytes": 1970176,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 46.81393818985839
+    },
+    {
+      "elapsed_seconds": 85.1574544469986,
+      "sample_utc": "2026-10-30T17:33:37Z",
+      "high_water_rss_kib": 42872,
+      "rss_kib": 42872,
+      "threads": 25,
+      "cpu_seconds": 14.94,
+      "io": {
+        "rchar": 11186,
+        "wchar": 211296888,
+        "syscr": 23,
+        "syscw": 21071,
+        "read_bytes": 0,
+        "write_bytes": 2019328,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 49.77099583406332
+    },
+    {
+      "elapsed_seconds": 86.16069558099844,
+      "sample_utc": "2026-10-30T17:33:38Z",
+      "high_water_rss_kib": 42876,
+      "rss_kib": 42876,
+      "threads": 25,
+      "cpu_seconds": 15.45,
+      "io": {
+        "rchar": 11186,
+        "wchar": 218048396,
+        "syscr": 23,
+        "syscw": 21691,
+        "read_bytes": 0,
+        "write_bytes": 2064384,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 50.83523618760266
+    },
+    {
+      "elapsed_seconds": 87.16348638899944,
+      "sample_utc": "2026-10-30T17:33:39Z",
+      "high_water_rss_kib": 44676,
+      "rss_kib": 44676,
+      "threads": 25,
+      "cpu_seconds": 15.99,
+      "io": {
+        "rchar": 11186,
+        "wchar": 225006311,
+        "syscr": 23,
+        "syscw": 22347,
+        "read_bytes": 0,
+        "write_bytes": 2109440,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 53.849715782342564
+    },
+    {
+      "elapsed_seconds": 88.16633642299712,
+      "sample_utc": "2026-10-30T17:33:40Z",
+      "high_water_rss_kib": 45132,
+      "rss_kib": 45132,
+      "threads": 25,
+      "cpu_seconds": 16.46,
+      "io": {
+        "rchar": 11186,
+        "wchar": 232533582,
+        "syscr": 23,
+        "syscw": 22909,
+        "read_bytes": 0,
+        "write_bytes": 2150400,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 46.86642908376168
+    },
+    {
+      "elapsed_seconds": 89.16954530999647,
+      "sample_utc": "2026-10-30T17:33:41Z",
+      "high_water_rss_kib": 44068,
+      "rss_kib": 43740,
+      "threads": 25,
+      "cpu_seconds": 16.92,
+      "io": {
+        "rchar": 11186,
+        "wchar": 239183927,
+        "syscr": 23,
+        "syscw": 23486,
+        "read_bytes": 0,
+        "write_bytes": 2187264,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 45.85286334293607
+    },
+    {
+      "elapsed_seconds": 90.17501615500078,
+      "sample_utc": "2026-10-30T17:33:42Z",
+      "high_water_rss_kib": 44068,
+      "rss_kib": 43964,
+      "threads": 25,
+      "cpu_seconds": 17.44,
+      "io": {
+        "rchar": 11186,
+        "wchar": 246955458,
+        "syscr": 23,
+        "syscw": 24133,
+        "read_bytes": 0,
+        "write_bytes": 2236416,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 51.71706395900227
+    },
+    {
+      "elapsed_seconds": 91.17834060599853,
+      "sample_utc": "2026-10-30T17:33:43Z",
+      "high_water_rss_kib": 45420,
+      "rss_kib": 45420,
+      "threads": 25,
+      "cpu_seconds": 17.95,
+      "io": {
+        "rchar": 11186,
+        "wchar": 253688356,
+        "syscr": 23,
+        "syscw": 24777,
+        "read_bytes": 0,
+        "write_bytes": 2281472,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 50.83101478219059
+    },
+    {
+      "elapsed_seconds": 92.18137344999559,
+      "sample_utc": "2026-10-30T17:33:44Z",
+      "high_water_rss_kib": 45440,
+      "rss_kib": 45440,
+      "threads": 25,
+      "cpu_seconds": 18.43,
+      "io": {
+        "rchar": 11186,
+        "wchar": 260838446,
+        "syscr": 23,
+        "syscw": 25370,
+        "read_bytes": 0,
+        "write_bytes": 2322432,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 47.85486366400641
+    },
+    {
+      "elapsed_seconds": 93.1854311069983,
+      "sample_utc": "2026-10-30T17:33:45Z",
+      "high_water_rss_kib": 45192,
+      "rss_kib": 45192,
+      "threads": 25,
+      "cpu_seconds": 18.93,
+      "io": {
+        "rchar": 11186,
+        "wchar": 268323205,
+        "syscr": 23,
+        "syscw": 26028,
+        "read_bytes": 0,
+        "write_bytes": 2367488,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 49.79793705200073
+    },
+    {
+      "elapsed_seconds": 94.18821990099968,
+      "sample_utc": "2026-10-30T17:33:46Z",
+      "high_water_rss_kib": 45640,
+      "rss_kib": 45640,
+      "threads": 25,
+      "cpu_seconds": 19.51,
+      "io": {
+        "rchar": 11186,
+        "wchar": 276904128,
+        "syscr": 23,
+        "syscw": 26764,
+        "read_bytes": 0,
+        "write_bytes": 2416640,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 57.83869978100255
+    },
+    {
+      "elapsed_seconds": 95.19162211899675,
+      "sample_utc": "2026-10-30T17:33:47Z",
+      "high_water_rss_kib": 45944,
+      "rss_kib": 45944,
+      "threads": 25,
+      "cpu_seconds": 20.03,
+      "io": {
+        "rchar": 11186,
+        "wchar": 284208229,
+        "syscr": 23,
+        "syscw": 27456,
+        "read_bytes": 0,
+        "write_bytes": 2465792,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 51.82368452782529
+    },
+    {
+      "elapsed_seconds": 96.194389364995,
+      "sample_utc": "2026-10-30T17:33:48Z",
+      "high_water_rss_kib": 46244,
+      "rss_kib": 46244,
+      "threads": 25,
+      "cpu_seconds": 20.48,
+      "io": {
+        "rchar": 11186,
+        "wchar": 290436771,
+        "syscr": 23,
+        "syscw": 27956,
+        "read_bytes": 0,
+        "write_bytes": 2502656,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 44.8758175734015
+    },
+    {
+      "elapsed_seconds": 97.19771168499574,
+      "sample_utc": "2026-10-30T17:33:49Z",
+      "high_water_rss_kib": 46000,
+      "rss_kib": 46000,
+      "threads": 25,
+      "cpu_seconds": 20.98,
+      "io": {
+        "rchar": 11186,
+        "wchar": 297789655,
+        "syscr": 23,
+        "syscw": 28570,
+        "read_bytes": 0,
+        "write_bytes": 2543616,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 49.83443406298727
+    },
+    {
+      "elapsed_seconds": 98.20231259999855,
+      "sample_utc": "2026-10-30T17:33:50Z",
+      "high_water_rss_kib": 45940,
+      "rss_kib": 45940,
+      "threads": 25,
+      "cpu_seconds": 21.4,
+      "io": {
+        "rchar": 11186,
+        "wchar": 305124850,
+        "syscr": 23,
+        "syscw": 29132,
+        "read_bytes": 0,
+        "write_bytes": 2584576,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 41.807646571656235
+    },
+    {
+      "elapsed_seconds": 99.2055422189951,
+      "sample_utc": "2026-10-30T17:33:51Z",
+      "high_water_rss_kib": 46152,
+      "rss_kib": 46152,
+      "threads": 25,
+      "cpu_seconds": 21.96,
+      "io": {
+        "rchar": 11186,
+        "wchar": 313084219,
+        "syscr": 23,
+        "syscw": 29837,
+        "read_bytes": 0,
+        "write_bytes": 2633728,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 55.819723560406786
+    },
+    {
+      "elapsed_seconds": 100.20907034899574,
+      "sample_utc": "2026-10-30T17:33:52Z",
+      "high_water_rss_kib": 46364,
+      "rss_kib": 46364,
+      "threads": 25,
+      "cpu_seconds": 22.5,
+      "io": {
+        "rchar": 11186,
+        "wchar": 321089986,
+        "syscr": 23,
+        "syscw": 30464,
+        "read_bytes": 0,
+        "write_bytes": 2678784,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 53.81015079264993
+    },
+    {
+      "elapsed_seconds": 101.21316002299864,
+      "sample_utc": "2026-10-30T17:33:53Z",
+      "high_water_rss_kib": 46940,
+      "rss_kib": 46940,
+      "threads": 25,
+      "cpu_seconds": 22.96,
+      "io": {
+        "rchar": 11186,
+        "wchar": 327178468,
+        "syscr": 23,
+        "syscw": 31000,
+        "read_bytes": 0,
+        "write_bytes": 2715648,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 45.81264123214877
+    },
+    {
+      "elapsed_seconds": 102.21716896499856,
+      "sample_utc": "2026-10-30T17:33:54Z",
+      "high_water_rss_kib": 47276,
+      "rss_kib": 47276,
+      "threads": 25,
+      "cpu_seconds": 23.4,
+      "io": {
+        "rchar": 11186,
+        "wchar": 333527012,
+        "syscr": 23,
+        "syscw": 31547,
+        "read_bytes": 0,
+        "write_bytes": 2756608,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 43.8243108794973
+    },
+    {
+      "elapsed_seconds": 103.2209927149961,
+      "sample_utc": "2026-10-30T17:33:55Z",
+      "high_water_rss_kib": 48304,
+      "rss_kib": 48304,
+      "threads": 25,
+      "cpu_seconds": 23.86,
+      "io": {
+        "rchar": 11186,
+        "wchar": 340457168,
+        "syscr": 23,
+        "syscw": 32123,
+        "read_bytes": 0,
+        "write_bytes": 2793472,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 45.82477750712003
+    },
+    {
+      "elapsed_seconds": 104.23044020099769,
+      "sample_utc": "2026-10-30T17:33:56Z",
+      "high_water_rss_kib": 47804,
+      "rss_kib": 47804,
+      "threads": 25,
+      "cpu_seconds": 24.3,
+      "io": {
+        "rchar": 11186,
+        "wchar": 346519754,
+        "syscr": 23,
+        "syscw": 32633,
+        "read_bytes": 0,
+        "write_bytes": 2830336,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 43.58820108045785
+    },
+    {
+      "elapsed_seconds": 105.23563799199474,
+      "sample_utc": "2026-10-30T17:33:57Z",
+      "high_water_rss_kib": 47804,
+      "rss_kib": 47804,
+      "threads": 25,
+      "cpu_seconds": 24.68,
+      "io": {
+        "rchar": 11186,
+        "wchar": 351472457,
+        "syscr": 23,
+        "syscw": 33052,
+        "read_bytes": 0,
+        "write_bytes": 2859008,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 37.803505280595786
+    },
+    {
+      "elapsed_seconds": 106.25120456599689,
+      "sample_utc": "2026-10-30T17:33:58Z",
+      "high_water_rss_kib": 47804,
+      "rss_kib": 47804,
+      "threads": 25,
+      "cpu_seconds": 25.04,
+      "io": {
+        "rchar": 11186,
+        "wchar": 355855650,
+        "syscr": 23,
+        "syscw": 33429,
+        "read_bytes": 0,
+        "write_bytes": 2883584,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 35.44819307919027
+    },
+    {
+      "elapsed_seconds": 107.25840983400121,
+      "sample_utc": "2026-10-30T17:33:59Z",
+      "high_water_rss_kib": 47804,
+      "rss_kib": 47804,
+      "threads": 25,
+      "cpu_seconds": 25.42,
+      "io": {
+        "rchar": 11186,
+        "wchar": 359819084,
+        "syscr": 23,
+        "syscw": 33753,
+        "read_bytes": 0,
+        "write_bytes": 2908160,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 37.728158506649855
+    },
+    {
+      "elapsed_seconds": 108.2704908989981,
+      "sample_utc": "2026-10-30T17:34:00Z",
+      "high_water_rss_kib": 47804,
+      "rss_kib": 47804,
+      "threads": 25,
+      "cpu_seconds": 25.87,
+      "io": {
+        "rchar": 11186,
+        "wchar": 365498313,
+        "syscr": 23,
+        "syscw": 34245,
+        "read_bytes": 0,
+        "write_bytes": 2940928,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 44.462841521630686
+    },
+    {
+      "elapsed_seconds": 109.27463835800154,
+      "sample_utc": "2026-10-30T17:34:03Z",
+      "high_water_rss_kib": 47964,
+      "rss_kib": 47964,
+      "threads": 25,
+      "cpu_seconds": 26.26,
+      "io": {
+        "rchar": 11186,
+        "wchar": 370647362,
+        "syscr": 23,
+        "syscw": 34638,
+        "read_bytes": 0,
+        "write_bytes": 2969600,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 38.838917183244725
+    },
+    {
+      "elapsed_seconds": 110.28460926900152,
+      "sample_utc": "2026-10-30T17:34:04Z",
+      "high_water_rss_kib": 47516,
+      "rss_kib": 47516,
+      "threads": 25,
+      "cpu_seconds": 26.7,
+      "io": {
+        "rchar": 11186,
+        "wchar": 376802853,
+        "syscr": 23,
+        "syscw": 35142,
+        "read_bytes": 0,
+        "write_bytes": 3002368,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 43.56561116838025
+    },
+    {
+      "elapsed_seconds": 111.29159140100091,
+      "sample_utc": "2026-10-30T17:34:05Z",
+      "high_water_rss_kib": 47528,
+      "rss_kib": 47528,
+      "threads": 25,
+      "cpu_seconds": 27.05,
+      "io": {
+        "rchar": 11186,
+        "wchar": 382151122,
+        "syscr": 23,
+        "syscw": 35562,
+        "read_bytes": 0,
+        "write_bytes": 3035136,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 34.757319805175136
+    },
+    {
+      "elapsed_seconds": 112.29812900199613,
+      "sample_utc": "2026-10-30T17:34:06Z",
+      "high_water_rss_kib": 48432,
+      "rss_kib": 48432,
+      "threads": 25,
+      "cpu_seconds": 27.47,
+      "io": {
+        "rchar": 11186,
+        "wchar": 387026430,
+        "syscr": 23,
+        "syscw": 36006,
+        "read_bytes": 0,
+        "write_bytes": 3063808,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 41.72720418837053
+    },
+    {
+      "elapsed_seconds": 113.30270643199765,
+      "sample_utc": "2026-10-30T17:34:07Z",
+      "high_water_rss_kib": 48232,
+      "rss_kib": 48232,
+      "threads": 25,
+      "cpu_seconds": 27.88,
+      "io": {
+        "rchar": 11186,
+        "wchar": 393318321,
+        "syscr": 23,
+        "syscw": 36496,
+        "read_bytes": 0,
+        "write_bytes": 3100672,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 40.81318052301656
+    },
+    {
+      "elapsed_seconds": 114.30714586300019,
+      "sample_utc": "2026-10-30T17:34:08Z",
+      "high_water_rss_kib": 48428,
+      "rss_kib": 48428,
+      "threads": 25,
+      "cpu_seconds": 28.35,
+      "io": {
+        "rchar": 11186,
+        "wchar": 398878358,
+        "syscr": 23,
+        "syscw": 38096,
+        "read_bytes": 0,
+        "write_bytes": 3178496,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 46.79226895054186
+    },
+    {
+      "elapsed_seconds": 115.31216655200114,
+      "sample_utc": "2026-10-30T17:34:09Z",
+      "high_water_rss_kib": 48116,
+      "rss_kib": 48116,
+      "threads": 25,
+      "cpu_seconds": 28.73,
+      "io": {
+        "rchar": 11186,
+        "wchar": 404932716,
+        "syscr": 23,
+        "syscw": 38810,
+        "read_bytes": 0,
+        "write_bytes": 3211264,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 37.81016691086624
+    },
+    {
+      "elapsed_seconds": 116.31512329899851,
+      "sample_utc": "2026-10-30T17:34:10Z",
+      "high_water_rss_kib": 48232,
+      "rss_kib": 48232,
+      "threads": 25,
+      "cpu_seconds": 29.02,
+      "io": {
+        "rchar": 11186,
+        "wchar": 409549835,
+        "syscr": 23,
+        "syscw": 39668,
+        "read_bytes": 0,
+        "write_bytes": 3239936,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 28.914507117898722
+    },
+    {
+      "elapsed_seconds": 117.31697591699776,
+      "sample_utc": "2026-10-30T17:34:11Z",
+      "high_water_rss_kib": 48164,
+      "rss_kib": 48164,
+      "threads": 25,
+      "cpu_seconds": 29.3,
+      "io": {
+        "rchar": 11186,
+        "wchar": 413890948,
+        "syscr": 23,
+        "syscw": 40507,
+        "read_bytes": 0,
+        "write_bytes": 3268608,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 27.94822261972771
+    },
+    {
+      "elapsed_seconds": 118.32089219799673,
+      "sample_utc": "2026-10-30T17:34:12Z",
+      "high_water_rss_kib": 48144,
+      "rss_kib": 48144,
+      "threads": 25,
+      "cpu_seconds": 29.61,
+      "io": {
+        "rchar": 11186,
+        "wchar": 419292544,
+        "syscr": 23,
+        "syscw": 41354,
+        "read_bytes": 0,
+        "write_bytes": 3297280,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 30.87906888924333
+    },
+    {
+      "elapsed_seconds": 119.32422435299668,
+      "sample_utc": "2026-10-30T17:34:13Z",
+      "high_water_rss_kib": 48144,
+      "rss_kib": 48144,
+      "threads": 25,
+      "cpu_seconds": 29.93,
+      "io": {
+        "rchar": 11186,
+        "wchar": 424453120,
+        "syscr": 23,
+        "syscw": 42184,
+        "read_bytes": 0,
+        "write_bytes": 3325952,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 31.8937251642269
+    },
+    {
+      "elapsed_seconds": 120.3269585320013,
+      "sample_utc": "2026-10-30T17:34:14Z",
+      "high_water_rss_kib": 48472,
+      "rss_kib": 48472,
+      "threads": 25,
+      "cpu_seconds": 30.28,
+      "io": {
+        "rchar": 11186,
+        "wchar": 428976631,
+        "syscr": 23,
+        "syscw": 42852,
+        "read_bytes": 0,
+        "write_bytes": 3354624,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 34.904564672108144
+    },
+    {
+      "elapsed_seconds": 121.33061530000123,
+      "sample_utc": "2026-10-30T17:34:15Z",
+      "high_water_rss_kib": 48472,
+      "rss_kib": 48472,
+      "threads": 25,
+      "cpu_seconds": 30.6,
+      "io": {
+        "rchar": 11186,
+        "wchar": 433462039,
+        "syscr": 23,
+        "syscw": 43672,
+        "read_bytes": 0,
+        "write_bytes": 3383296,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 31.883409767433857
+    },
+    {
+      "elapsed_seconds": 122.33337252799538,
+      "sample_utc": "2026-10-30T17:34:16Z",
+      "high_water_rss_kib": 48328,
+      "rss_kib": 48328,
+      "threads": 25,
+      "cpu_seconds": 30.96,
+      "io": {
+        "rchar": 11186,
+        "wchar": 438225254,
+        "syscr": 23,
+        "syscw": 44390,
+        "read_bytes": 0,
+        "write_bytes": 3411968,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 35.901012722702546
+    },
+    {
+      "elapsed_seconds": 123.33824404500047,
+      "sample_utc": "2026-10-30T17:34:17Z",
+      "high_water_rss_kib": 48328,
+      "rss_kib": 48328,
+      "threads": 25,
+      "cpu_seconds": 31.32,
+      "io": {
+        "rchar": 11186,
+        "wchar": 444140061,
+        "syscr": 23,
+        "syscw": 44790,
+        "read_bytes": 0,
+        "write_bytes": 3440640,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 35.82547558646526
+    },
+    {
+      "elapsed_seconds": 124.34139994599536,
+      "sample_utc": "2026-10-30T17:34:18Z",
+      "high_water_rss_kib": 48448,
+      "rss_kib": 48448,
+      "threads": 25,
+      "cpu_seconds": 31.64,
+      "io": {
+        "rchar": 11186,
+        "wchar": 450149918,
+        "syscr": 23,
+        "syscw": 45304,
+        "read_bytes": 0,
+        "write_bytes": 3469312,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 31.899328876262828
+    },
+    {
+      "elapsed_seconds": 125.34341235100146,
+      "sample_utc": "2026-10-30T17:34:19Z",
+      "high_water_rss_kib": 48424,
+      "rss_kib": 48424,
+      "threads": 25,
+      "cpu_seconds": 31.94,
+      "io": {
+        "rchar": 11186,
+        "wchar": 454649841,
+        "syscr": 23,
+        "syscw": 46158,
+        "read_bytes": 0,
+        "write_bytes": 3497984,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 29.939749099031772
+    },
+    {
+      "elapsed_seconds": 126.34620838599949,
+      "sample_utc": "2026-10-30T17:34:20Z",
+      "high_water_rss_kib": 48488,
+      "rss_kib": 48488,
+      "threads": 25,
+      "cpu_seconds": 32.31,
+      "io": {
+        "rchar": 11186,
+        "wchar": 459352322,
+        "syscr": 23,
+        "syscw": 46963,
+        "read_bytes": 0,
+        "write_bytes": 3526656,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 36.89683515758294
+    },
+    {
+      "elapsed_seconds": 127.34956323899678,
+      "sample_utc": "2026-10-30T17:34:21Z",
+      "high_water_rss_kib": 48044,
+      "rss_kib": 48044,
+      "threads": 25,
+      "cpu_seconds": 32.61,
+      "io": {
+        "rchar": 11186,
+        "wchar": 464556689,
+        "syscr": 23,
+        "syscw": 47822,
+        "read_bytes": 0,
+        "write_bytes": 3555328,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 29.899690932257858
+    },
+    {
+      "elapsed_seconds": 128.3519274299979,
+      "sample_utc": "2026-10-30T17:34:22Z",
+      "high_water_rss_kib": 47840,
+      "rss_kib": 47840,
+      "threads": 25,
+      "cpu_seconds": 32.91,
+      "io": {
+        "rchar": 11186,
+        "wchar": 469627711,
+        "syscr": 23,
+        "syscw": 48680,
+        "read_bytes": 0,
+        "write_bytes": 3584000,
+        "cancelled_write_bytes": 0
+      },
+      "cpu_percent_of_one_core": 29.929241556442317
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "captured_utc": "2026-10-30T17:32:05Z",
+  "git_commit": "eb3ef1176d37c942eb4198a1a2cf63de1b87bf05",
+  "dirty_paths": [
+    "M .github/workflows/ci.yml",
+    " M compose.yaml",
+    " M docs/benchmark.md",
+    " M docs/operations.md",
+    " M scripts/backup.sh",
+    " M scripts/benchmark.py",
+    " M scripts/local-init.sh",
+    " M scripts/observe.py",
+    " M src/store.rs",
+    " M tests/integration.rs",
+    "?? docs/artifacts/",
+    "?? docs/deployment-validation.md",
+    "?? docs/performance/schema7-load-optimized/",
+    "?? docs/performance/schema7-load/",
+    "?? scripts/deployment-smoke.py",
+    "?? scripts/test_benchmark.py",
+    "?? tests/read_query_contracts.rs"
+  ],
+  "source_sha256": "18a3b906bbfd647827d3c6ed4633e8d759b20547b72eefa7653f9f28f1774aa1",
+  "source_digest_method": "SHA256 over sorted tracked src,migrations,Cargo.toml,Cargo.lock,benchmark.py,observe.py; path NUL content NUL",
+  "binary_sha256": "818f23e6af10c251542597ff507b7466f8fe24088c0a30c5c17f6b064fdb8b52",
+  "hardware": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "cpu_count": 24,
+    "python": "3.12.3",
+    "cpu_model": "AMD Ryzen 9 5900X 12-Core Processor",
+    "host_memory_total": "32863916 kB"
+  },
+  "rustc": "rustc 1.96.1 (31fca3adb 2026-06-26)",
+  "cargo": "cargo 1.96.1 (356927216 2026-06-26)",
+  "filesystem": "SOURCE   FSTYPE OPTIONS\n/dev/sdd ext4   rw,relatime,discard,errors=remount-ro,data=ordered",
+  "disk": "NAME  MODEL        TYPE   SIZE ROTA\nram0               disk     4M    0\nram1               disk     4M    0\nram2               disk     4M    0\nram3               disk     4M    0\nram4               disk     4M    0\nram5               disk     4M    0\nram6               disk     4M    0\nram7               disk     4M    0\nram8               disk     4M    0\nram9               disk     4M    0\nram10              disk     4M    0\nram11              disk     4M    0\nram12              disk     4M    0\nram13              disk     4M    0\nram14              disk     4M    0\nram15              disk     4M    0\nsda   Virtual Disk disk 356.9M    1\nsdb   Virtual Disk disk 159.4M    1\nsdc   Virtual Disk disk    32G    1\nsdd   Virtual Disk disk     1T    1\nsdf   Virtual Disk disk   150M    1\nsdg   Virtual Disk disk     1T    1",
+  "docker_version": "Docker version 29.3.1, build c2be9cc",
+  "postgres_image": "sha256:81edcaa5ff2923f7be9c1f43d3e5076f29c6c9c216c86964b5fd038959404429",
+  "postgres_limits": {
+    "memory": 0,
+    "nano_cpus": 0,
+    "cpu_period": 0,
+    "cpu_quota": 0
+  },
+  "configuration": {
+    "release": true,
+    "service_pool": 20,
+    "service_inflight": 256,
+    "service_deadline_seconds": 10,
+    "db_pool_acquire_timeout_seconds": 2,
+    "db_jit": "off per service-pool connection; PostgreSQL default remains on",
+    "db_statement_timeout_seconds": 4,
+    "db_lock_timeout_seconds": 2,
+    "mutation_timeout_seconds": 6,
+    "transport": "loopback HTTP; no TLS or Cloudflare",
+    "postgres_port": 55434,
+    "service_port": 18745,
+    "resource_limits": "No dedicated CPU allocation or Docker memory/CPU limit; shared desktop environment, not VPS capacity"
+  }
+}

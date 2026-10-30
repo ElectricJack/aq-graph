@@ -31,10 +31,17 @@ def main():
         now = time.monotonic()
         sample = {
             "elapsed_seconds": now - started,
+            "sample_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "high_water_rss_kib": int(status.get("VmHWM", "0 kB").split()[0]),
             "rss_kib": int(status.get("VmRSS", "0 kB").split()[0]),
             "threads": int(status["Threads"]),
             "cpu_seconds": ticks / clock_ticks,
         }
+        try:
+            io = dict(line.split(":", 1) for line in (process / "io").read_text().splitlines())
+            sample["io"] = {key: int(value) for key, value in io.items()}
+        except (OSError, ValueError):
+            pass
         if previous:
             sample["cpu_percent_of_one_core"] = 100 * (ticks - previous[1]) / clock_ticks / (now - previous[0])
         previous = now, ticks

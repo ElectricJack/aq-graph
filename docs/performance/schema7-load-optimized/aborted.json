@@ -1,0 +1,6 @@
+{
+  "aborted_epoch_seconds": 1793381662.516657,
+  "reason": "Parent requested abort following severe early regression. All fixed-phase checkpoints had completed before termination; partial open-loop requests remain only in logs/telemetry, not a full acceptance result.",
+  "generator_pid": 671445,
+  "signal": "SIGTERM"
+}

@@ -422,7 +422,10 @@ async fn competing_cycle_insertions_and_readiness_semantics() {
     } else {
         first.0
     };
-    assert!(loser == StatusCode::CONFLICT || loser == StatusCode::BAD_REQUEST);
+    assert!(
+        loser == StatusCode::CONFLICT || loser == StatusCode::BAD_REQUEST,
+        "{first:?} {second:?}"
+    );
     let (_, ready) = c.request("GET", "/ready", None).await;
     assert_eq!(items(&ready).len(), 1, "{ready}");
     let prerequisite = if first.0 == StatusCode::OK { a } else { b };

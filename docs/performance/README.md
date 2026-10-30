@@ -1,6 +1,14 @@
+# Current performance evidence
+
+- [Schema 7 full baseline](schema7-load/README.md): 100,000 nodes / 500,000 edges, release build and PostgreSQL 17; failed the proposed latency and 200/s workload targets.
+- [Fresh optimized-query experiment](schema7-load-optimized/README.md): severe early overload during overlapping maintenance; interrupted open-loop phase, retained as failed/incomplete evidence.
+- [Post-maintenance steady-state followup](schema7-load-optimized-steady/README.md): the same optimized binary after explicit VACUUM/ANALYZE on the previously written fixture. Its conditions differ from the original baseline; it does not establish fresh-load or maintenance acceptance.
+
+The [benchmark protocol](../benchmark.md) defines the workload and interpretation limits. The small [schema-7 smoke](schema7-smoke/README.md) is operational evidence only. The older measurements below remain historical.
+
 # Historical schema-3 performance results
 
-These measurements apply to the earlier schema-3 contract and binary recorded below. They predate schema-4/5 parent/readiness, endpoint-matrix and knowledge-authorization changes. They are **not capacity or latency evidence for the current schema-5 implementation**. Raw artifacts remain unchanged historical evidence; current compatibility tests and a small fixture smoke do not replace a full representative load rerun.
+These measurements apply to the earlier schema-3 contract and binary recorded below. They predate schema-4/5 parent/readiness, endpoint-matrix and knowledge-authorization changes. They are **not capacity or latency evidence for the current schema-7 implementation**. Raw artifacts remain unchanged historical evidence; current compatibility tests and a small fixture smoke do not replace a full representative load rerun.
 
 Measured 2026-10-30T06:58:51Z through 2026-10-30T07:01:54Z. This is a local development-machine measurement, not a production VPS capacity guarantee.
 

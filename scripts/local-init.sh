@@ -16,7 +16,7 @@ for name in ('token', 'postgres-password'):
 config = root / 'config.json'
 if not config.exists():
     with config.open('x') as f:
-        json.dump({'endpoint':'http://127.0.0.1:8741','workspace':'00000000-0000-4000-8000-000000000001','token_file':str(root / 'token')}, f, indent=2)
+        json.dump({'endpoint':'http://127.0.0.1:' + os.environ.get('AQ_GRAPH_PORT', '8741'),'workspace':'00000000-0000-4000-8000-000000000001','token_file':str(root / 'token')}, f, indent=2)
 config.chmod(0o600)
 PY
 # Docker bind-mounted secrets preserve host ownership. Match the service uid to
@@ -25,8 +25,9 @@ chmod 700 .local
 chmod 644 .local/postgres-password
 if [[ ! -e .env ]]; then
   printf 'AQ_GRAPH_UID=%s\nAQ_GRAPH_GID=%s\n' "$(id -u)" "$(id -g)" > .env
-elif ! grep -q '^AQ_GRAPH_UID=' .env; then
-  printf '\nAQ_GRAPH_UID=%s\nAQ_GRAPH_GID=%s\n' "$(id -u)" "$(id -g)" >> .env
+else
+  grep -q '^AQ_GRAPH_UID=' .env || printf '\nAQ_GRAPH_UID=%s\n' "$(id -u)" >> .env
+  grep -q '^AQ_GRAPH_GID=' .env || printf '\nAQ_GRAPH_GID=%s\n' "$(id -g)" >> .env
 fi
 printf '%s\n' 'Local credentials created. Start: docker compose up --build -d' \
   'Client: export AQ_GRAPH_CONFIG="$PWD/.local/config.json"' \

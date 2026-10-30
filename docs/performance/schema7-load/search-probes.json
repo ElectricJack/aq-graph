@@ -1,0 +1,365 @@
+{
+  "method": "Ten sequential warm HTTP requests per term after main workload; diagnostic selectivity comparison, not sustained throughput or target acceptance",
+  "results": [
+    {
+      "name": "common",
+      "term": "authentication",
+      "samples": [
+        {
+          "operation": "common",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 96.39918599714292,
+          "bytes": 43772
+        },
+        {
+          "operation": "common",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 105.89041399362031,
+          "bytes": 43772
+        },
+        {
+          "operation": "common",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 106.00069900101516,
+          "bytes": 43772
+        },
+        {
+          "operation": "common",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 111.90655699465424,
+          "bytes": 43772
+        },
+        {
+          "operation": "common",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 117.26528799772495,
+          "bytes": 43772
+        },
+        {
+          "operation": "common",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 111.15174499718705,
+          "bytes": 43772
+        },
+        {
+          "operation": "common",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 107.60190799919656,
+          "bytes": 43772
+        },
+        {
+          "operation": "common",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 109.56235599587671,
+          "bytes": 43772
+        },
+        {
+          "operation": "common",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 105.48920099972747,
+          "bytes": 43772
+        },
+        {
+          "operation": "common",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 106.367192005564,
+          "bytes": 43772
+        }
+      ],
+      "summary": {
+        "elapsed_seconds": 1.0776345459817094,
+        "offered": 10,
+        "completed": 10,
+        "client_queue_dropped": 0,
+        "requests_per_second": 9.279583730206186,
+        "success_per_second": 9.279583730206186,
+        "errors": 0,
+        "failed_offers": 0,
+        "timeouts": 0,
+        "statuses": {
+          "200": 10
+        },
+        "error_codes": {},
+        "all_request_latency": {
+          "p50_ms": 106.367192005564,
+          "p95_ms": 117.26528799772495,
+          "p99_ms": 117.26528799772495
+        },
+        "successful_request_latency": {
+          "p50_ms": 106.367192005564,
+          "p95_ms": 117.26528799772495,
+          "p99_ms": 117.26528799772495
+        },
+        "response_bytes": 437720,
+        "operations": {
+          "common": {
+            "count": 10,
+            "errors": 0,
+            "statuses": {
+              "200": 10
+            },
+            "error_codes": {},
+            "successful_latency": {
+              "p50_ms": 106.367192005564,
+              "p95_ms": 117.26528799772495,
+              "p99_ms": 117.26528799772495
+            },
+            "p50_ms": 106.367192005564,
+            "p95_ms": 117.26528799772495,
+            "p99_ms": 117.26528799772495
+          }
+        }
+      }
+    },
+    {
+      "name": "selective",
+      "term": "12345",
+      "samples": [
+        {
+          "operation": "selective",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 2.4927159975050017,
+          "bytes": 1544
+        },
+        {
+          "operation": "selective",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.9016359947272576,
+          "bytes": 1544
+        },
+        {
+          "operation": "selective",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.8276570044690743,
+          "bytes": 1544
+        },
+        {
+          "operation": "selective",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.638743000512477,
+          "bytes": 1544
+        },
+        {
+          "operation": "selective",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.5255309990607202,
+          "bytes": 1544
+        },
+        {
+          "operation": "selective",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.7129500047303736,
+          "bytes": 1544
+        },
+        {
+          "operation": "selective",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.6140520019689575,
+          "bytes": 1544
+        },
+        {
+          "operation": "selective",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.5689929932705127,
+          "bytes": 1544
+        },
+        {
+          "operation": "selective",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.7249079974135384,
+          "bytes": 1544
+        },
+        {
+          "operation": "selective",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.5350870016845874,
+          "bytes": 1544
+        }
+      ],
+      "summary": {
+        "elapsed_seconds": 0.0175422729953425,
+        "offered": 10,
+        "completed": 10,
+        "client_queue_dropped": 0,
+        "requests_per_second": 570.0515550439225,
+        "success_per_second": 570.0515550439225,
+        "errors": 0,
+        "failed_offers": 0,
+        "timeouts": 0,
+        "statuses": {
+          "200": 10
+        },
+        "error_codes": {},
+        "all_request_latency": {
+          "p50_ms": 1.638743000512477,
+          "p95_ms": 2.4927159975050017,
+          "p99_ms": 2.4927159975050017
+        },
+        "successful_request_latency": {
+          "p50_ms": 1.638743000512477,
+          "p95_ms": 2.4927159975050017,
+          "p99_ms": 2.4927159975050017
+        },
+        "response_bytes": 15440,
+        "operations": {
+          "selective": {
+            "count": 10,
+            "errors": 0,
+            "statuses": {
+              "200": 10
+            },
+            "error_codes": {},
+            "successful_latency": {
+              "p50_ms": 1.638743000512477,
+              "p95_ms": 2.4927159975050017,
+              "p99_ms": 2.4927159975050017
+            },
+            "p50_ms": 1.638743000512477,
+            "p95_ms": 2.4927159975050017,
+            "p99_ms": 2.4927159975050017
+          }
+        }
+      }
+    },
+    {
+      "name": "missing",
+      "term": "absentbenchmarktermzz",
+      "samples": [
+        {
+          "operation": "missing",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.5845730013097636,
+          "bytes": 31
+        },
+        {
+          "operation": "missing",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.5315679993364029,
+          "bytes": 31
+        },
+        {
+          "operation": "missing",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.3267239992273971,
+          "bytes": 31
+        },
+        {
+          "operation": "missing",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.5041709993965924,
+          "bytes": 31
+        },
+        {
+          "operation": "missing",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.3282930012792349,
+          "bytes": 31
+        },
+        {
+          "operation": "missing",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.425716000085231,
+          "bytes": 31
+        },
+        {
+          "operation": "missing",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.48729400098091,
+          "bytes": 31
+        },
+        {
+          "operation": "missing",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.3372529938351363,
+          "bytes": 31
+        },
+        {
+          "operation": "missing",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.304992998484522,
+          "bytes": 31
+        },
+        {
+          "operation": "missing",
+          "status": "200",
+          "error_code": null,
+          "latency_ms": 1.538114003778901,
+          "bytes": 31
+        }
+      ],
+      "summary": {
+        "elapsed_seconds": 0.014368698997714091,
+        "offered": 10,
+        "completed": 10,
+        "client_queue_dropped": 0,
+        "requests_per_second": 695.9572332603595,
+        "success_per_second": 695.9572332603595,
+        "errors": 0,
+        "failed_offers": 0,
+        "timeouts": 0,
+        "statuses": {
+          "200": 10
+        },
+        "error_codes": {},
+        "all_request_latency": {
+          "p50_ms": 1.425716000085231,
+          "p95_ms": 1.5845730013097636,
+          "p99_ms": 1.5845730013097636
+        },
+        "successful_request_latency": {
+          "p50_ms": 1.425716000085231,
+          "p95_ms": 1.5845730013097636,
+          "p99_ms": 1.5845730013097636
+        },
+        "response_bytes": 310,
+        "operations": {
+          "missing": {
+            "count": 10,
+            "errors": 0,
+            "statuses": {
+              "200": 10
+            },
+            "error_codes": {},
+            "successful_latency": {
+              "p50_ms": 1.425716000085231,
+              "p95_ms": 1.5845730013097636,
+              "p99_ms": 1.5845730013097636
+            },
+            "p50_ms": 1.425716000085231,
+            "p95_ms": 1.5845730013097636,
+            "p99_ms": 1.5845730013097636
+          }
+        }
+      }
+    }
+  ]
+}

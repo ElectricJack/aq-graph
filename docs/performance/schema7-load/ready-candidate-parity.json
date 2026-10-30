@@ -1,0 +1,88 @@
+{
+  "method": "Original measured ready SQL versus EXCEPT/lateral candidate, full JSON values and ordered ID pages compared within each statement snapshot on retained fixture; read-only jit=off; representative cursors/limits, not exhaustive lifecycle cases",
+  "original_sql": "SELECT to_jsonb(n)-'search_document' FROM nodes n WHERE workspace_id=$1 AND kind='task' AND task_state='active' AND NOT deleted AND NOT retired AND ($2::uuid IS NULL OR id>$2)\nAND NOT EXISTS (SELECT 1 FROM edges pc JOIN nodes child ON child.id=pc.target AND child.workspace_id=pc.workspace_id WHERE pc.workspace_id=n.workspace_id AND pc.source=n.id AND pc.edge_type='parent-child' AND NOT pc.deleted AND NOT child.deleted)\nAND NOT EXISTS (\n SELECT 1 FROM edges pe JOIN nodes parent ON parent.id=pe.source AND parent.workspace_id=pe.workspace_id\n LEFT JOIN edges ge ON ge.workspace_id=pe.workspace_id AND ge.target=parent.id AND ge.edge_type='parent-child' AND NOT ge.deleted\n LEFT JOIN nodes grandparent ON grandparent.id=ge.source AND grandparent.workspace_id=ge.workspace_id\n WHERE pe.workspace_id=n.workspace_id AND pe.target=n.id AND pe.edge_type='parent-child' AND NOT pe.deleted\n AND (parent.deleted OR parent.retired OR parent.task_state='draft' OR grandparent.deleted OR grandparent.retired OR grandparent.task_state='draft'))\nAND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id=e.source WHERE e.workspace_id=n.workspace_id AND e.target=n.id AND e.edge_type='blocks' AND NOT e.deleted AND (prerequisite.deleted OR prerequisite.task_state IS DISTINCT FROM 'completed')) ORDER BY id LIMIT $3",
+  "candidate_sql": "WITH candidates AS MATERIALIZED (\nSELECT id FROM (\nSELECT id FROM nodes WHERE workspace_id=$1 AND kind='task' AND task_state='active' AND NOT deleted AND ($2::uuid IS NULL OR id>$2)\nEXCEPT\nSELECT pc.source FROM edges pc JOIN nodes child ON child.id=pc.target AND child.workspace_id=pc.workspace_id\nWHERE pc.workspace_id=$1 AND pc.edge_type='parent-child' AND NOT pc.deleted AND NOT child.deleted AND ($2::uuid IS NULL OR pc.source>$2)\n) leaves ORDER BY id\n)\nSELECT to_jsonb(n)-'search_document' FROM candidates c\nCROSS JOIN LATERAL (SELECT n.* FROM nodes n WHERE n.workspace_id=$1 AND n.id=c.id AND NOT n.retired\nAND NOT EXISTS (\n SELECT 1 FROM edges pe JOIN nodes parent ON parent.id=pe.source AND parent.workspace_id=pe.workspace_id\n LEFT JOIN edges ge ON ge.workspace_id=pe.workspace_id AND ge.target=parent.id AND ge.edge_type='parent-child' AND NOT ge.deleted\n LEFT JOIN nodes grandparent ON grandparent.id=ge.source AND grandparent.workspace_id=ge.workspace_id\n WHERE pe.workspace_id=n.workspace_id AND pe.target=n.id AND pe.edge_type='parent-child' AND NOT pe.deleted\n AND (parent.deleted OR parent.retired OR parent.task_state='draft' OR grandparent.deleted OR grandparent.retired OR grandparent.task_state='draft'))\nAND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id=e.source WHERE e.workspace_id=n.workspace_id AND e.target=n.id AND e.edge_type='blocks' AND NOT e.deleted AND (prerequisite.deleted OR prerequisite.task_state IS DISTINCT FROM 'completed')) LIMIT 1) n ORDER BY c.id LIMIT $3",
+  "cases": [
+    {
+      "cursor_index": null,
+      "limit": 1,
+      "elapsed_seconds": 0.3889986909998697,
+      "old_count": 1,
+      "new_count": 1,
+      "difference_count": 0,
+      "same_ordered_page": true
+    },
+    {
+      "cursor_index": null,
+      "limit": 21,
+      "elapsed_seconds": 0.40453917699778685,
+      "old_count": 21,
+      "new_count": 21,
+      "difference_count": 0,
+      "same_ordered_page": true
+    },
+    {
+      "cursor_index": null,
+      "limit": 101,
+      "elapsed_seconds": 0.39794377100042766,
+      "old_count": 101,
+      "new_count": 101,
+      "difference_count": 0,
+      "same_ordered_page": true
+    },
+    {
+      "cursor_index": 1,
+      "limit": 21,
+      "elapsed_seconds": 0.3923372270000982,
+      "old_count": 21,
+      "new_count": 21,
+      "difference_count": 0,
+      "same_ordered_page": true
+    },
+    {
+      "cursor_index": 26666,
+      "limit": 21,
+      "elapsed_seconds": 0.24668637300055707,
+      "old_count": 21,
+      "new_count": 21,
+      "difference_count": 0,
+      "same_ordered_page": true
+    },
+    {
+      "cursor_index": 53333,
+      "limit": 21,
+      "elapsed_seconds": 0.1424981679956545,
+      "old_count": 21,
+      "new_count": 21,
+      "difference_count": 0,
+      "same_ordered_page": true
+    },
+    {
+      "cursor_index": 70000,
+      "limit": 21,
+      "elapsed_seconds": 0.13390974100184394,
+      "old_count": 21,
+      "new_count": 21,
+      "difference_count": 0,
+      "same_ordered_page": true
+    },
+    {
+      "cursor_index": 79999,
+      "limit": 21,
+      "elapsed_seconds": 0.17944755099597387,
+      "old_count": 0,
+      "new_count": 0,
+      "difference_count": 0,
+      "same_ordered_page": true
+    },
+    {
+      "cursor_index": 99999,
+      "limit": 21,
+      "elapsed_seconds": 0.10707602799811866,
+      "old_count": 0,
+      "new_count": 0,
+      "difference_count": 0,
+      "same_ordered_page": true
+    }
+  ]
+}

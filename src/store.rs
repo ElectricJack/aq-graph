@@ -114,6 +114,9 @@ impl Store {
             .acquire_timeout(Duration::from_secs(2))
             .after_connect(|conn, _| {
                 Box::pin(async move {
+                    // Bounded OLTP queries must not pay per-execution JIT compilation
+                    // for high estimated cardinalities in generic prepared plans.
+                    sqlx::query("SET jit=off").execute(&mut *conn).await?;
                     sqlx::query("SET statement_timeout='4s'")
                         .execute(&mut *conn)
                         .await?;
@@ -297,15 +300,28 @@ impl Store {
         // Two indexed ancestor joins suffice; a per-candidate recursive CTE can
         // cause repeated full node scans and JIT overhead even on small graphs.
         // A future hierarchy-depth increase must also extend this predicate.
-        let vs=sqlx::query_scalar::<_,Value>("SELECT to_jsonb(n)-'search_document' FROM nodes n WHERE workspace_id=$1 AND kind='task' AND task_state='active' AND NOT deleted AND NOT retired AND ($2::uuid IS NULL OR id>$2)
-AND NOT EXISTS (SELECT 1 FROM edges pc JOIN nodes child ON child.id=pc.target AND child.workspace_id=pc.workspace_id WHERE pc.workspace_id=n.workspace_id AND pc.source=n.id AND pc.edge_type='parent-child' AND NOT pc.deleted AND NOT child.deleted)
+        // Select narrow leaf identities before fetching bodies. A LIMIT-driven
+        // primary-key walk otherwise loads tens of thousands of early-ID parents.
+        // The ordered set encourages lazy guard evaluation in measured plans. The
+        // lateral LIMIT is an optimizer barrier despite the unique node identity;
+        // removing it can reintroduce a body-first scan before the page limit.
+        let vs=sqlx::query_scalar::<_,Value>("WITH candidates AS MATERIALIZED (
+SELECT id FROM (
+SELECT id FROM nodes WHERE workspace_id=$1 AND kind='task' AND task_state='active' AND NOT deleted AND ($2::uuid IS NULL OR id>$2)
+EXCEPT
+SELECT pc.source FROM edges pc JOIN nodes child ON child.id=pc.target AND child.workspace_id=pc.workspace_id
+WHERE pc.workspace_id=$1 AND pc.edge_type='parent-child' AND NOT pc.deleted AND NOT child.deleted AND ($2::uuid IS NULL OR pc.source>$2)
+) leaves ORDER BY id
+)
+SELECT to_jsonb(n)-'search_document' FROM candidates c
+CROSS JOIN LATERAL (SELECT n.* FROM nodes n WHERE n.workspace_id=$1 AND n.id=c.id AND NOT n.retired
 AND NOT EXISTS (
  SELECT 1 FROM edges pe JOIN nodes parent ON parent.id=pe.source AND parent.workspace_id=pe.workspace_id
  LEFT JOIN edges ge ON ge.workspace_id=pe.workspace_id AND ge.target=parent.id AND ge.edge_type='parent-child' AND NOT ge.deleted
  LEFT JOIN nodes grandparent ON grandparent.id=ge.source AND grandparent.workspace_id=ge.workspace_id
  WHERE pe.workspace_id=n.workspace_id AND pe.target=n.id AND pe.edge_type='parent-child' AND NOT pe.deleted
  AND (parent.deleted OR parent.retired OR parent.task_state='draft' OR grandparent.deleted OR grandparent.retired OR grandparent.task_state='draft'))
-AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id=e.source WHERE e.workspace_id=n.workspace_id AND e.target=n.id AND e.edge_type='blocks' AND NOT e.deleted AND (prerequisite.deleted OR prerequisite.task_state IS DISTINCT FROM 'completed')) ORDER BY id LIMIT $3").bind(p.workspace_id).bind(cursor(&q)?).bind(n+1).fetch_all(&self.pool).await?;
+AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id=e.source WHERE e.workspace_id=n.workspace_id AND e.target=n.id AND e.edge_type='blocks' AND NOT e.deleted AND (prerequisite.deleted OR prerequisite.task_state IS DISTINCT FROM 'completed')) LIMIT 1) n ORDER BY c.id LIMIT $3").bind(p.workspace_id).bind(cursor(&q)?).bind(n+1).fetch_all(&self.pool).await?;
         node_page(vs, n)
     }
     pub async fn search(&self, p: &Principal, text: &str, q: ListQuery) -> Result<Page<Node>> {
@@ -534,7 +550,10 @@ AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id
             })
             .transpose()?
             .unwrap_or(0);
-        let mut items=sqlx::query_scalar::<_,Value>("SELECT to_jsonb(h)-'workspace_id'-'node_ids' FROM history_entries h WHERE workspace_id=$1 AND node_ids @> ARRAY[$2]::uuid[] AND sequence>$3 ORDER BY sequence LIMIT $4").bind(p.workspace_id).bind(id).bind(after).bind(n+1).fetch_all(&self.pool).await?;
+        // Isolate membership selection from cursor/limit planning. Generic plans
+        // otherwise scan most workspace history in sequence order, or intersect
+        // the tiny GIN match with a bitmap of every sequence after the cursor.
+        let mut items=sqlx::query_scalar::<_,Value>("WITH matching AS MATERIALIZED (SELECT sequence FROM history_entries WHERE workspace_id=$1 AND node_ids @> ARRAY[$2]::uuid[]), selected AS MATERIALIZED (SELECT sequence FROM matching WHERE sequence>$3 ORDER BY sequence LIMIT $4) SELECT to_jsonb(h)-'workspace_id'-'node_ids' FROM selected s JOIN history_entries h ON h.sequence=s.sequence ORDER BY s.sequence").bind(p.workspace_id).bind(id).bind(after).bind(n+1).fetch_all(&self.pool).await?;
         let more = items.len() > n as usize;
         items.truncate(n as usize);
         let next = if more {

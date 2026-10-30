@@ -1,0 +1,20 @@
+{
+  "rust_command": "AQ_GRAPH_TEST_DATABASE_URL=<isolated PostgreSQL 17 database> cargo test --locked --all-targets",
+  "rust_tests_passed": 121,
+  "postgresql_tests": 97,
+  "failures": 0,
+  "ignored": 0,
+  "wall_seconds_including_incremental_compile": 30.86,
+  "python_command": "python3 -m unittest discover -s scripts -p 'test_*.py'",
+  "python_tests_passed": 6,
+  "checks": [
+    "cargo fmt --all -- --check",
+    "cargo clippy --locked --all-targets -- -D warnings"
+  ],
+  "runtime_source_sha256": "503aa1dd5d359f33ee39648643cd700ba360c299065a29ecc85d3db02657ae6b",
+  "notes": [
+    "Full Rust run includes deliberate 10-second HTTP deadline test.",
+    "Initial pre-optimization PostgreSQL17 run overlapped bulk seeding/builds and returned a lock-timeout overload in the competing-cycle test. No assertion was weakened. Quiet pre-optimization run passed119; final optimized run passed121 including two additional read-contract tests.",
+    "Docker build/recovery evidence is recorded separately. Timed load was separated from all builds and test suites."
+  ]
+}

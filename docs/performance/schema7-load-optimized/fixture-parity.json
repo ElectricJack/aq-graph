@@ -1,0 +1,88 @@
+{
+  "method": "Fresh corrected identical deterministic seed; compare initial committed semantic counts and state/type distributions to retained baseline manifest",
+  "matching": {
+    "nodes": true,
+    "edges": true,
+    "revisions": true,
+    "history_entries": true,
+    "edge_versions": true,
+    "link_sets": true,
+    "link_memberships": true,
+    "node_states": true,
+    "edge_types": true
+  },
+  "baseline_counts": {
+    "nodes": 100000,
+    "edges": 500000,
+    "revisions": 300000,
+    "history_entries": 800000,
+    "edge_versions": 500000,
+    "link_sets": 100000,
+    "link_memberships": 713221,
+    "database_bytes": 2583271091,
+    "node_states": {
+      "canceled": 1334,
+      "knowledge:unverified": 20000,
+      "draft": 4000,
+      "active": 58666,
+      "completed": 16000
+    },
+    "edge_types": {
+      "blocks": 159887,
+      "parent-child": 53334,
+      "produces": 80000,
+      "references": 206779
+    },
+    "table_bytes": {
+      "_sqlx_migrations": 32768,
+      "workspaces": 24576,
+      "credentials": 49152,
+      "change_sets": 49152,
+      "node_revisions": 544202752,
+      "edges": 311689216,
+      "history_entries": 951771136,
+      "idempotency_receipts": 16384,
+      "nodes": 350470144,
+      "edge_versions": 278757376,
+      "link_sets": 32038912,
+      "link_set_members": 105897984
+    }
+  },
+  "optimized_counts": {
+    "nodes": 100000,
+    "edges": 500000,
+    "revisions": 300000,
+    "history_entries": 800000,
+    "edge_versions": 500000,
+    "link_sets": 100000,
+    "link_memberships": 713221,
+    "database_bytes": 2583295667,
+    "node_states": {
+      "canceled": 1334,
+      "knowledge:unverified": 20000,
+      "draft": 4000,
+      "active": 58666,
+      "completed": 16000
+    },
+    "edge_types": {
+      "blocks": 159887,
+      "parent-child": 53334,
+      "produces": 80000,
+      "references": 206779
+    },
+    "table_bytes": {
+      "_sqlx_migrations": 32768,
+      "workspaces": 24576,
+      "credentials": 49152,
+      "change_sets": 49152,
+      "node_revisions": 544202752,
+      "edges": 311689216,
+      "history_entries": 951771136,
+      "idempotency_receipts": 16384,
+      "nodes": 350470144,
+      "edge_versions": 278757376,
+      "link_sets": 32038912,
+      "link_set_members": 105897984
+    }
+  }
+}

@@ -34,17 +34,8 @@ jobs:
       - run: cargo test --locked --all-targets
       - run: python3 scripts/check-parity-map.py
       - run: cargo build --locked --release
-      - run: python3 -m py_compile scripts/benchmark.py
+      - run: python3 -m compileall -q scripts examples
+      - run: python3 -m unittest discover -s scripts -p 'test_*.py'
       - run: for script in scripts/*.sh; do bash -n "$script"; done
-      - run: scripts/local-init.sh
-      - run: docker compose config --quiet
-      - run: docker build -t aq-graph:ci .
-      - name: Compose smoke and restore
-        run: |
-          docker compose up -d --wait --wait-timeout 120
-          target/release/aq-graph --config .local/config.json task create --title "CI smoke" --state active --idempotency-key ci-smoke
-          target/release/aq-graph --config .local/config.json task ready
-          scripts/backup.sh .local/ci.dump
-          scripts/restore.sh .local/ci.dump aq_graph_restore_ci
-      - if: always()
-        run: docker compose down --volumes
+      - name: Isolated deployment and recovery drill
+        run: python3 scripts/deployment-smoke.py

@@ -1,0 +1,39 @@
+{
+  "result": "passed",
+  "image": "aq-graph:validation",
+  "project": "aq-graph-validation",
+  "port": 18746,
+  "checks": [
+    "credential rerun",
+    "nonroot/read-only",
+    "private PostgreSQL",
+    "fresh start",
+    "restart",
+    "same-schema recreate",
+    "exact revisions/links/history/draft/summary",
+    "receipt replay",
+    "backup/restore",
+    "invalid restore",
+    "existing destination refusal",
+    "restored write"
+  ],
+  "database_snapshot": {
+    "_sqlx_migrations": "7|3b58061adc33ae9805185cf692e46545",
+    "change_sets": "3|cc87e60a63dd5f14588279072dd5bc8e",
+    "credentials": "1|05bf8234843b4fd6873f98c5f92afd16",
+    "edge_versions": "1|ebca179d7fd0a4cfcc0c81490bd54a3c",
+    "edges": "1|7f9d67d46f35f2574d31e489b3d44e1c",
+    "history_entries": "6|1b6b93316987bf56a01ce75a8bbcb03f",
+    "idempotency_receipts": "3|52403bd4527680cf1637bf04c93bcdb3",
+    "link_set_members": "1|f765e21cac92b49eded59b69f1405e0b",
+    "link_sets": "3|370c51670944f1c6545d853284d68a81",
+    "node_revisions": "4|3770d696976d77e0be3e0ccc81453721",
+    "nodes": "2|6de05e45c780aaf65d23f0b8143406a0",
+    "workspaces": "1|3b991d961d5e6c61e4dac2b0bf04585b"
+  },
+  "image_id": "sha256:50565e8595155f29b3ac4baacdc390eab1ce7646b2dde8a2448aa665b03a3780",
+  "postgres_version": "17.11 (Debian 17.11-1.pgdg12+2)",
+  "elapsed_seconds": 80.49,
+  "command": "python3 scripts/deployment-smoke.py",
+  "review": "Independent parent run after readiness/history query optimizations; actual production Dockerfile rebuilt and final deployment script executed"
+}

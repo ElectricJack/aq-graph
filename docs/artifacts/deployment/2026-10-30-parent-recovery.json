@@ -1,0 +1,40 @@
+{
+  "result": "passed",
+  "image": "aq-graph:validation",
+  "project": "aq-graph-validation",
+  "port": 18746,
+  "checks": [
+    "credential rerun",
+    "nonroot/read-only",
+    "private PostgreSQL",
+    "fresh start",
+    "restart",
+    "same-schema recreate",
+    "exact revisions/links/history/draft/summary",
+    "receipt replay",
+    "backup/restore",
+    "invalid restore",
+    "existing destination refusal",
+    "restored write"
+  ],
+  "database_snapshot": {
+    "_sqlx_migrations": "7|35d5da7321a87985b9a6d375509c21d3",
+    "change_sets": "3|3272e9fbcd612131adf43c82fc1c27e1",
+    "credentials": "1|34162204ea978e911b0883fbf1190bd5",
+    "edge_versions": "1|b45cd7d55e8b549cd72d99ddc83f6c93",
+    "edges": "1|04b73d4a3f9bb8ac28a52c577c71fdfd",
+    "history_entries": "6|bdf42f60fe36cd51efd75838cc4f1b0a",
+    "idempotency_receipts": "3|b3820e9815adcfc166d51213a33f1e0d",
+    "link_set_members": "1|43c0f6644d8d11837bd89f4aea965b53",
+    "link_sets": "3|9bf53adb5183285484351f1e0477c302",
+    "node_revisions": "4|0b164f2ceefeca2fb0086bb49b36a768",
+    "nodes": "2|e2d27b5701c1e17a7e3d2d53dbb447ab",
+    "workspaces": "1|754f1aa8e5b07c4674f4291ef02e8f2e"
+  },
+  "image_id": "sha256:5497465739a0dc0202856c39d5086dde45b78f60be84dc0e9698681c24ccdfc6",
+  "postgres_version": "17.11 (Debian 17.11-1.pgdg12+2)",
+  "elapsed_seconds": 38.08,
+  "review": "Independent parent-agent run of frozen script, including default Docker build path and final permission/config/checksum guards",
+  "command": "python3 scripts/deployment-smoke.py",
+  "source_commit": "eb3ef11 plus deployment validation changes in this commit"
+}

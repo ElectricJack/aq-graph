@@ -1,0 +1,60 @@
+{
+  "postgres_configuration": {
+    "postgres_version": "PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
+    "fsync": "on",
+    "synchronous_commit": "on",
+    "full_page_writes": "on",
+    "track_io_timing": "on",
+    "jit": "on",
+    "jit_above_cost": "100000",
+    "timezone": "Etc/UTC",
+    "max_connections": "160",
+    "schema_version": 7
+  },
+  "format_version": 4,
+  "baseline_revision_offset": 1,
+  "semantic_profile": "schema7 shared fields: common classifications/typed sources/unverified defaults,25percent validity windows,20percent review markers; complete relationship baselines and three-level forest",
+  "seed": 42,
+  "workspace": "00000000-0000-4000-8000-000000000002",
+  "nodes": 100000,
+  "edges_requested": 500000,
+  "counts": {
+    "nodes": 100000,
+    "edges": 500000,
+    "revisions": 300000,
+    "history_entries": 800000,
+    "edge_versions": 500000,
+    "link_sets": 100000,
+    "link_memberships": 713221,
+    "database_bytes": 2583295667,
+    "node_states": {
+      "canceled": 1334,
+      "knowledge:unverified": 20000,
+      "draft": 4000,
+      "active": 58666,
+      "completed": 16000
+    },
+    "edge_types": {
+      "blocks": 159887,
+      "parent-child": 53334,
+      "produces": 80000,
+      "references": 206779
+    },
+    "table_bytes": {
+      "_sqlx_migrations": 32768,
+      "workspaces": 24576,
+      "credentials": 49152,
+      "change_sets": 49152,
+      "node_revisions": 544202752,
+      "edges": 311689216,
+      "history_entries": 951771136,
+      "idempotency_receipts": 16384,
+      "nodes": 350470144,
+      "edge_versions": 278757376,
+      "link_sets": 32038912,
+      "link_set_members": 105897984
+    }
+  },
+  "fixture_method": "offline SQL, synthetic snapshots and relationship history; not ingestion throughput",
+  "elapsed_seconds": 105.33724789899861
+}

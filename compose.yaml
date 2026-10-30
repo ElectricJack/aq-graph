@@ -39,7 +39,7 @@ services:
       - bootstrap_token
     ports:
       - '127.0.0.1:${AQ_GRAPH_PORT:-8741}:8741'
-    networks: [database]
+    networks: [database, frontend]
     depends_on:
       postgres: {condition: service_healthy}
     healthcheck:
@@ -58,6 +58,7 @@ services:
       driver: json-file
       options: {max-size: 10m, max-file: '3'}
 networks:
+  frontend: {}
   database:
     internal: true
 volumes:
