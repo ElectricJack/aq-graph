@@ -1030,7 +1030,7 @@
     "/v1/workspaces/{workspace}/nodes/{id}/diff": {
       "get": {
         "operationId": "get__v1_workspaces_workspace_nodes_id_diff",
-        "description": "",
+        "description": "Compare common record revisions, including lifecycle/deletion fields and owned-link changes.",
         "parameters": [
           {
             "name": "workspace",
@@ -3621,6 +3621,219 @@
           }
         }
       }
+    },
+    "/v1/workspaces/{workspace}/nodes/{id}/revisions/{revision}": {
+      "get": {
+        "operationId": "get_v1_workspaces_workspace_nodes_id_revisions_revision",
+        "description": "Read an exact retained task or knowledge revision, including owned historical edge versions. Never substitutes current links for unavailable legacy relationships.",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "revision",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionSnapshot"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or unsupported API version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid workspace bearer credential",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              },
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Bearer challenge"
+              }
+            }
+          },
+          "403": {
+            "description": "Capability denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "409": {
+            "description": "Stale version, unresolved references, duplicate identity, applied draft, or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "413": {
+            "description": "Request or response exceeds byte limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error; no driver details disclosed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "503": {
+            "description": "Admission, pool, lock, or request deadline exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "const": 1
+                },
+                "description": "Minimum suggested retry delay in seconds"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3705,12 +3918,14 @@
           "version": {
             "type": "integer",
             "format": "int64",
-            "minimum": 1
+            "minimum": 1,
+            "description": "Expected-version/CAS token, advancing on every authoritative record mutation."
           },
           "content_revision": {
             "type": "integer",
             "format": "int64",
-            "minimum": 1
+            "minimum": 1,
+            "description": "Common immutable revision identifier covering content, lifecycle, deletion and owned relationships."
           },
           "title": {
             "type": "string",
@@ -4227,6 +4442,11 @@
             "type": "integer",
             "format": "int64",
             "minimum": 1
+          },
+          "include_lifecycle": {
+            "type": "boolean",
+            "default": false,
+            "description": "Restore task_state, retired, retirement_reason and deleted only when true; knowledge verification is always reset."
           }
         },
         "required": [
@@ -4776,6 +4996,36 @@
               ],
               "additionalProperties": false
             }
+          },
+          "before_links": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Edge"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "after_links": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Edge"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "relationships_available": {
+            "type": "boolean",
+            "description": "True only when both compared revisions have exact retained link sets."
           }
         },
         "required": [
@@ -4784,7 +5034,10 @@
           "to",
           "before",
           "after",
-          "changes"
+          "changes",
+          "before_links",
+          "after_links",
+          "relationships_available"
         ],
         "additionalProperties": false
       },
@@ -5431,6 +5684,68 @@
           "truncated"
         ],
         "additionalProperties": false
+      },
+      "RevisionSnapshot": {
+        "type": "object",
+        "properties": {
+          "node": {
+            "$ref": "#/components/schemas/Node"
+          },
+          "links": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Edge"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "relationships_available": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "node",
+          "links",
+          "relationships_available"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "relationships_available": {
+                  "const": true
+                }
+              },
+              "required": [
+                "relationships_available"
+              ]
+            },
+            "then": {
+              "properties": {
+                "links": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Edge"
+                  }
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "links": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ],
+        "description": "Exact node and owned link versions: all outgoing links plus incoming blocks/parent-child. Legacy missing link sets are explicitly unavailable."
       }
     }
   }

@@ -246,8 +246,9 @@ async fn selective_history_version_conflicts_noops_and_content_restore() {
     );
     let (_, active) = c.request("GET", &format!("/nodes/{id}"), None).await;
     assert_eq!(
-        active["content_revision"], node["content_revision"],
-        "lifecycle mutation must not copy durable content"
+        active["content_revision"].as_i64().unwrap(),
+        node["content_revision"].as_i64().unwrap() + 1,
+        "durable lifecycle transitions use the same immutable revision engine"
     );
     assert!(active["version"].as_i64().unwrap() > v);
     let (status, err) = c
@@ -280,7 +281,7 @@ async fn selective_history_version_conflicts_noops_and_content_restore() {
         .iter()
         .filter(|e| e["category"] == "lifecycle")
         .count();
-    assert_eq!(revisions, 2, "{history}");
+    assert_eq!(revisions, 3, "{history}");
     assert!(events >= 2, "{history}");
     assert!(
         items(&history)
@@ -678,9 +679,14 @@ async fn pinned_revisions_deletion_search_and_bounded_context() {
         .request("GET", &format!("/nodes/{task}/context?max_bytes=1"), None)
         .await;
     assert_eq!(status, StatusCode::BAD_REQUEST, "{error}");
+    let final_task = c.request("GET", &format!("/nodes/{task}"), None).await.1;
     assert_eq!(
-        c.request("GET", &format!("/nodes/{task}"), None).await.1["version"],
-        task_node["version"],
-        "link edits do not modify durable node content"
+        final_task["version"].as_i64().unwrap(),
+        task_node["version"].as_i64().unwrap() + 6,
+        "each add/remove records a source revision"
+    );
+    assert_eq!(
+        final_task["title"], task_node["title"],
+        "relationship revisions preserve node content"
     );
 }

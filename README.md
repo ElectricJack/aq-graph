@@ -1,6 +1,6 @@
 # aq-graph
 
-A standalone Rust service and CLI for a shared task and knowledge graph. PostgreSQL holds current records, immutable content revisions, lifecycle events, relationship history, atomic batches and named drafts. It runs independently of Agent Q and never reads AQ databases.
+A standalone Rust service and CLI for a shared task and knowledge graph. PostgreSQL holds current records, immutable logical record revisions, lifecycle events, relationship history, atomic batches and named drafts. It runs independently of Agent Q and never reads AQ databases.
 
 The baseline includes workspace-scoped read/write/admin credentials, version-checked mutations, idempotency, dependency and parent-child cycle protection, intrinsic readiness, bounded context, full-text knowledge search, history and content restoration. A ready task is an active leaf with every blocking prerequisite completed and no draft structural ancestor; readiness is not an execution claim. `A blocks B` means B depends on A.
 
@@ -70,7 +70,7 @@ aq-graph knowledge create --title "Authentication decision" --type decision --fi
 aq-graph knowledge verify KNOWLEDGE_UUID --expected-version 1 \
   --evidence-file evidence.json --reason "Confirmed against source"
 aq-graph knowledge retire KNOWLEDGE_UUID --expected-version 2 --reason "Replaced procedure"
-aq-graph knowledge restore KNOWLEDGE_UUID --expected-version 3 --revision 1
+aq-graph knowledge restore KNOWLEDGE_UUID --expected-version 3 --revision 1 --include-lifecycle
 aq-graph link add TASK_A_UUID TASK_B_UUID --type blocks
 aq-graph link add TASK_UUID KNOWLEDGE_UUID --type references --target-revision 1 \
   --description "Decision evidence"
@@ -78,17 +78,24 @@ aq-graph link remove EDGE_UUID --expected-version 1
 aq-graph search "authentication"
 aq-graph search "authentication" --include-retired --include-disputed
 aq-graph history RECORD_UUID --limit 20
+aq-graph revision RECORD_UUID --revision 2
 aq-graph diff RECORD_UUID --from 1 --to 2
 aq-graph task restore TASK_UUID --expected-version 6 --revision 1
 ```
 
-Restoring content creates a new revision. It does not erase history or reverse lifecycle transitions. Delete tombstones preserve identity and history; attached active edges must be explicitly removed first. Knowledge starts unverified. Verification/dispute and retirement require admin authority and a nonempty reason. A meaningful protected correction clears verification; a no-op preserves it. Ordinary writers edit their own unverified knowledge, and admins may correct other authors. Default search excludes retired/disputed records; direct authorized reads retain them.
+Tasks and knowledge use the same revision engine. Every meaningful content, lifecycle, relationship-membership, parent or deletion change advances the affected record’s logical revision and CAS version; no-ops create no duplicate revision. The wire field `content_revision` is retained for compatibility and now identifies this complete logical record revision. `revision ID --revision N` returns the exact node snapshot plus its recorded relationship set; `diff` compares both node fields and relationships.
+
+Both `task restore` and `knowledge restore` restore content and recorded relationships as a new revision. Their default preserves current task state, retirement state/reason and deletion tombstone. Add `--include-lifecycle` to deliberately restore historical lifecycle/tombstone state. Knowledge verification remains subject to current policy: a meaningful restore clears verification and never revives a historical badge or old administrative authority; a true no-op preserves current verification. History is never rewritten. Delete tombstones preserve identity and history; attached active edges must be explicitly removed first. Knowledge starts unverified. Verification/dispute and retirement require admin authority and a nonempty reason. A meaningful protected correction clears verification; a no-op preserves it. Default restore of retired knowledge keeps it retired; use `--include-lifecycle` with an active historical revision when intentionally unretiring it. Ordinary writers edit their own unverified knowledge, and admins may correct other authors. Default search excludes retired/disputed records; direct authorized reads retain them.
 
 Knowledge supports typed provenance arrays through `--provenance-file`, and verification takes the same descriptor shape through `--evidence-file`. For example:
 
 ```json
-[{"source_id":"decision-review","kind":"url","url":"https://example.com/review","observed_at":"2026-10-30T00:00:00Z"}]
+[{"source_id":"decision-review","kind":"url","url":"https://example.com/review","observed_at":"2026-10-30T00:00:00Z","retained":false}]
 ```
+
+Revision relationships include all outgoing edges and incoming structural edges (`blocks` and `parent-child`), so task prerequisites and parent membership are versioned with their record. Structural edge changes advance both endpoints; informational changes advance the source only. Incoming informational links remain derived from other records. Floating targets resolve current content, and pinned targets retain exact revision semantics; a record snapshot is not whole-graph time travel.
+
+Pre-schema-6 snapshots remain readable without fabricated relationships: `relationships_available:false` and `links:null` mean the old relationship set is unknown. Restore rejects such an incomplete historical revision. Migration 0006 appends an attributed baseline for current state and current relationship membership, preserving every old snapshot and event. Use the new baseline or a later complete revision for restoration. A restore can change at most 100 relationships and rechecks current authority, endpoint access and graph invariants; an old valid snapshot may now require reconciliation.
 
 Task parent changes are atomic and version checked. Each child has one live parent; the hierarchy has at most three levels and cannot jointly cycle with blocking edges. Completed parents refuse new children, and normal completion refuses open direct children. `task tree` returns structural children with truncation metadata. Informational edges do not affect readiness. Structural links cannot pin content revisions; see the API for the endpoint-kind matrix.
 
@@ -131,7 +138,7 @@ AQ_GRAPH_TEST_DATABASE_URL=postgres://USER@127.0.0.1/aq_graph_test cargo test --
 cargo build --locked --release
 ```
 
-CI runs Rust checks, PostgreSQL-backed tests, an image build, a Compose smoke test, and isolated backup restoration. Tag releases build Linux x86_64 and macOS arm64 CLI archives with SHA-256 checksums and a versioned GHCR image. The Linux release artifact targets glibc on Ubuntu 22.04 or newer. Windows and other targets are not yet release-tested. API v1 and schema migration `0005` are the initial compatibility contract. Schema-breaking upgrades need an explicit migration and recovery plan; never assume an older image can read a newer schema.
+CI runs Rust checks, PostgreSQL-backed tests, an image build, a Compose smoke test, and isolated backup restoration. Tag releases build Linux x86_64 and macOS arm64 CLI archives with SHA-256 checksums and a versioned GHCR image. The Linux release artifact targets glibc on Ubuntu 22.04 or newer. Windows and other targets are not yet release-tested. API v1 and schema migration `0006` are the initial compatibility contract. Schema-breaking upgrades need an explicit migration and recovery plan; never assume an older image can read a newer schema.
 
 See [operations](docs/operations.md) for credentials, backup, restore, upgrades and failure handling, and [benchmarking](docs/benchmark.md) for reproducible fixtures, mixed load and limitations. The [specification](docs/specs/0001-aq-graph.md) describes intended scope. Semantic search, AQ execution, whole-graph time travel, offline merging and permanent erasure are outside this baseline.
 

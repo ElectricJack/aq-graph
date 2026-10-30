@@ -83,6 +83,9 @@ impl Client {
         assert_eq!(status, StatusCode::OK, "{v}");
         v
     }
+    async fn version(&self, id: Uuid) -> i64 {
+        self.show(id).await["version"].as_i64().unwrap()
+    }
     async fn parents(&self, child: Uuid) -> Vec<Uuid> {
         self.context(child).await["edges"]
             .as_array()
@@ -207,10 +210,43 @@ async fn informational_links_preserve_task_state_content_and_intrinsic_readiness
     let (s, replay) = c.request("POST", "/mutations", Some(request)).await;
     assert_eq!(s, StatusCode::OK, "{replay}");
     assert_eq!(replay, result);
-    assert_eq!(c.show(child).await, before);
-    assert_eq!(c.show(finding).await, target_before);
+    let after = c.show(child).await;
+    assert_eq!(
+        after["version"].as_i64().unwrap(),
+        before["version"].as_i64().unwrap() + 1,
+        "outgoing links are now a shared material revision"
+    );
+    assert_eq!(
+        after["content_revision"].as_i64().unwrap(),
+        before["content_revision"].as_i64().unwrap() + 1
+    );
+    let durable = |mut node: Value| {
+        for field in ["version", "content_revision", "updated_at"] {
+            node.as_object_mut().unwrap().remove(field);
+        }
+        node
+    };
+    assert_eq!(
+        durable(after),
+        durable(before),
+        "link revision must preserve task content/lifecycle"
+    );
+    assert_eq!(
+        c.show(finding).await,
+        target_before,
+        "incoming informational links remain derived from their owner"
+    );
     let (_, ready_after) = c.request("GET", "/ready", None).await;
-    assert_eq!(ready_after, ready_before);
+    let ready_ids = |page: &Value| {
+        page["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|node| node["id"].clone())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(ready_ids(&ready_after), ready_ids(&ready_before));
+    assert_eq!(ready_after["next_cursor"], ready_before["next_cursor"]);
     let context = c.context(child).await;
     let kinds: Vec<_> = context["edges"]
         .as_array()
@@ -368,8 +404,12 @@ async fn draft_parent_withholds_active_child_until_parent_activation() {
     // Strengthen the v1 direct-parent assertion across the maximum supported
     // three-level hierarchy: activating the parent alone must not bypass its
     // still-draft ancestor, even though the leaf's immediate parent is active.
-    c.success(vec![patch(parent, 1, json!({"task_state":"active"}))])
-        .await;
+    c.success(vec![patch(
+        parent,
+        c.version(parent).await,
+        json!({"task_state":"active"}),
+    )])
+    .await;
     let (status, ready) = c.request("GET", "/ready", None).await;
     assert_eq!(status, StatusCode::OK, "{ready}");
     assert!(
@@ -377,8 +417,12 @@ async fn draft_parent_withholds_active_child_until_parent_activation() {
         "draft grandparent must withhold the leaf beneath an active parent: {ready}"
     );
 
-    c.success(vec![patch(grandparent, 1, json!({"task_state":"active"}))])
-        .await;
+    c.success(vec![patch(
+        grandparent,
+        c.version(grandparent).await,
+        json!({"task_state":"active"}),
+    )])
+    .await;
     let (status, ready) = c.request("GET", "/ready", None).await;
     assert_eq!(status, StatusCode::OK, "{ready}");
     let ids: Vec<_> = ready["items"]
@@ -418,12 +462,23 @@ async fn open_children_prevent_normal_parent_completion() {
     let child = c.node("task", "active").await;
     c.success(vec![edge(parent, child, "parent-child")]).await;
     let (s, v) = c
-        .mutation(vec![patch(parent, 1, json!({"task_state":"completed"}))])
+        .mutation(vec![patch(
+            parent,
+            c.version(parent).await,
+            json!({"task_state":"completed"}),
+        )])
         .await;
     assert_eq!(
         s,
         StatusCode::CONFLICT,
         "open children must block normal completion: {v}"
+    );
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("open child"),
+        "must exercise hierarchy guard rather than a stale version: {v}"
     );
     assert_eq!(c.show(parent).await["task_state"], "active");
 }
@@ -439,12 +494,19 @@ async fn completed_and_canceled_children_allow_parent_completion() {
     c.success(vec![
         edge(parent, a, "parent-child"),
         edge(parent, b, "parent-child"),
-        patch(a, 1, json!({"task_state":"completed"})),
-        patch(b, 1, json!({"task_state":"canceled"})),
     ])
     .await;
-    c.success(vec![patch(parent, 1, json!({"task_state":"completed"}))])
-        .await;
+    c.success(vec![
+        patch(a, c.version(a).await, json!({"task_state":"completed"})),
+        patch(b, c.version(b).await, json!({"task_state":"canceled"})),
+    ])
+    .await;
+    c.success(vec![patch(
+        parent,
+        c.version(parent).await,
+        json!({"task_state":"completed"}),
+    )])
+    .await;
     assert_eq!(c.show(parent).await["task_state"], "completed");
 }
 

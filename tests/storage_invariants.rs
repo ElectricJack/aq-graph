@@ -219,7 +219,14 @@ async fn failed_batch_leaves_no_current_state_history_or_receipt() {
         f.store.get_node(&f.p, id).await,
         Err(Error::NotFound)
     ));
-    for table in ["node_revisions", "history_entries", "idempotency_receipts"] {
+    for table in [
+        "node_revisions",
+        "history_entries",
+        "idempotency_receipts",
+        "link_sets",
+        "link_set_members",
+        "edge_versions",
+    ] {
         let count: i64 = sqlx::query_scalar(&format!(
             "SELECT count(*) FROM {table} WHERE workspace_id=$1"
         ))
@@ -296,15 +303,29 @@ async fn draft_preview_restore_tombstone_and_ordered_dependency_resolution() {
     .unwrap();
     let draft = f
         .draft(vec![
-            json!({"op":"restore_node","id":id,"expected_version":2,"revision":1}),
+            json!({"op":"restore_node","id":id,"expected_version":3,"revision":1}),
         ])
         .await;
     let preview = f.store.validate_draft(&f.p, draft).await.unwrap();
-    assert_eq!(preview["preview"]["nodes"][0]["before"]["title"], "revised");
-    assert_eq!(preview["preview"]["nodes"][0]["after"]["title"], "original");
+    let node_preview = preview["preview"]["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|n| n["id"] == json!(id))
+        .unwrap();
+    assert_eq!(node_preview["before"]["title"], "revised");
+    assert_eq!(node_preview["after"]["title"], "original");
+    let edge_preview = preview["preview"]["edges"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["id"] == json!(edge))
+        .unwrap();
+    assert_eq!(edge_preview["before"]["deleted"], false);
+    assert_eq!(edge_preview["after"]["deleted"], true);
     let untouched = f.store.get_node(&f.p, id).await.unwrap();
     assert_eq!(untouched.title, "revised");
-    assert_eq!(untouched.version, 2);
+    assert_eq!(untouched.version, 3);
     f.store
         .apply_draft(&f.p, draft, "restore-content")
         .await
@@ -312,11 +333,28 @@ async fn draft_preview_restore_tombstone_and_ordered_dependency_resolution() {
     let restored = f.store.get_node(&f.p, id).await.unwrap();
     assert_eq!(restored.title, "original");
     assert_eq!(restored.task_state, Some(TaskState::Completed));
-    assert_eq!(restored.content_revision, 3);
+    assert_eq!(restored.content_revision, 4);
+    // Restoring revision one also removes the later informational relationship.
+    assert!(
+        f.store
+            .context(&f.p, id, ContextQuery::default())
+            .await
+            .unwrap()
+            .edges
+            .is_empty()
+    );
+    let replacement_edge = Uuid::new_v4();
+    f.apply(
+        "replacement-link",
+        vec![link(replacement_edge, id, neighbor)],
+    )
+    .await
+    .unwrap();
+    let linked = f.store.get_node(&f.p, id).await.unwrap();
     assert!(matches!(
         f.apply(
             "cannot-delete-referenced",
-            vec![json!({"op":"delete_node","id":id,"expected_version":3})]
+            vec![json!({"op":"delete_node","id":id,"expected_version":linked.version})]
         )
         .await,
         Err(Error::Conflict(_))
@@ -325,8 +363,8 @@ async fn draft_preview_restore_tombstone_and_ordered_dependency_resolution() {
     // tombstone operation in the same indivisible batch.
     let deletion = f
         .draft(vec![
-            json!({"op":"delete_node","id":id,"expected_version":3}),
-            json!({"op":"remove_edge","id":edge,"expected_version":1}),
+            json!({"op":"delete_node","id":id,"expected_version":linked.version}),
+            json!({"op":"remove_edge","id":replacement_edge,"expected_version":1}),
         ])
         .await;
     f.store.validate_draft(&f.p, deletion).await.unwrap();
@@ -337,10 +375,10 @@ async fn draft_preview_restore_tombstone_and_ordered_dependency_resolution() {
         .unwrap();
     let deleted = f.store.get_node(&f.p, id).await.unwrap();
     assert!(deleted.deleted);
-    assert_eq!(deleted.version, 4);
+    assert_eq!(deleted.version, linked.version + 2);
     f.apply(
         "undelete",
-        vec![json!({"op":"restore_node","id":id,"expected_version":4,"revision":2})],
+        vec![json!({"op":"restore_node","id":id,"expected_version":deleted.version,"revision":2,"include_lifecycle":true})],
     )
     .await
     .unwrap();
@@ -348,8 +386,8 @@ async fn draft_preview_restore_tombstone_and_ordered_dependency_resolution() {
     assert!(!n.deleted);
     assert_eq!(n.title, "revised");
     assert_eq!(n.task_state, Some(TaskState::Completed));
-    assert_eq!(n.version, 5);
-    assert_eq!(n.content_revision, 4);
+    assert_eq!(n.version, deleted.version + 1);
+    assert_eq!(n.content_revision, deleted.content_revision + 1);
 }
 
 #[tokio::test]

@@ -2,7 +2,7 @@
 //! External source descriptors are attributed evidence references, never proof of
 //! remote retention, access rights, truth, or an Agent Q review's approval.
 use crate::domain::*;
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
 use serde_json::Value;
 use std::collections::HashSet;
 use uuid::Uuid;
@@ -207,7 +207,7 @@ pub fn verify(
     n.provenance = sources;
     n.verification = Some(verification);
     n.last_verified_by = Some(p.actor_id.clone());
-    n.last_verified_at = Some(Utc::now());
+    n.last_verified_at = Some(server_time());
     Ok(())
 }
 

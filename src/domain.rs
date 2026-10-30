@@ -6,6 +6,11 @@ use uuid::Uuid;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// PostgreSQL timestamptz precision, shared by mutation responses and snapshots.
+pub(crate) fn server_time() -> DateTime<Utc> {
+    chrono::SubsecRound::trunc_subsecs(Utc::now(), 6)
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("invalid request: {0}")]
@@ -141,6 +146,10 @@ pub struct NodePatch {
     pub retirement_reason: Option<String>,
 }
 
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
 fn empty_object() -> Value {
     serde_json::json!({})
 }
@@ -183,6 +192,8 @@ pub enum Mutation {
         id: Uuid,
         expected_version: i64,
         revision: i64,
+        #[serde(default, skip_serializing_if = "is_false")]
+        include_lifecycle: bool,
     },
     AddEdge {
         #[serde(default)]
@@ -570,6 +581,19 @@ pub fn validate_content(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn default_restore_preserves_pre_upgrade_receipt_payload_shape() {
+        let legacy = serde_json::json!({"op":"restore_node","id":Uuid::nil(),"expected_version":4,"revision":2});
+        let request: Mutation = serde_json::from_value(legacy.clone()).unwrap();
+        assert_eq!(serde_json::to_value(request).unwrap(), legacy);
+        let mut explicit = legacy.clone();
+        explicit["include_lifecycle"] = serde_json::json!(false);
+        let request: Mutation = serde_json::from_value(explicit.clone()).unwrap();
+        assert_eq!(serde_json::to_value(request).unwrap(), legacy);
+        explicit["include_lifecycle"] = serde_json::json!(true);
+        let request: Mutation = serde_json::from_value(explicit.clone()).unwrap();
+        assert_eq!(serde_json::to_value(request).unwrap(), explicit);
+    }
     #[test]
     fn reject_unknown_fields_and_invalid_batches() {
         let v = serde_json::json!({"op":"create_node","kind":"task","title":"hello","actor_id":"spoof"});

@@ -1,5 +1,7 @@
 # Core graph parity with AQ v1
 
+The passing counts below describe the earlier schema-5 increment. Schema 6 replaces its selective revision policy with common logical record and relationship snapshots; current focused graph and common-revision tests pass on schema 6; prior results remain attributed to their original increment.
+
 Source checkout: `/home/jkern/dev/agent-queue2`, commit
 `9a9b8e8ef992d1ff699755a9383ed3c91e2844ea`. The source repository was read only;
 no daemon, operator database, migration, or Python test suite was run.
@@ -34,12 +36,29 @@ waits-for container conditions, sessions, and resource release remain AQ-owned.
 The former tests' private Python locks, derived parent pointer, and child-name
 allocation are not API requirements. The durable parent edge is authoritative.
 
-V1 source-link revisions/link tokens become separate versioned edge records and
-actor/workspace/operation idempotency receipts. Informational additions leave
-node content and lifecycle unchanged. Exact pinned payloads and immutable edge
-addition/removal history are asserted. Restoring historical link sets as part of
-a knowledge content restore, source-level link tokens, and redaction are distinct
-remaining contracts; the current graph tests do not claim those behaviors.
+V1 source-link revisions/link tokens now map to the same immutable material
+revision mechanism for tasks and knowledge. A material change to owned links
+advances the node's `version` and `content_revision`, while preserving unchanged
+content and task lifecycle. Edge identities and versions remain separate so a
+record revision can reference exact relationship snapshots. Owned membership
+includes all outgoing edges and incoming `blocks`/`parent-child` edges; other
+incoming informational edges remain derived from their owning records.
+
+The translated informational-link test now asserts that shared revision advance
+explicitly, and still checks that task content, lifecycle, target content, and
+readiness are unchanged. Version-checked hierarchy transitions read the current
+version after preceding membership edits. Completion refusal uses that current
+version and checks the open-child error, so stale tokens cannot accidentally
+satisfy the invariant test.
+
+Historical link restoration and task/knowledge shared revision behavior are
+additionally covered by `tests/unified_versions.rs`; the individual v1 graph
+translations below still disclose their selected assertion scope. Migration
+`0006` establishes a new attributed current-state baseline for both kinds,
+including tombstones. Older revisions retain their original contents and NULL
+link snapshots; exact link retrieval reports their unavailability instead of
+falling back to the current graph. The migration regression suite verifies that
+boundary and unchanged old history in isolated schemas.
 
 ## Translated assertions
 
@@ -53,7 +72,7 @@ a selected assertion translation does not claim its entire original workflow.
 | `test_record_links.py::test_matrix_self_duplicate_pin_and_atomic_batch` | `evidence_relationships_require_two_knowledge_endpoints` | supports/contradicts/supersedes require Knowledge→Knowledge; helper-source matrix extension |
 | `test_record_links.py::test_execution_edges_refused_before_any_write` | `structural_edges_refuse_knowledge_endpoints_before_writes` | blocks/parent-child cannot use knowledge; separate informational transport adapted to unified mutation API |
 | `test_record_links.py::test_matrix_self_duplicate_pin_and_atomic_batch` | `invalid_informational_batch_rolls_back_and_does_not_consume_identity` | Self, duplicate pair, unavailable pin, atomic rollback, subsequent valid operation |
-| `test_record_links.py::test_task_link_token_and_replay_do_not_touch_execution_or_target`; `test_record_graph.py::test_execution_and_record_links_are_distinct_and_progress_unchanged` | `informational_links_preserve_task_state_content_and_intrinsic_readiness` | Replay identical result; source/target nodes and readiness unchanged; both relationship families visible |
+| `test_record_links.py::test_task_link_token_and_replay_do_not_touch_execution_or_target`; `test_record_graph.py::test_execution_and_record_links_are_distinct_and_progress_unchanged` | `informational_links_preserve_task_state_content_and_intrinsic_readiness` | Replay identical result; source durable content/lifecycle, target and readiness unchanged; source version/revision advance under schema 6; both relationship families visible |
 | `test_record_links.py::test_concurrent_duplicate_has_one_winner` | `concurrent_duplicate_informational_edges_have_one_winner` | Two distinct requests, one relationship, one successful writer; HTTP conflict replaces v1 revision-conflict code |
 | `test_record_graph.py::test_graph_omits_cross_project_endpoint_and_does_not_leak_counts` | `cross_workspace_link_refusal_never_discloses_private_context` | Stronger write refusal instead of privileged cross-project fixture import; no foreign ID/count signal |
 | `test_hierarchy_queries.py::TestSetParent.test_reparent_replaces_the_single_edge` | `child_cannot_have_two_live_parents` | Raw edge API cannot bypass single-parent membership |
@@ -113,9 +132,7 @@ dependency writer. Repeated same-key operations still replay committed receipts.
 ```
 
 `parent_id:null` detaches to the root. An unchanged parent is a no-op. A changed
-membership advances the child's version, without creating a duplicate content
-revision, and records the edge changes and reparent lifecycle event in the same
-change set. A failed move rolls back all three. The parent setter must run with
+membership advances the child's version, and logical revision, versions every affected structural endpoint, and records complete relationship snapshots, edge changes and the reparent event in the same change set. A failed move rolls back all three. The parent setter must run with
 the same serializable invariant checks as raw structural edge changes.
 
 `GET /nodes/{id}/tree?depth=2&limit=50&max_bytes=262144` returns recursively:
@@ -190,5 +207,18 @@ implementation, task name allocation, container metadata flags, execution waves,
 waits-for observer/container semantics, discovered-from and other legacy edge
 kinds, lifecycle auto-settlement, administrative force completion, workspace locks,
 agent pointers, live-session abandonment, global knowledge scope, historical link
-restoration, and redaction. Their source definitions remain inventory entries;
+restoration in that initial increment, and redaction. Schema 6 adds relationship restoration; current verification is tracked separately. Their source definitions remain inventory entries;
 passing the translated assertions does not establish full AQ parity.
+
+## Unified revision regression results
+
+After migration `0006` and shared revision integration, the 22 graph translations
+pass with current-version reads after link edits. The 10 earlier migration
+contract tests still exercise their original v3→v5 boundary unchanged. Four
+additional `tests/migration_unified.rs` tests verify baseline attribution, exact
+legacy preservation, NULL-versus-known-empty membership, exact owned edge
+versions, and workspace/record ownership constraints. A private helper test
+checks unchanged-set reuse, exact older edge payloads after live edits, explicit
+legacy unavailability, and detection of an illegal same-version edge overwrite.
+These upgrade/helper checks add regression coverage without inflating the v1
+source translation count.

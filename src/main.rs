@@ -83,6 +83,12 @@ enum Command {
         #[command(flatten)]
         page: Paging,
     },
+    /// Read an exact task or knowledge revision and its recorded relationships.
+    Revision {
+        id: Uuid,
+        #[arg(long)]
+        revision: i64,
+    },
     Diff {
         id: Uuid,
         #[arg(long)]
@@ -230,6 +236,9 @@ enum TaskCommand {
         id: Uuid,
         #[arg(long)]
         revision: i64,
+        /// Restore historical lifecycle and tombstone state as well as content/relationships.
+        #[arg(long)]
+        include_lifecycle: bool,
         #[command(flatten)]
         change: ChangeOptions,
     },
@@ -289,11 +298,14 @@ enum KnowledgeCommand {
         #[command(flatten)]
         change: ChangeOptions,
     },
-    /// Restore exact historical content as an unverified active record.
+    /// Restore exact historical content/relationships; preserve lifecycle unless requested.
     Restore {
         id: Uuid,
         #[arg(long)]
         revision: i64,
+        /// Restore historical lifecycle and tombstone state as well as content/relationships.
+        #[arg(long)]
+        include_lifecycle: bool,
         #[command(flatten)]
         change: ChangeOptions,
     },
@@ -777,7 +789,7 @@ async fn run(cli: Cli) -> Result<Value> {
             TaskCommand::Complete { id, change } => client.patch(id,change,json!({"task_state":"completed"})).await,
             TaskCommand::Cancel { id, change } => client.patch(id,change,json!({"task_state":"canceled"})).await,
             TaskCommand::Delete { id, change } => client.mutation(vec![json!({"op":"delete_node","id":id,"expected_version":change.expected_version})],change.reason,change.idempotency_key).await,
-            TaskCommand::Restore { id, revision, change } => client.mutation(vec![json!({"op":"restore_node","id":id,"expected_version":change.expected_version,"revision":revision})],change.reason,change.idempotency_key).await,
+            TaskCommand::Restore { id, revision, include_lifecycle, change } => client.mutation(vec![json!({"op":"restore_node","id":id,"expected_version":change.expected_version,"revision":revision,"include_lifecycle":include_lifecycle})],change.reason,change.idempotency_key).await,
         },
         Command::Knowledge { command } => match command {
             KnowledgeCommand::Create { mut options, knowledge_type, verification, provenance_file } => { let mut op = create_operation("knowledge", &mut options)?; op["knowledge_type"] = json!(knowledge_type); op["verification"] = json!(verification);
@@ -801,7 +813,7 @@ async fn run(cli: Cli) -> Result<Value> {
                 let reason = change.reason.as_deref().filter(|s| !s.trim().is_empty()).ok_or_else(|| invalid("knowledge retire requires a nonempty --reason"))?;
                 client.patch(id,ChangeOptions { expected_version:change.expected_version, reason:change.reason.clone(), idempotency_key:change.idempotency_key.clone() },json!({"retired":true,"retirement_reason":reason})).await
             },
-            KnowledgeCommand::Restore { id, revision, change } => client.mutation(vec![json!({"op":"restore_node","id":id,"expected_version":change.expected_version,"revision":revision})],change.reason,change.idempotency_key).await,
+            KnowledgeCommand::Restore { id, revision, include_lifecycle, change } => client.mutation(vec![json!({"op":"restore_node","id":id,"expected_version":change.expected_version,"revision":revision,"include_lifecycle":include_lifecycle})],change.reason,change.idempotency_key).await,
         },
         Command::Link { command } => match command {
             LinkCommand::Add { source,target,edge_type,source_revision,target_revision,description,reason,idempotency_key } => client.mutation(vec![json!({"op":"add_edge","source":source,"target":target,"edge_type":edge_type,"source_revision":source_revision,"target_revision":target_revision,"description":description})],reason,idempotency_key).await,
@@ -810,6 +822,7 @@ async fn run(cli: Cli) -> Result<Value> {
         Command::Search { query,page,include_retired,include_disputed } => { let mut q = page_query(page); q.push(("q",query)); if include_retired { q.push(("include_retired","true".into())); }
             if include_disputed { q.push(("include_disputed","true".into())); } client.get("/search",q).await },
         Command::History { id,page } => client.get(&format!("/nodes/{id}/history"),page_query(page)).await,
+        Command::Revision { id,revision } => client.get(&format!("/nodes/{id}/revisions/{revision}"),vec![]).await,
         Command::Diff { id,from,to } => client.get(&format!("/nodes/{id}/diff"),vec![("from",from.to_string()),("to",to.to_string())]).await,
         Command::Mutate { file } => client.post("/mutations",read_json(&file)?).await,
         Command::Changeset { command } => match command {
@@ -1059,7 +1072,7 @@ mod tests {
         )
         .unwrap();
         let evidence = directory.path().join("evidence.json");
-        fs::write(&evidence, r#"[{"source_id":"review","kind":"url","url":"https://example.test/review","observed_at":"2026-10-30T00:00:00Z"}]"#).unwrap();
+        fs::write(&evidence, r#"[{"source_id":"review","kind":"url","url":"https://example.test/review","observed_at":"2026-10-30T00:00:00Z","retained":false}]"#).unwrap();
         let record = Uuid::new_v4().to_string();
         let parent = Uuid::new_v4().to_string();
         let cases: Vec<(Vec<&str>, Value)> = vec![
@@ -1122,7 +1135,45 @@ mod tests {
                     "--revision",
                     "1",
                 ],
-                json!({"op":"restore_node","id":record,"expected_version":3,"revision":1}),
+                json!({"op":"restore_node","id":record,"expected_version":3,"revision":1,"include_lifecycle":false}),
+            ),
+            (
+                vec![
+                    "task",
+                    "restore",
+                    &record,
+                    "--expected-version",
+                    "3",
+                    "--revision",
+                    "1",
+                ],
+                json!({"op":"restore_node","id":record,"expected_version":3,"revision":1,"include_lifecycle":false}),
+            ),
+            (
+                vec![
+                    "task",
+                    "restore",
+                    &record,
+                    "--expected-version",
+                    "3",
+                    "--revision",
+                    "1",
+                    "--include-lifecycle",
+                ],
+                json!({"op":"restore_node","id":record,"expected_version":3,"revision":1,"include_lifecycle":true}),
+            ),
+            (
+                vec![
+                    "knowledge",
+                    "restore",
+                    &record,
+                    "--expected-version",
+                    "3",
+                    "--revision",
+                    "1",
+                    "--include-lifecycle",
+                ],
+                json!({"op":"restore_node","id":record,"expected_version":3,"revision":1,"include_lifecycle":true}),
             ),
             (
                 vec![
@@ -1211,6 +1262,26 @@ mod tests {
             let result = run(Cli::try_parse_from(argv).unwrap()).await.unwrap();
             assert_eq!(result["query"], expected);
         }
+        let result = run(Cli::try_parse_from([
+            "aq-graph",
+            "--config",
+            config.to_str().unwrap(),
+            "revision",
+            &id,
+            "--revision",
+            "17",
+        ])
+        .unwrap())
+        .await
+        .unwrap();
+        assert_eq!(
+            result["path"],
+            format!(
+                "/v1/workspaces/{}/nodes/{id}/revisions/17",
+                client.workspace
+            )
+        );
+        assert!(result["query"].is_null());
         handle.abort();
     }
 

@@ -38,7 +38,7 @@ def seed(args):
     env=dict(os.environ)
     for variable in ('PGHOST','PGPORT','PGUSER','PGPASSWORD','PGDATABASE','PGOPTIONS','PGSERVICE'):
         env.pop(variable,None)
-    env.update(PGHOST=database.hostname,PGPORT=str(database.port or 5432),PGDATABASE=urllib.parse.unquote(database.path.lstrip('/')))
+    env.update(PGHOST=database.hostname,PGPORT=str(database.port or 5432),PGDATABASE=urllib.parse.unquote(database.path.lstrip('/')),PGOPTIONS='-c timezone=UTC')
     if database.username is not None:
         env['PGUSER']=urllib.parse.unquote(database.username)
     if database.password is not None:
@@ -77,7 +77,7 @@ SELECT lpad(to_hex(g),32,'0')::uuid,'{WORKSPACE}',CASE WHEN g<={task_count} THEN
  CASE WHEN g>{task_count} THEN (ARRAY['fact','decision','policy','procedure','incident','reference','note'])[1+g%7] END,
  CASE WHEN g>{task_count} THEN 'unverified' END,
  false,
- CASE WHEN g>{task_count} THEN jsonb_build_array(jsonb_build_object('source_id','benchmark-'||g,'kind','url','url','https://example.invalid/benchmark/'||g,'observed_at','2026-01-01T00:00:00Z')) ELSE '[]' END,
+ CASE WHEN g>{task_count} THEN jsonb_build_array(jsonb_build_object('source_id','benchmark-'||g,'kind','url','url','https://example.invalid/benchmark/'||g,'observed_at','2026-01-01T00:00:00Z','retained',false)) ELSE '[]' END,
  '2026-01-01T00:00:00Z'::timestamptz,'2026-01-01T00:00:00Z'::timestamptz,'benchmark'
 FROM generate_series(1,{args.nodes}) g;
 INSERT INTO node_revisions(workspace_id,node_id,revision,snapshot,actor_id,operation,reason,change_set_id,created_at)
@@ -106,11 +106,33 @@ SELECT md5('edge:'||i)::uuid,'{WORKSPACE}',
  lpad(to_hex(CASE WHEN typ='parent-child' THEN CASE WHEN s<={root_count*2} THEN 1+((s-{root_count}-1)%{root_count}) ELSE {root_count}+1+((s-{root_count*2}-1)%{root_count}) END WHEN typ='blocks' THEN least(s,t) ELSE s END),32,'0')::uuid,
  lpad(to_hex(CASE WHEN typ='parent-child' THEN s WHEN typ='blocks' THEN greatest(s,t) ELSE t END),32,'0')::uuid,
  typ,1,false,'2026-01-01T00:00:00Z' FROM typed WHERE s<>t;
+-- Establish a complete current relationship baseline after the synthetic graph
+-- is assembled. Earlier synthetic revisions retain NULL/unknown link sets.
+INSERT INTO edge_versions(workspace_id,id,version,snapshot)
+SELECT workspace_id,id,version,to_jsonb(e) FROM edges e WHERE workspace_id='{WORKSPACE}';
+INSERT INTO link_sets(id,workspace_id,node_id)
+SELECT md5('benchmark-link-set:'||id)::uuid,workspace_id,id FROM nodes WHERE workspace_id='{WORKSPACE}';
+INSERT INTO link_set_members(workspace_id,set_id,edge_id,edge_version)
+SELECT s.workspace_id,s.id,e.id,e.version FROM link_sets s
+JOIN edges e ON e.workspace_id=s.workspace_id
+ AND (e.source=s.node_id OR (e.target=s.node_id AND e.edge_type IN ('blocks','parent-child')))
+WHERE s.workspace_id='{WORKSPACE}' AND NOT e.deleted;
+UPDATE nodes SET version=version+1,content_revision=content_revision+1,
+ updated_at='2026-01-01T00:00:12Z' WHERE workspace_id='{WORKSPACE}';
+INSERT INTO node_revisions(workspace_id,node_id,revision,snapshot,actor_id,operation,reason,change_set_id,link_set_id,created_at)
+SELECT n.workspace_id,n.id,n.content_revision,to_jsonb(n)-'search_document','benchmark','baseline',
+ 'Offline synthetic current-state baseline; earlier relationship sets unavailable','{CHANGESET}',s.id,n.updated_at
+FROM nodes n JOIN link_sets s ON s.workspace_id=n.workspace_id AND s.node_id=n.id
+WHERE n.workspace_id='{WORKSPACE}';
+INSERT INTO history_entries(workspace_id,node_ids,entry_id,category,actor_id,operation,reason,change_set_id,data,created_at)
+SELECT n.workspace_id,ARRAY[n.id],md5('benchmark-baseline:'||n.id)::uuid,'revision','benchmark','baseline',
+ 'Offline synthetic current-state baseline; earlier relationship sets unavailable','{CHANGESET}',to_jsonb(n)-'search_document',n.updated_at
+FROM nodes n WHERE n.workspace_id='{WORKSPACE}';
 INSERT INTO history_entries(workspace_id,node_ids,entry_id,category,actor_id,operation,reason,change_set_id,data,created_at)
 SELECT workspace_id,ARRAY[source,target],md5('history:'||id)::uuid,'edge','benchmark','add_edge','Offline synthetic edge history','{CHANGESET}',to_jsonb(e),created_at FROM edges e WHERE workspace_id='{WORKSPACE}';
 COMMIT;
 ANALYZE;
-SELECT json_build_object('nodes',(SELECT count(*) FROM nodes),'edges',(SELECT count(*) FROM edges),'revisions',(SELECT count(*) FROM node_revisions),'history_entries',(SELECT count(*) FROM history_entries),'database_bytes',pg_database_size(current_database()),'node_states',(SELECT json_object_agg(state,n) FROM (SELECT COALESCE(task_state,'knowledge:unverified') state,count(*) n FROM nodes GROUP BY 1) states),'edge_types',(SELECT json_object_agg(edge_type,n) FROM (SELECT edge_type,count(*) n FROM edges GROUP BY 1) types),'table_bytes',(SELECT json_object_agg(relname,pg_total_relation_size(oid)) FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind='r'));
+SELECT json_build_object('nodes',(SELECT count(*) FROM nodes),'edges',(SELECT count(*) FROM edges),'revisions',(SELECT count(*) FROM node_revisions),'history_entries',(SELECT count(*) FROM history_entries),'edge_versions',(SELECT count(*) FROM edge_versions),'link_sets',(SELECT count(*) FROM link_sets),'link_memberships',(SELECT count(*) FROM link_set_members),'database_bytes',pg_database_size(current_database()),'node_states',(SELECT json_object_agg(state,n) FROM (SELECT COALESCE(task_state,'knowledge:unverified') state,count(*) n FROM nodes GROUP BY 1) states),'edge_types',(SELECT json_object_agg(edge_type,n) FROM (SELECT edge_type,count(*) n FROM edges GROUP BY 1) types),'table_bytes',(SELECT json_object_agg(relname,pg_total_relation_size(oid)) FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind='r'));
 """
     started = time.monotonic()
     result = subprocess.run([args.psql, '-X', '-q', '-A', '-t', '-v', 'ON_ERROR_STOP=1'], input=script, env=env, text=True, capture_output=True)
@@ -118,8 +140,8 @@ SELECT json_build_object('nodes',(SELECT count(*) FROM nodes),'edges',(SELECT co
         # Avoid exposing connection-string diagnostics from libpq.
         raise SystemExit('Offline fixture failed. Writes are transactional, but a post-commit analyze/report failure may leave a committed fixture; inspect the isolated database before retrying.')
     counts = json.loads(result.stdout.strip().splitlines()[-1])
-    configuration=json.loads(sql("SELECT json_build_object('postgres_version',version(),'fsync',current_setting('fsync'),'synchronous_commit',current_setting('synchronous_commit'),'full_page_writes',current_setting('full_page_writes'),'track_io_timing',current_setting('track_io_timing'),'max_connections',current_setting('max_connections'),'schema_version',(SELECT max(version) FROM _sqlx_migrations))"))
-    manifest = {'postgres_configuration':configuration,'format_version':2,'semantic_profile':'schema5 core compatibility: typed unverified knowledge, single-parent three-level forest, acyclic combined structural/blocking graph','seed':42,'workspace':WORKSPACE,'nodes':args.nodes,'edges_requested':args.edges,'counts':counts,'fixture_method':'offline SQL, synthetic snapshots and relationship history; not ingestion throughput','elapsed_seconds':time.monotonic()-started}
+    configuration=json.loads(sql("SELECT json_build_object('postgres_version',version(),'fsync',current_setting('fsync'),'synchronous_commit',current_setting('synchronous_commit'),'full_page_writes',current_setting('full_page_writes'),'track_io_timing',current_setting('track_io_timing'),'timezone',current_setting('TimeZone'),'max_connections',current_setting('max_connections'),'schema_version',(SELECT max(version) FROM _sqlx_migrations))"))
+    manifest = {'postgres_configuration':configuration,'format_version':3,'baseline_revision_offset':1,'semantic_profile':'schema6 common revisions: complete attributed current-state/link baseline; earlier synthetic relationship sets unavailable; typed unverified knowledge and three-level acyclic forest','seed':42,'workspace':WORKSPACE,'nodes':args.nodes,'edges_requested':args.edges,'counts':counts,'fixture_method':'offline SQL, synthetic snapshots and relationship history; not ingestion throughput','elapsed_seconds':time.monotonic()-started}
     pathlib.Path(args.manifest).write_text(json.dumps(manifest, indent=2)+'\n')
     print(json.dumps(manifest, indent=2))
 
@@ -212,14 +234,14 @@ class Worker:
                 # Disjoint per-worker records; versions are refreshed from successful
                 # mutation output. A stale initial version remains a reported error.
                 record = min(total, 1+self.index*2)
-                version = self.node_versions.get(record,11 if record%10==0 else 1)
+                version = self.node_versions.get(record,(11 if record%10==0 else 1)+self.manifest.get('baseline_revision_offset',0))
                 kind = 'independent_write'
                 body = {'idempotency_key':key,'operations':[{'op':'update_node','id':node_id(record),'expected_version':version,'patch':{'title':f'Benchmark worker {self.index} edit {self.counter}'}}]}
                 self.receipt = body
             elif choice < 94:
                 kind = 'hot_write'
                 record = 2
-                version = self.node_versions.get(record,1)
+                version = self.node_versions.get(record,1+self.manifest.get('baseline_revision_offset',0))
                 body = {'idempotency_key':key,'operations':[{'op':'update_node','id':node_id(record),'expected_version':version,'patch':{'title':f'Hot record {self.index}/{self.counter}'}}]}
             elif choice < 97 and self.receipt:
                 kind,body = 'same_key_retry',self.receipt

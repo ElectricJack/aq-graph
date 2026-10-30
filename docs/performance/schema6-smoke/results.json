@@ -1,0 +1,80 @@
+{
+  "purpose": "schema6 small fixture/common revision operational smoke; debug build,warm local caches,sequential20attemptsperoperation; not capacity or latency acceptance",
+  "time_utc": "2026-10-30T15:35:00Z",
+  "schema_version": 6,
+  "release_build": false,
+  "nodes": 1000,
+  "edges": 5000,
+  "measurements": {
+    "ready": {
+      "attempts": 20,
+      "successful": 20,
+      "p50_ms": 6.016614999680314,
+      "p95_ms": 7.298238997464068,
+      "max_ms": 17.50716499373084,
+      "result_count": 20
+    },
+    "search": {
+      "attempts": 20,
+      "successful": 20,
+      "p50_ms": 3.778213998884894,
+      "p95_ms": 4.353388998424634,
+      "max_ms": 5.51161899784347,
+      "result_count": 20
+    },
+    "task_revision_write": {
+      "attempts": 20,
+      "successful": 20,
+      "p50_ms": 7.03332650300581,
+      "p95_ms": 8.999035002489109,
+      "max_ms": 14.001730996824335
+    },
+    "knowledge_revision_write": {
+      "attempts": 20,
+      "successful": 20,
+      "p50_ms": 7.454493501427351,
+      "p95_ms": 8.027952993870713,
+      "max_ms": 12.718102996586822
+    }
+  },
+  "common_revision_proof": {
+    "task": {
+      "initial_revision": 2,
+      "final_revision": 22,
+      "cas_version_delta": 20,
+      "legacy_relationships_available": false,
+      "complete_relationship_count": 6,
+      "old_snapshot_unchanged": true,
+      "content_edit_relationships_unchanged": true,
+      "diff_fields": [
+        "title"
+      ]
+    },
+    "knowledge": {
+      "initial_revision": 2,
+      "final_revision": 22,
+      "cas_version_delta": 20,
+      "legacy_relationships_available": false,
+      "complete_relationship_count": 5,
+      "old_snapshot_unchanged": true,
+      "content_edit_relationships_unchanged": true,
+      "diff_fields": [
+        "title"
+      ]
+    }
+  },
+  "database_counts_after": {
+    "revisions": 3040,
+    "history_entries": 8040,
+    "edge_versions": 5000,
+    "link_sets": 1000,
+    "link_memberships": 7021
+  },
+  "cli_exact_revision": {
+    "exit_code": 0,
+    "revision": 2,
+    "relationships_available": true,
+    "relationship_count": 6
+  },
+  "service_binary_sha256": "2bd5e1aa8f44b927199f0659004376fa5dcd317a2fb44c970fd1639cec057e7b"
+}

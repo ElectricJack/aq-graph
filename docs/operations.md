@@ -46,9 +46,9 @@ It verifies the checksum, creates a fresh database, restores with a single trans
 
 Before cutover:
 
-1. Record source counts for nodes, edges, revisions, history, change sets and receipts at backup time, using a consistent read-only database snapshot. Compare restored counts and representative immutable revision hashes. New source writes after backup naturally change current source counts.
+1. Record source counts for nodes, edges, revisions, history, revision relationship snapshots, change sets and receipts at backup time, using a consistent read-only database snapshot. Compare restored counts and representative immutable revision hashes. New source writes after backup naturally change current source counts.
 2. Start the **same image version** on an isolated loopback port against the restored database, with bootstrap disabled. Verify readiness and authentication. Keep it unreachable from production consumers.
-3. Exercise representative get/context, ready, search, paginated history, diff, pinned revisions, draft inspection and idempotent replay using read-only requests wherever possible. Execute write checks only on the isolated clone. Check both authorized access and rejected workspace/credential access.
+3. Exercise representative get/context, ready, search, paginated history, exact revision reads including relationship availability, node/relationship diffs, pinned revisions, draft inspection and idempotent replay using read-only requests wherever possible. Execute write checks only on the isolated clone. Check both authorized access and rejected workspace/credential access.
 4. Restart the isolated service and recheck committed data and idempotency. Document backup timestamp, counts, hashes, binary/schema versions, verification commands, results and recovery time.
 5. For actual recovery, stop original writers and isolate the old service, explicitly select the restored database, start the compatible service, verify again, then route clients to it. Retain the old database until reconciliation and recovery approval are complete.
 
@@ -58,11 +58,18 @@ The scripts never change the live service connection string or route clients. Re
 
 Pin released images by version, and preferably digest. Back up and verify recovery before migrating. Record the current schema version from `_sqlx_migrations`, release identifier and relevant configuration. Run the proposed image against an isolated restored copy and verify compatibility, migration timing and representative reads/writes before live rollout.
 
-For this initial release API version is 1 and schema version is migration `0005`. Do not start an old image against a newly migrated incompatible schema. Rollback may require restoring a backup and reconciling later writes; image replacement alone is insufficient. Future releases must explicitly state compatible schema ranges and irreversible changes.
+For this initial release API version is 1 and schema version is migration `0006`. Do not start an old image against a newly migrated incompatible schema. Rollback may require restoring a backup and reconciling later writes; image replacement alone is insufficient. Future releases must explicitly state compatible schema ranges and irreversible changes.
 
 Migrations `0004` and `0005` tighten the standalone baseline to selected v1 contracts. They refuse incompatible existing endpoint kinds, multiple structural parents, excessive depth, combined dependency cycles, or verified/retired knowledge without the new attribution/reason fields. They never delete invalid edges or invent verification evidence. Restore a backup into an isolated database, inspect the migration diagnostics, and reconcile the affected records explicitly before retrying. Historical snapshots stay unchanged; current authors are recovered from the original revision. Older arbitrary provenance may remain readable but must be reconciled to typed descriptors before editing or restoring that content. Migration preflight is not a v1 data importer.
 
 `docker compose stop graph` sends termination and allows 40 seconds for request draining. The HTTP server handles SIGINT/SIGTERM gracefully. Keep clients' original idempotency keys for interrupted/uncertain requests, restart, check readiness, and retry identical operations. Never delete the PostgreSQL volume during restart or upgrade. `docker compose down` preserves it; `down --volumes` is destructive and is reserved for disposable test stacks.
+
+
+Migration `0006` establishes the shared logical revision engine. A revision captures task or knowledge state and the record’s relationship membership: outgoing edges plus incoming `blocks`/`parent-child` edges. Structural changes version both endpoints; informational changes version their source. Current `version` remains the optimistic concurrency token, and the existing `content_revision` field becomes the logical revision identifier. Content, lifecycle, membership, parent and tombstone changes are versioned together; no-op writes do not create revisions.
+
+The upgrade preserves all legacy historical snapshots and appends an explicitly attributed current-state baseline with current relationships. It does not reconstruct historical link sets. Exact reads of old incomplete snapshots return `relationships_available:false` and `links:null`; restoration rejects them. Back up and inspect the baseline/change-set attribution and both current/history counts on a restored clone before live upgrade. An old image must never run against schema 0006.
+
+Restore uses the same option for tasks and knowledge: by default it restores content/relationships and preserves current task state, retirement state/reason and deletion tombstone. `--include-lifecycle` additionally restores the historical lifecycle/tombstone state. Both paths recheck current authority, expected versions, target access and graph invariants; a meaningful restore clears current knowledge verification, a true no-op preserves it, and neither mode revives an old badge or grants authority. A single restore is bounded to 100 relationship changes. A restore is a new attributed revision, and an uncertain response must be retried with the identical idempotency key. In restore drills, verify both modes on isolated data and compare exact relationship snapshots and diffs, not only node bodies.
 
 ## Diagnostics
 

@@ -120,7 +120,7 @@ pub(super) async fn set_parent(
     if let Some(parent) = parent_id {
         validate_edge(tx, p, parent, id, EdgeType::ParentChild).await?;
         let e: Edge = decode(
-            json!({"id":Uuid::new_v4(),"workspace_id":p.workspace_id,"source":parent,"target":id,"edge_type":"parent-child","source_revision":null,"target_revision":null,"description":null,"version":1,"deleted":false,"created_at":Utc::now()}),
+            json!({"id":Uuid::new_v4(),"workspace_id":p.workspace_id,"source":parent,"target":id,"edge_type":"parent-child","source_revision":null,"target_revision":null,"description":null,"version":1,"deleted":false,"created_at":server_time()}),
         )?;
         sqlx::query("INSERT INTO edges(id,workspace_id,source,target,edge_type,source_revision,target_revision,version,deleted,created_at) VALUES($1,$2,$3,$4,'parent-child',NULL,NULL,1,false,$5)").bind(e.id).bind(p.workspace_id).bind(parent).bind(id).bind(e.created_at).execute(&mut **tx).await?;
         history_entry(
@@ -135,9 +135,11 @@ pub(super) async fn set_parent(
         )
         .await?;
     }
-    child.version += 1;
-    child.updated_at = Utc::now();
-    save_node(tx, &child, false).await?;
+    let mut changed = vec![id];
+    changed.extend(old_parent);
+    changed.extend(parent_id);
+    checkpoint_nodes(tx, p, change, changed, "reparented", reason).await?;
+    child = load_node(tx, p.workspace_id, id).await?;
     history_entry(
         tx,
         p,

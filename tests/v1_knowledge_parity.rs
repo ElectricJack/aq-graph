@@ -439,6 +439,8 @@ async fn retirement_requires_admin_reason_and_restore_preserves_exact_original_c
     let (status,linked)=api.mutation(&alice,"retirement-link",None,vec![json!({"op":"add_edge","source":original["id"],"target":target["id"],"edge_type":"supports"})]).await;
     assert_eq!(status, StatusCode::OK, "{linked}");
     let existing_edge = linked["results"][0].clone();
+    // Relationship edits now share the same record revision/CAS sequence.
+    let original = api.node(&alice, id(&original)).await;
 
     for (key, reason) in [
         ("blank-active-reason", "   ".to_string()),
@@ -535,7 +537,7 @@ async fn retirement_requires_admin_reason_and_restore_preserves_exact_original_c
         StatusCode::FORBIDDEN,
         "restore retired source before removing links: {error}"
     );
-    let (status,result)=api.mutation(&api.admin,"restore",Some("Restore original finding"),vec![json!({"op":"restore_node","id":original["id"],"expected_version":retired["version"],"revision":original["content_revision"]})]).await;
+    let (status,result)=api.mutation(&api.admin,"restore",Some("Restore original finding"),vec![json!({"op":"restore_node","id":original["id"],"expected_version":retired["version"],"revision":original["content_revision"],"include_lifecycle":true})]).await;
     assert_eq!(status, StatusCode::OK, "{result}");
     let restored = api.node(&alice, id(&original)).await;
     assert_eq!(restored["body"], "Original\r\nα evidence");
@@ -699,9 +701,14 @@ async fn knowledge_source_links_enforce_author_and_protected_revision_rules() {
         .await;
     assert_eq!(status, StatusCode::OK, "{linked}");
     let current = api.node(&alice, id(&original)).await;
-    assert_eq!(
-        current["version"], original["version"],
-        "unverified links retain independent edge history"
+    assert!(
+        current["version"].as_i64().unwrap() > original["version"].as_i64().unwrap(),
+        "unverified links advance the common CAS version"
+    );
+    assert!(
+        current["content_revision"].as_i64().unwrap()
+            > original["content_revision"].as_i64().unwrap(),
+        "links belong to the same immutable revision history as planning content"
     );
     let edge = &linked["results"][0];
     let (status, result) = api

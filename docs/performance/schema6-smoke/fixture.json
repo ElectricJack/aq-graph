@@ -1,0 +1,58 @@
+{
+  "postgres_configuration": {
+    "postgres_version": "PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit",
+    "fsync": "on",
+    "synchronous_commit": "on",
+    "full_page_writes": "on",
+    "track_io_timing": "off",
+    "timezone": "UTC",
+    "max_connections": "100",
+    "schema_version": 6
+  },
+  "format_version": 3,
+  "baseline_revision_offset": 1,
+  "semantic_profile": "schema6 common revisions: complete attributed current-state/link baseline; earlier synthetic relationship sets unavailable; typed unverified knowledge and three-level acyclic forest",
+  "seed": 42,
+  "workspace": "00000000-0000-4000-8000-000000000002",
+  "nodes": 1000,
+  "edges_requested": 5000,
+  "counts": {
+    "nodes": 1000,
+    "edges": 5000,
+    "revisions": 3000,
+    "history_entries": 8000,
+    "edge_versions": 5000,
+    "link_sets": 1000,
+    "link_memberships": 7021,
+    "database_bytes": 32440847,
+    "node_states": {
+      "canceled": 14,
+      "knowledge:unverified": 200,
+      "draft": 40,
+      "active": 586,
+      "completed": 160
+    },
+    "edge_types": {
+      "blocks": 1487,
+      "produces": 800,
+      "parent-child": 534,
+      "references": 2179
+    },
+    "table_bytes": {
+      "_sqlx_migrations": 32768,
+      "workspaces": 24576,
+      "credentials": 49152,
+      "nodes": 3260416,
+      "change_sets": 49152,
+      "node_revisions": 4743168,
+      "edges": 3178496,
+      "history_entries": 8626176,
+      "idempotency_receipts": 16384,
+      "edge_versions": 2859008,
+      "link_sets": 434176,
+      "link_set_members": 1105920
+    }
+  },
+  "fixture_method": "offline SQL, synthetic snapshots and relationship history; not ingestion throughput",
+  "elapsed_seconds": 0.9742185750001227
+}

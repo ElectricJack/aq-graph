@@ -11,7 +11,7 @@ LABEL org.opencontainers.image.title="aq-graph" \
       org.opencontainers.image.description="Standalone task and knowledge graph service and CLI" \
       org.opencontainers.image.version="${AQ_GRAPH_VERSION}" \
       io.aq-graph.api-version="1" \
-      io.aq-graph.schema-version="5"
+      io.aq-graph.schema-version="6"
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 aqgraph && useradd --uid 10001 --gid aqgraph --no-create-home aqgraph
 COPY --from=build /build/target/release/aq-graph /usr/local/bin/aq-graph

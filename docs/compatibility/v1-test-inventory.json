@@ -481,25 +481,32 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "relationship_description_round_trips_through_context",
           "assertions": "Description persists on supported blocks edge; v1 discovered-from is not silently remapped",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_dependency_queries.py::TestAddDependencyIdempotent.test_second_add_is_noop_and_does_not_raise",
@@ -530,25 +537,32 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "translated",
-      "reason": "Complete portable obligations inspected against exact pinned source and passed on real PostgreSQL. AQ project/identity/role wire adaptations are explicit; no broader subsystem parity is claimed.",
+      "reason": "Re-reviewed all portable source obligations against current schema6 target assertions: behavior remains covered despite shared logical revision changes, and current focused targets passed. Project/workspace, identity/role and redundant-pointer API adaptations remain explicit.",
       "v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "repeated_structural_dependency_add_is_a_noop_even_with_a_new_request_key",
           "assertions": "Repeated blocks insertion returns the existing identity/version with no duplicate relationship",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "candidate_v2_tests": [],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "portable_obligations",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_dependency_queries.py::TestAddDependencyIdempotent.test_different_dep_types_coexist",
@@ -4809,25 +4823,32 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "structural_and_blocking_edges_cannot_jointly_close_a_cycle",
           "assertions": "Combined blocking/structural acyclicity; v1 waits-for adapted to unconditional blocks for this cycle assertion only",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_hierarchy_queries.py::test_set_parent_bulk_rejects_nonleaf_and_preserves_all_children",
@@ -5157,25 +5178,32 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "set_parent_atomically_reparents_and_detaches",
           "assertions": "Atomic parent membership, replacement, and root detachment; no redundant parent pointer requirement",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_hierarchy_queries.py::TestSetParent.test_reparent_replaces_the_single_edge",
@@ -5209,32 +5237,40 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "translated",
-      "reason": "Complete portable obligations inspected against exact pinned source and passed on real PostgreSQL. AQ project/identity/role wire adaptations are explicit; no broader subsystem parity is claimed.",
+      "reason": "Re-reviewed all portable source obligations against current schema6 target assertions: behavior remains covered despite shared logical revision changes, and current focused targets passed. Project/workspace, identity/role and redundant-pointer API adaptations remain explicit.",
       "v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "child_cannot_have_two_live_parents",
           "assertions": "Raw edge API cannot bypass single-parent membership",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         },
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "set_parent_atomically_reparents_and_detaches",
           "assertions": "Atomic parent membership, replacement, and root detachment; no redundant parent pointer requirement",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "candidate_v2_tests": [],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "portable_obligations",
       "notes": [
         "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_hierarchy_queries.py::TestSetParent.test_to_root_clears_both",
@@ -5268,25 +5304,32 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "translated",
-      "reason": "Complete portable obligations inspected against exact pinned source and passed on real PostgreSQL. AQ project/identity/role wire adaptations are explicit; no broader subsystem parity is claimed.",
+      "reason": "Re-reviewed all portable source obligations against current schema6 target assertions: behavior remains covered despite shared logical revision changes, and current focused targets passed. Project/workspace, identity/role and redundant-pointer API adaptations remain explicit.",
       "v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "set_parent_atomically_reparents_and_detaches",
           "assertions": "Atomic parent membership, replacement, and root detachment; no redundant parent pointer requirement",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "candidate_v2_tests": [],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "portable_obligations",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_hierarchy_queries.py::TestSetParent.test_child_is_withheld_while_container_is_defined",
@@ -5318,25 +5361,32 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "translated",
-      "reason": "Complete portable obligations inspected against exact pinned source and passed on real PostgreSQL. AQ project/identity/role wire adaptations are explicit; no broader subsystem parity is claimed.",
+      "reason": "Re-reviewed all portable source obligations against current schema6 target assertions: behavior remains covered despite shared logical revision changes, and current focused targets passed. Project/workspace, identity/role and redundant-pointer API adaptations remain explicit.",
       "v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "draft_parent_withholds_active_child_until_parent_activation",
           "assertions": "Ancestor activation gates leaf readiness",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "candidate_v2_tests": [],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "portable_obligations",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_hierarchy_queries.py::TestSetParent.test_rejections",
@@ -5378,31 +5428,39 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "parent_depth_cap_is_three_and_rejected_move_preserves_the_forest",
           "assertions": "Three structural levels, root depth one; self/cycle/missing rejection; rejected move leaves membership unchanged",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         },
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "refused_reparent_restores_original_edge_history_and_version",
           "assertions": "Refused closed/self/missing reparent restores original membership, full node, and history",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_hierarchy_queries.py::TestSetParent.test_completed_container_refuses_children",
@@ -5434,12 +5492,19 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "translated",
-      "reason": "Complete portable obligations inspected against exact pinned source and passed on real PostgreSQL. AQ project/identity/role wire adaptations are explicit; no broader subsystem parity is claimed.",
+      "reason": "Re-reviewed all portable source obligations against current schema6 target assertions: behavior remains covered despite shared logical revision changes, and current focused targets passed. Project/workspace, identity/role and redundant-pointer API adaptations remain explicit.",
       "v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "completed_parent_refuses_new_children",
           "assertions": "Completed parent refuses ordinary new membership",
+          "result": "passed",
+          "historical_result": "passed_schema5"
+        },
+        {
+          "path": "tests/v1_graph_parity.rs",
+          "function": "refused_reparent_restores_original_edge_history_and_version",
+          "assertions": "A completed parent is rejected by the atomic set_parent operation as well as raw edge addition; refused move preserves original membership, node and history.",
           "result": "passed"
         }
       ],
@@ -5447,12 +5512,18 @@
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "portable_obligations",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_hierarchy_queries.py::TestCreateTaskUnder.test_mints_dotted_id_and_links",
@@ -5776,25 +5847,32 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "tree_query_returns_structural_children_with_a_depth_bound",
           "assertions": "Recursive structural children and bounded depth; excludes informational edges; no separate depth/height scalar endpoint claim",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_hierarchy_queries.py::TestReads.test_tree_shape_and_depth_bound",
@@ -5828,25 +5906,32 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "tree_query_returns_structural_children_with_a_depth_bound",
           "assertions": "Recursive structural children and bounded depth; excludes informational edges; no separate depth/height scalar endpoint claim",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_hierarchy_queries.py::TestReads.test_children_filters",
@@ -6125,25 +6210,32 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "completed_parent_refuses_new_children",
           "assertions": "Completed parent refuses ordinary new membership",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_hierarchy_queries.py::TestSetParentBulk.test_cross_project_child_rejected",
@@ -6219,25 +6311,32 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "parent_depth_cap_is_three_and_rejected_move_preserves_the_forest",
           "assertions": "Three structural levels, root depth one; self/cycle/missing rejection; rejected move leaves membership unchanged",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_hierarchy_queries.py::TestSetParentBulk.test_child_with_blocking_edges_refuses_the_shortcut",
@@ -6392,31 +6491,39 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "open_children_prevent_normal_parent_completion",
           "assertions": "Normal completion cannot strand an open child; failed mutation leaves lifecycle unchanged",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         },
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "concurrent_parent_completion_and_new_child_cannot_both_commit",
           "assertions": "Five races enforce the same completion invariant at commit under concurrent child insertion",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_hierarchy_queries.py::TestOpenChildrenGuard.test_force_bypasses_the_guard",
@@ -6490,25 +6597,32 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "completed_and_canceled_children_allow_parent_completion",
           "assertions": "Both terminal child states permit parent completion; no execution auto-settlement claim",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_hierarchy_queries.py::TestAbandonReleasesResources.test_workspace_lock_and_agent_pointer_are_cleared",
@@ -6643,25 +6757,32 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "translated",
-      "reason": "Complete portable obligations inspected against exact pinned source and passed on real PostgreSQL. AQ project/identity/role wire adaptations are explicit; no broader subsystem parity is claimed.",
+      "reason": "Re-reviewed all portable source obligations against current schema6 target assertions: behavior remains covered despite shared logical revision changes, and current focused targets passed. Project/workspace, identity/role and redundant-pointer API adaptations remain explicit.",
       "v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "mixed_cycle_check_follows_a_three_hundred_edge_blocking_chain",
           "assertions": "Combined reachability traverses 300 blocking hops; structural depth cap cannot truncate cycle detection",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "candidate_v2_tests": [],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "portable_obligations",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_hierarchy_settlement.py::TestSettlement.test_incoming_child_batch_delays_settlement_until_promotion",
@@ -7658,25 +7779,32 @@
       "category": "knowledge_core",
       "priority": "P0",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "protected_content_requires_admin_and_correction_invalidates_verification",
           "assertions": "No-op preserves verification; meaningful protected correction clears current assertion and preserves historical snapshot.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "Source authority grant revocation is not yet implemented."
-      ]
+        "Source authority grant revocation is not yet implemented.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_knowledge_authority.py::test_explicit_authority_without_review_when_policy_allows",
@@ -7755,32 +7883,40 @@
       "category": "knowledge_core",
       "priority": "P0",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "verification_requires_admin_named_evidence_reason_and_server_attribution",
           "assertions": "Require admin, named evidence, nonblank reason and server-attributed assertion.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         },
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "disputed_knowledge_is_hidden_by_default_search_but_explicitly_retrievable",
           "assertions": "Disputed evidence remains directly readable but excluded from default search.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
         "AQ review/grant semantics are not implied by graph admin verification.",
-        "Global sharing/review grant behavior remains separate."
-      ]
+        "Global sharing/review grant behavior remains separate.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_knowledge_authority.py::test_global_share_revoke_search_history_and_link_read_authorization",
@@ -8050,25 +8186,32 @@
       "category": "knowledge_core",
       "priority": "P0",
       "status": "translated",
-      "reason": "Complete portable obligations inspected against exact pinned source and passed on real PostgreSQL. AQ project/identity/role wire adaptations are explicit; no broader subsystem parity is claimed.",
+      "reason": "Re-reviewed all portable source obligations against current schema6 target assertions: behavior remains covered despite shared logical revision changes, and current focused targets passed. Project/workspace, identity/role and redundant-pointer API adaptations remain explicit.",
       "v2_tests": [
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "knowledge_author_owns_unverified_edits_and_admin_can_correct",
           "assertions": "Read another author; reject non-author correction; allow author/admin edits and preserve authenticated creator/revision actor.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "candidate_v2_tests": [],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "portable_obligations",
       "notes": [
-        "Workspace writer/admin substitute for AQ worker/supervisor; held-task claim resolution is a separate source test."
-      ]
+        "Workspace writer/admin substitute for AQ worker/supervisor; held-task claim resolution is a separate source test.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_knowledge_authorization.py::test_pool_bearer_resolves_live_task_for_reads_writes_and_task_visibility",
@@ -8308,31 +8451,39 @@
       "category": "knowledge_core",
       "priority": "P0",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "knowledge_receipt_replay_rechecks_live_capability_and_revocation",
           "assertions": "Current credential capability and revocation are rechecked before receipt replay.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         },
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "privileged_knowledge_replays_recheck_admin_after_downgrade",
           "assertions": "Dedicated verification and admin proposal application reauthorize on receipt replay after downgrade, without changed history. Extension does not implement AQ claim-epoch/session fences.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "AQ claim epoch, ended session and project membership fences require the identity adapter."
-      ]
+        "AQ claim epoch, ended session and project membership fences require the identity adapter.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_knowledge_authorization.py::test_generic_task_resolution_and_link_targets_preserve_task_scope",
@@ -8776,38 +8927,47 @@
       "category": "knowledge_core",
       "priority": "P0",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "ordinary_creation_and_patch_cannot_self_assert_verified_or_disputed",
           "assertions": "Generic mutation cannot self-assert protected verification.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         },
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "protected_content_requires_admin_and_correction_invalidates_verification",
           "assertions": "Only admin changes protected content; meaningful correction resets verification.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         },
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "knowledge_source_links_enforce_author_and_protected_revision_rules",
           "assertions": "Ownership and protected-content rules also govern informational link mutations; admin link edits reset protected verification. Extension grounded in RecordAccess.editable/mutate_links_on, not proof of v1 source-level link snapshot restoration.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
         "Protected-edit/reset subcases are mapped separately; AQ supervisor grants are adapter-owned.",
-        "Admin substitutes for authenticated AQ supervisor; explicit worker claim/grant fences remain separate."
-      ]
+        "Admin substitutes for authenticated AQ supervisor; explicit worker claim/grant fences remain separate.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_knowledge_authorization.py::test_module_level_imports_of_the_knowledge_layer_stay_acyclic",
@@ -22073,31 +22233,39 @@
       "category": "knowledge_core",
       "priority": "P0",
       "status": "translated",
-      "reason": "Complete portable obligations inspected against exact pinned source and passed on real PostgreSQL. AQ project/identity/role wire adaptations are explicit; no broader subsystem parity is claimed.",
+      "reason": "Re-reviewed all portable source obligations against current schema6 target assertions: behavior remains covered despite shared logical revision changes, and current focused targets passed. Project/workspace, identity/role and redundant-pointer API adaptations remain explicit.",
       "v2_tests": [
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "knowledge_proposal_can_target_another_author_but_only_admin_applies_it",
           "assertions": "Writer may propose another author correction, cannot apply, and admin applies once with unchanged creator.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         },
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "knowledge_author_owns_unverified_edits_and_admin_can_correct",
           "assertions": "A different ordinary author cannot directly overwrite a finding; admin may correct it. Complements proposal/decision assertions in the same source function.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "candidate_v2_tests": [],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "portable_obligations",
       "notes": [
-        "Immutable v2 draft and admin capability replace v1 proposal decision grants; no claim of proposal-hash/rejection API parity."
-      ]
+        "Immutable v2 draft and admin capability replace v1 proposal decision grants; no claim of proposal-hash/rejection API parity.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_knowledge_proposals.py::test_new_record_proposal_and_rejection_preserve_evidence",
@@ -24129,32 +24297,40 @@
       "category": "knowledge_core",
       "priority": "P0",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "ordinary_creation_and_patch_cannot_self_assert_verified_or_disputed",
           "assertions": "Reject direct verified/disputed creation and generic patch escalation.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         },
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "provenance_descriptors_are_typed_unique_and_corrected_retry_is_possible",
           "assertions": "Reject malformed, untyped, mismatched and duplicate typed source descriptors without partial creation; corrected same-key retry allowed.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
         "Only verification parameter cases; source also covers body/summary/title/metadata/time/tags/source limits.",
-        "Only source descriptor cases, not all snapshot bounds."
-      ]
+        "Only source descriptor cases, not all snapshot bounds.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_knowledge_service.py::test_replay_precedes_stale_precondition_and_mismatch_is_atomic",
@@ -24466,25 +24642,32 @@
       "category": "knowledge_core",
       "priority": "P0",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "retirement_requires_admin_reason_and_restore_preserves_exact_original_content",
           "assertions": "Reasoned retirement, default search exclusion, explicit retrieval, restore-before-edit and exact immutable history.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "Derived summary freshness/invalidation has no v2 implementation."
-      ]
+        "Derived summary freshness/invalidation has no v2 implementation.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_knowledge_service.py::test_search_scope_ranking_cursor_and_read_only",
@@ -27498,25 +27681,38 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "pinned_and_floating_links_keep_exact_revision_and_removal_history",
           "assertions": "Floating current target, exact old pin, removal visibility, immutable addition/removal snapshots; excludes historical-link restore",
+          "result": "passed",
+          "historical_result": "passed_schema5"
+        },
+        {
+          "path": "tests/unified_versions.rs",
+          "function": "task_and_knowledge_share_exact_relationship_versions_and_restore",
+          "assertions": "Both kinds retain exact relationship snapshots, report relationship diffs, restore stable edge identities with new versions, preserve old snapshots, and treat unchanged restore as no-op. This extends earlier selected assertions; v1 source-level tokens and all direct table assertions remain separately unclaimed.",
           "result": "passed"
         }
       ],
       "verification": {
         "result": "passed",
-        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "command": "cargo test --locked --test unified_versions --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_record_graph.py::test_execution_and_record_links_are_distinct_and_progress_unchanged",
@@ -27563,25 +27759,32 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "informational_links_preserve_task_state_content_and_intrinsic_readiness",
           "assertions": "Replay identical result; source/target nodes and readiness unchanged; both relationship families visible",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_record_graph.py::test_feature_off_and_read_only_preserve_operator_controls",
@@ -27701,25 +27904,32 @@
       "category": "graph_core",
       "priority": "P1",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "cross_workspace_link_refusal_never_discloses_private_context",
           "assertions": "Stronger write refusal instead of privileged cross-project fixture import; no foreign ID/count signal",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_record_graph.py::test_redacted_pin_does_not_resolve_to_current_revision",
@@ -27814,25 +28024,38 @@
       "category": "graph_core",
       "priority": "P0",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "pinned_and_floating_links_keep_exact_revision_and_removal_history",
           "assertions": "Floating current target, exact old pin, removal visibility, immutable addition/removal snapshots; excludes historical-link restore",
+          "result": "passed",
+          "historical_result": "passed_schema5"
+        },
+        {
+          "path": "tests/unified_versions.rs",
+          "function": "task_and_knowledge_share_exact_relationship_versions_and_restore",
+          "assertions": "Both kinds retain exact relationship snapshots, report relationship diffs, restore stable edge identities with new versions, preserve old snapshots, and treat unchanged restore as no-op. This extends earlier selected assertions; v1 source-level tokens and all direct table assertions remain separately unclaimed.",
           "result": "passed"
         }
       ],
       "verification": {
         "result": "passed",
-        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "command": "cargo test --locked --test unified_versions --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_record_links.py::test_task_link_token_and_replay_do_not_touch_execution_or_target",
@@ -27878,25 +28101,32 @@
       "category": "graph_core",
       "priority": "P0",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "informational_links_preserve_task_state_content_and_intrinsic_readiness",
           "assertions": "Replay identical result; source/target nodes and readiness unchanged; both relationship families visible",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_record_links.py::test_execution_edges_refused_before_any_write",
@@ -27937,25 +28167,32 @@
       "category": "graph_core",
       "priority": "P0",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "structural_edges_refuse_knowledge_endpoints_before_writes",
           "assertions": "blocks/parent-child cannot use knowledge; separate informational transport adapted to unified mutation API",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_record_links.py::test_matrix_self_duplicate_pin_and_atomic_batch",
@@ -27991,39 +28228,48 @@
       "category": "graph_core",
       "priority": "P0",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "produces_and_motivated_by_require_task_to_knowledge",
           "assertions": "Valid Task→Knowledge and invalid Knowledge→Knowledge; endpoint matrix additionally verified against `RecordService._plan_links`",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         },
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "evidence_relationships_require_two_knowledge_endpoints",
           "assertions": "supports/contradicts/supersedes require Knowledge→Knowledge; helper-source matrix extension",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         },
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "invalid_informational_batch_rolls_back_and_does_not_consume_identity",
           "assertions": "Self, duplicate pair, unavailable pin, atomic rollback, subsequent valid operation",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
         "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
         "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_record_links.py::test_concurrent_duplicate_has_one_winner",
@@ -28072,25 +28318,32 @@
       "category": "graph_core",
       "priority": "P0",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "concurrent_duplicate_informational_edges_have_one_winner",
           "assertions": "Two distinct requests, one relationship, one successful writer; HTTP conflict replaces v1 revision-conflict code",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API."
-      ]
+        "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_graph_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_record_links.py::test_retirement_serializes_with_successor_link_removal",
@@ -29717,32 +29970,40 @@
       "category": "knowledge_core",
       "priority": "P0",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "verification_requires_admin_named_evidence_reason_and_server_attribution",
           "assertions": "Enforce typed verification evidence and immutable actor/time via HTTP.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         },
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "retirement_requires_admin_reason_and_restore_preserves_exact_original_content",
           "assertions": "Reasoned retirement and exact content restore through API.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
         "Source is a direct SQL database-boundary constraint test; HTTP enforcement does not cover direct SQL writers.",
-        "Direct SQL boundary and all source shapes remain unverified."
-      ]
+        "Direct SQL boundary and all source shapes remain unverified.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_record_schema.py::test_invalid_source_field_types_and_duplicate_link_ids_are_rejected",
@@ -29776,25 +30037,32 @@
       "category": "knowledge_core",
       "priority": "P0",
       "status": "needs_translation",
-      "reason": "Mapped selected assertions passed on real PostgreSQL (graph22/22;knowledge11/11). Source function still has unported fixture arms, direct-SQL/authority/history semantics or explicit unsupported v1 features; retain as an open whole-case gap.",
+      "reason": "Current schema6 selected target assertions pass, but unported source fixture arms, direct-SQL/history/authority semantics or intentional version-control adaptations remain. Partial passing targets do not close the whole source case.",
       "v2_tests": [],
       "candidate_v2_tests": [
         {
           "path": "tests/v1_knowledge_parity.rs",
           "function": "provenance_descriptors_are_typed_unique_and_corrected_retry_is_possible",
           "assertions": "Typed URL/Git provenance shape and source-id uniqueness validation.",
-          "result": "passed"
+          "result": "passed",
+          "historical_result": "passed_schema5"
         }
       ],
       "verification": {
         "result": "passed",
         "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
-        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+        "evidence": "Current schema6, real disposable PostgreSQL: focused graph22/22,knowledge11/11,commonrevision9/9 passed. Current complete-suite result is recorded separately; old74 is not current evidence."
       },
       "coverage_scope": "selected_assertions",
       "notes": [
-        "Source direct SQL enforcement and duplicate outgoing link IDs remain separate obligations."
-      ]
+        "Source direct SQL enforcement and duplicate outgoing link IDs remain separate obligations.",
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+      ],
+      "schema5_verification": {
+        "result": "passed",
+        "command": "cargo test --locked --test v1_knowledge_parity -- --test-threads=1",
+        "evidence": "Fresh real PostgreSQL, schema5; graph22/22 and knowledge11/11 passed with0ignored/skipped. Parent full regression run74/74 also passed before readiness optimization."
+      }
     },
     {
       "id": "tests/test_record_schema.py::test_summary_cannot_name_its_own_revision",

@@ -46,6 +46,7 @@ pub fn router(store: Store) -> Router {
         .route("/nodes/{id}/context", get(context))
         .route("/nodes/{id}/tree", get(tree))
         .route("/nodes/{id}/history", get(history))
+        .route("/nodes/{id}/revisions/{revision}", get(get_revision))
         .route("/nodes/{id}/diff", get(diff))
         .route("/ready", get(ready))
         .route("/search", get(search))
@@ -439,6 +440,26 @@ async fn history(
             .history(&p, record_id(path)?, parse_query(q)?)
             .await?,
     ))
+}
+#[derive(Deserialize)]
+struct RevisionPath {
+    id: String,
+    revision: String,
+}
+async fn get_revision(
+    State(s): State<HttpState>,
+    Extension(p): Extension<Principal>,
+    Path(path): Path<RevisionPath>,
+) -> Result<Json<Value>> {
+    let id =
+        Uuid::parse_str(&path.id).map_err(|_| Error::Validation("Invalid record UUID".into()))?;
+    let revision = path
+        .revision
+        .parse::<i64>()
+        .ok()
+        .filter(|revision| *revision > 0)
+        .ok_or_else(|| Error::Validation("Revision must be a positive 64-bit integer".into()))?;
+    Ok(Json(s.store.get_revision(&p, id, revision).await?))
 }
 #[derive(Deserialize)]
 struct DiffQuery {

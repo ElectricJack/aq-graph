@@ -2,7 +2,9 @@
 use crate::domain::*;
 use crate::knowledge_rules;
 mod compat_graph;
-use chrono::Utc;
+mod preview;
+mod restore;
+mod revision_links;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -226,6 +228,7 @@ impl Store {
                     | Mutation::RemoveEdge { .. }
                     | Mutation::DeleteNode { .. }
                     | Mutation::SetParent { .. }
+                    | Mutation::RestoreNode { .. }
                     | Mutation::UpdateNode {
                         patch: NodePatch {
                             task_state: Some(_),
@@ -534,19 +537,38 @@ AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id
         };
         Ok(json!({"items":items,"next_cursor":next}))
     }
-    pub async fn diff(&self, p: &Principal, id: Uuid, from: i64, to: i64) -> Result<Value> {
-        self.get_node(p, id).await?;
+    pub async fn get_revision(&self, p: &Principal, id: Uuid, rev: i64) -> Result<Value> {
+        if rev < 1 {
+            return Err(Error::Validation("revision must be positive".into()));
+        }
         let mut tx = self.pool.begin().await?;
-        let before = load_revision(&mut tx, p.workspace_id, id, from).await?;
-        let after = load_revision(&mut tx, p.workspace_id, id, to).await?;
+        let snapshot = encode(&decode::<Node>(
+            load_revision(&mut tx, p.workspace_id, id, rev).await?,
+        )?)?;
+        let available=sqlx::query_scalar::<_,bool>("SELECT link_set_id IS NOT NULL FROM node_revisions WHERE workspace_id=$1 AND node_id=$2 AND revision=$3").bind(p.workspace_id).bind(id).bind(rev).fetch_one(&mut *tx).await?;
+        let links = if available {
+            encode(&revision_links::load_links(&mut tx, p.workspace_id, id, rev).await?)?
+        } else {
+            Value::Null
+        };
+        Ok(json!({"node":snapshot,"links":links,"relationships_available":available}))
+    }
+    pub async fn diff(&self, p: &Principal, id: Uuid, from: i64, to: i64) -> Result<Value> {
+        let before = self.get_revision(p, id, from).await?;
+        let after = self.get_revision(p, id, to).await?;
         let mut changes = vec![];
         for field in DURABLE_FIELDS {
-            if before[field] != after[field] {
-                changes.push(json!({"field":field,"before":before[field],"after":after[field]}));
+            if before["node"][field] != after["node"][field] {
+                changes.push(json!({"field":field,"before":before["node"][field],"after":after["node"][field]}));
             }
         }
+        let available =
+            before["relationships_available"] == true && after["relationships_available"] == true;
+        if available && before["links"] != after["links"] {
+            changes.push(json!({"field":"links","before":before["links"],"after":after["links"]}));
+        }
         Ok(
-            json!({"node_id":id,"from":from,"to":to,"before":before,"after":after,"changes":changes}),
+            json!({"node_id":id,"from":from,"to":to,"before":before["node"],"after":after["node"],"before_links":before["links"],"after_links":after["links"],"relationships_available":available,"changes":changes}),
         )
     }
     pub async fn mutate(&self, p: &Principal, req: MutationRequest) -> Result<MutationResult> {
@@ -709,10 +731,10 @@ AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id
                     ));
                 }
                 let operations: Vec<Mutation> = decode(draft["operations"].clone())?;
-                let before = preview_before(&mut tx, p.workspace_id, &operations).await?;
+                let before = preview::before(&mut tx, p.workspace_id, &operations).await?;
                 let results =
                     execute(&mut tx, p, id, draft["reason"].as_str(), &operations, true).await?;
-                let preview = preview_after(&mut tx, p.workspace_id, before).await?;
+                let preview = preview::after(&mut tx, p.workspace_id, id, before).await?;
                 tx.rollback().await?;
                 Ok(json!({"valid":true,"change_set_id":id,"results":results,"preview":preview}))
             })
@@ -798,6 +820,8 @@ const DURABLE_FIELDS: &[&str] = &[
     "last_verified_at",
     "last_verified_by",
     "retirement_reason",
+    "task_state",
+    "deleted",
 ];
 fn validate_credential(actor: &str, token: &str) -> Result<()> {
     if actor.trim().is_empty() || actor.len() > 200 || token.len() < 32 || token.len() > 4096 {
@@ -907,6 +931,10 @@ async fn history_entry(
     reason: Option<&str>,
     data: Value,
 ) -> Result<()> {
+    if category == "edge" {
+        let e: Edge = decode(data.clone())?;
+        sqlx::query("INSERT INTO edge_versions(workspace_id,id,version,snapshot) SELECT workspace_id,id,version,to_jsonb(e) FROM edges e WHERE workspace_id=$1 AND id=$2 AND version=$3 ON CONFLICT(workspace_id,id,version) DO NOTHING").bind(p.workspace_id).bind(e.id).bind(e.version).execute(&mut **tx).await?;
+    }
     sqlx::query("INSERT INTO history_entries(workspace_id,node_ids,entry_id,category,actor_id,operation,reason,change_set_id,data) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)").bind(p.workspace_id).bind(nodes).bind(Uuid::new_v4()).bind(category).bind(&p.actor_id).bind(operation).bind(reason).bind(change).bind(data).execute(&mut **tx).await?;
     Ok(())
 }
@@ -919,7 +947,8 @@ async fn revision(
     reason: Option<&str>,
 ) -> Result<()> {
     let snapshot = encode(n)?;
-    sqlx::query("INSERT INTO node_revisions(workspace_id,node_id,revision,snapshot,actor_id,operation,reason,change_set_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)").bind(p.workspace_id).bind(n.id).bind(n.content_revision).bind(&snapshot).bind(&p.actor_id).bind(operation).bind(reason).bind(change).execute(&mut **tx).await?;
+    let link_set = revision_links::capture_links(tx, p, n.id).await?;
+    sqlx::query("INSERT INTO node_revisions(workspace_id,node_id,revision,snapshot,actor_id,operation,reason,change_set_id,link_set_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)").bind(p.workspace_id).bind(n.id).bind(n.content_revision).bind(&snapshot).bind(&p.actor_id).bind(operation).bind(reason).bind(change).bind(link_set).execute(&mut **tx).await?;
     history_entry(
         tx,
         p,
@@ -1080,22 +1109,34 @@ async fn touches_knowledge(tx: &mut Tx<'_>, p: &Principal, ops: &[Mutation]) -> 
     }
     Ok(false)
 }
-async fn invalidate_link_verification(
+async fn checkpoint_nodes(
     tx: &mut Tx<'_>,
     p: &Principal,
     change: Uuid,
-    mut n: Node,
+    ids: Vec<Uuid>,
+    operation: &str,
     reason: Option<&str>,
 ) -> Result<()> {
-    if n.kind == NodeKind::Knowledge && n.verification != Some(Verification::Unverified) {
+    let mut ids = ids;
+    ids.sort_unstable();
+    ids.dedup();
+    for id in ids {
+        let mut n = load_node_write(tx, p.workspace_id, id).await?;
         knowledge_rules::reset_verification(&mut n);
         n.version += 1;
         n.content_revision += 1;
-        n.updated_at = Utc::now();
+        n.updated_at = server_time();
         save_node(tx, &n, false).await?;
-        revision(tx, p, change, &n, "verification_invalidated", reason).await?;
+        revision(tx, p, change, &n, operation, reason).await?;
     }
     Ok(())
+}
+fn relationship_nodes(e: &Edge) -> Vec<Uuid> {
+    if matches!(e.edge_type, EdgeType::Blocks | EdgeType::ParentChild) {
+        vec![e.source, e.target]
+    } else {
+        vec![e.source]
+    }
 }
 async fn execute(
     tx: &mut Tx<'_>,
@@ -1127,7 +1168,7 @@ async fn execute(
                 verification,
                 provenance,
             } => {
-                let now = Utc::now();
+                let now = server_time();
                 let n = Node {
                     id: id.unwrap_or_else(Uuid::new_v4),
                     workspace_id: p.workspace_id,
@@ -1222,7 +1263,7 @@ async fn execute(
                 let lifecycle = before.task_state != n.task_state;
                 if content || lifecycle {
                     n.version += 1;
-                    n.updated_at = Utc::now();
+                    n.updated_at = server_time();
                     if content {
                         n.content_revision += 1;
                     }
@@ -1256,8 +1297,10 @@ async fn execute(
                 if !n.deleted {
                     n.deleted = true;
                     n.version += 1;
-                    n.updated_at = Utc::now();
+                    n.content_revision += 1;
+                    n.updated_at = server_time();
                     save_node(tx, &n, false).await?;
+                    revision(tx, p, change, &n, "deleted", reason).await?;
                     history_entry(
                         tx,
                         p,
@@ -1277,49 +1320,21 @@ async fn execute(
                 id,
                 expected_version,
                 revision: rev,
+                include_lifecycle,
             } => {
-                let before = load_node_write(tx, p.workspace_id, *id).await?;
-                expected(before.version, *expected_version)?;
-                knowledge_rules::authorize_edit(&edit_authority, &before)?;
-                if before.kind == NodeKind::Knowledge {
-                    edit_authority.require_admin()?;
-                    if !preview {
-                        live_authority(tx, p, true).await?;
-                    }
-                }
-                let snapshot = load_revision(tx, p.workspace_id, *id, *rev).await?;
-                let mut value = encode(&before)?;
-                for f in DURABLE_FIELDS {
-                    value[*f] = snapshot[*f].clone();
-                }
-                let mut n: Node = decode(value)?;
-                if n.kind == NodeKind::Knowledge {
-                    n.retired = false;
-                    n.retirement_reason = None;
-                    knowledge_rules::reset_verification(&mut n);
-                }
-                knowledge_rules::validate_sources(&n.provenance)?;
-                if durable_changed(&before, &n)? || before.deleted {
-                    n.deleted = false;
-                    n.version += 1;
-                    n.content_revision += 1;
-                    n.updated_at = Utc::now();
-                    save_node(tx, &n, false).await?;
-                    revision(tx, p, change, &n, "restored", reason).await?;
-                    if before.deleted {
-                        history_entry(
-                            tx,
-                            p,
-                            change,
-                            vec![n.id],
-                            "lifecycle",
-                            "restored",
-                            reason,
-                            json!({"deleted":false,"version":n.version,"from_revision":rev}),
-                        )
-                        .await?;
-                    }
-                }
+                let n = restore::restore_node(
+                    tx,
+                    p,
+                    &edit_authority,
+                    change,
+                    *id,
+                    *expected_version,
+                    *rev,
+                    *include_lifecycle,
+                    reason,
+                    preview,
+                )
+                .await?;
                 results.push(encode(&n)?);
             }
             Mutation::AddEdge {
@@ -1379,11 +1394,10 @@ async fn execute(
                     target_revision: *target_revision,
                     version: 1,
                     deleted: false,
-                    created_at: Utc::now(),
+                    created_at: server_time(),
                     description: description.clone(),
                 };
                 sqlx::query("INSERT INTO edges(id,workspace_id,source,target,edge_type,source_revision,target_revision,version,deleted,created_at,description) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)").bind(e.id).bind(e.workspace_id).bind(e.source).bind(e.target).bind(tag(&e.edge_type)?).bind(e.source_revision).bind(e.target_revision).bind(e.version).bind(e.deleted).bind(e.created_at).bind(&e.description).execute(&mut **tx).await?;
-                invalidate_link_verification(tx, p, change, a, reason).await?;
                 history_entry(
                     tx,
                     p,
@@ -1393,6 +1407,15 @@ async fn execute(
                     "added",
                     reason,
                     encode(&e)?,
+                )
+                .await?;
+                checkpoint_nodes(
+                    tx,
+                    p,
+                    change,
+                    relationship_nodes(&e),
+                    "links_changed",
+                    reason,
                 )
                 .await?;
                 results.push(encode(&e)?);
@@ -1429,7 +1452,7 @@ async fn execute(
                 knowledge_rules::verify(&mut n, &edit_authority, *verification, evidence, reason)?;
                 n.version += 1;
                 n.content_revision += 1;
-                n.updated_at = Utc::now();
+                n.updated_at = server_time();
                 save_node(tx, &n, false).await?;
                 revision(tx, p, change, &n, "verified", reason).await?;
                 results.push(encode(&n)?);
@@ -1446,7 +1469,6 @@ async fn execute(
                     return Err(Error::Forbidden);
                 }
                 if !e.deleted {
-                    invalidate_link_verification(tx, p, change, source_node, reason).await?;
                     e.deleted = true;
                     e.version += 1;
                     sqlx::query(
@@ -1466,6 +1488,15 @@ async fn execute(
                         "removed",
                         reason,
                         encode(&e)?,
+                    )
+                    .await?;
+                    checkpoint_nodes(
+                        tx,
+                        p,
+                        change,
+                        relationship_nodes(&e),
+                        "links_changed",
+                        reason,
                     )
                     .await?;
                 }
@@ -1563,69 +1594,6 @@ fn assign_ids(ops: &[Mutation]) -> Result<Vec<Mutation>> {
     }
     decode(value)
 }
-async fn preview_before(tx: &mut Tx<'_>, workspace: Uuid, ops: &[Mutation]) -> Result<Value> {
-    let mut nodes = vec![];
-    let mut edges = vec![];
-    let mut seen = std::collections::HashSet::new();
-    for op in ops {
-        let (category, id) = match op {
-            Mutation::CreateNode { id, .. } => (
-                "node",
-                id.ok_or_else(|| Error::Internal("draft identity missing".into()))?,
-            ),
-            Mutation::UpdateNode { id, .. }
-            | Mutation::DeleteNode { id, .. }
-            | Mutation::RestoreNode { id, .. }
-            | Mutation::VerifyKnowledge { id, .. }
-            | Mutation::SetParent { id, .. } => ("node", *id),
-            Mutation::AddEdge { id, .. } => (
-                "edge",
-                id.ok_or_else(|| Error::Internal("draft identity missing".into()))?,
-            ),
-            Mutation::RemoveEdge { id, .. } => ("edge", *id),
-        };
-        if !seen.insert((category, id)) {
-            continue;
-        }
-        let old = if category == "node" {
-            match load_node(tx, workspace, id).await {
-                Ok(n) => encode(&n)?,
-                Err(Error::NotFound) => Value::Null,
-                Err(e) => return Err(e),
-            }
-        } else {
-            match load_edge(tx, workspace, id).await {
-                Ok(e) => encode(&e)?,
-                Err(Error::NotFound) => Value::Null,
-                Err(e) => return Err(e),
-            }
-        };
-        let entry = json!({"id":id,"before":old});
-        if category == "node" {
-            nodes.push(entry);
-        } else {
-            edges.push(entry);
-        }
-    }
-    Ok(json!({"nodes":nodes,"edges":edges}))
-}
-async fn preview_after(tx: &mut Tx<'_>, workspace: Uuid, mut preview: Value) -> Result<Value> {
-    for category in ["nodes", "edges"] {
-        for item in preview[category]
-            .as_array_mut()
-            .ok_or_else(|| Error::Internal("invalid preview".into()))?
-        {
-            let id = decode(item["id"].clone())?;
-            item["after"] = if category == "nodes" {
-                encode(&load_node(tx, workspace, id).await?)?
-            } else {
-                encode(&load_edge(tx, workspace, id).await?)?
-            };
-        }
-    }
-    Ok(preview)
-}
-
 fn check_response<T: Serialize>(response: &T) -> Result<()> {
     if serde_json::to_vec(response)
         .map_err(|e| Error::Internal(e.to_string()))?

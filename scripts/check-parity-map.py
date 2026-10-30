@@ -225,7 +225,7 @@ def main():
             for row in data['tests']:
                 prior=old.get(row['id'])
                 if prior and prior['source']['sha256']==row['source']['sha256'] and old_files.get(row['source']['path'])==new_files.get(row['source']['path']):
-                    for key in ('category','priority','status','reason','v2_tests','candidate_v2_tests','verification','coverage_scope','notes'):
+                    for key in ('category','priority','status','reason','v2_tests','candidate_v2_tests','verification','coverage_scope','notes','schema5_verification'):
                         if key in prior: row[key]=prior[key]
         data['summary']=summary(data)
         args.inventory.parent.mkdir(parents=True,exist_ok=True)
