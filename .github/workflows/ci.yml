@@ -33,9 +33,26 @@ jobs:
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked --all-targets
       - run: python3 scripts/check-parity-map.py
-      - run: cargo build --locked --release
       - run: python3 -m compileall -q scripts examples
       - run: python3 -m unittest discover -s scripts -p 'test_*.py'
       - run: for script in scripts/*.sh; do bash -n "$script"; done
+
+  deployment:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build validation image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          push: false
+          tags: aq-graph:validation
+          cache-from: type=gha,scope=aq-graph-linux-amd64
+          cache-to: type=gha,mode=max,scope=aq-graph-linux-amd64
       - name: Isolated deployment and recovery drill
+        env:
+          AQ_GRAPH_SMOKE_IMAGE: aq-graph:validation
+          AQ_GRAPH_SMOKE_SKIP_BUILD: '1'
         run: python3 scripts/deployment-smoke.py

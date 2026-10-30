@@ -83,6 +83,8 @@ jobs:
           context: .
           push: true
           build-args: AQ_GRAPH_VERSION=${{ github.ref_name }}
+          cache-from: type=gha,scope=aq-graph-linux-amd64
+          cache-to: type=gha,mode=max,scope=aq-graph-linux-amd64
           tags: ${{ steps.image.outputs.name }}:${{ github.ref_name }}
           labels: |
             org.opencontainers.image.version=${{ github.ref_name }}

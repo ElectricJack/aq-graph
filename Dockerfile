@@ -1,6 +1,15 @@
-FROM rust:1.96.1-bookworm AS build
+FROM rust:1.96.1-bookworm AS dependencies
 WORKDIR /build
 COPY Cargo.toml Cargo.lock ./
+# Cache locked dependencies separately from application source and migrations.
+# Clean only this package so the later build cannot reuse the placeholder binary.
+RUN mkdir src \
+    && printf 'fn main() {}\n' > src/main.rs \
+    && touch src/lib.rs \
+    && cargo build --locked --release --bin aq-graph \
+    && cargo clean --release --package aq-graph
+
+FROM dependencies AS build
 COPY src ./src
 COPY migrations ./migrations
 RUN cargo build --locked --release --bin aq-graph

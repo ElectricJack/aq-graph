@@ -165,7 +165,7 @@ AQ_GRAPH_TEST_DATABASE_URL=postgres://USER@127.0.0.1/aq_graph_test cargo test --
 cargo build --locked --release
 ```
 
-CI runs Rust checks, PostgreSQL-backed tests, an image build, a Compose smoke test, and isolated backup restoration. Tag releases build Linux x86_64 and macOS arm64 CLI archives with SHA-256 checksums and a versioned GHCR image. The Linux release artifact targets glibc on Ubuntu 22.04 or newer. Windows and other targets are not yet release-tested. API v1 and schema migration `0008` are the initial compatibility contract. Schema-breaking upgrades need an explicit migration and recovery plan; never assume an older image can read a newer schema.
+CI runs Rust checks and PostgreSQL-backed tests in parallel with the production image build and isolated Compose backup/restore drill. Both jobs must succeed. Docker dependency layers are cached across runs; the drill uses the image built in that job, and ordinary CI does not build a second native release binary. Tag releases build Linux x86_64 and macOS arm64 CLI archives with SHA-256 checksums and a versioned GHCR image. The Linux release artifact targets glibc on Ubuntu 22.04 or newer. Windows and other targets are not yet release-tested. API v1 and schema migration `0008` are the initial compatibility contract. Schema-breaking upgrades need an explicit migration and recovery plan; never assume an older image can read a newer schema.
 
 The [shared node contract](docs/specs/0004-shared-node-model.md) defines the common field and validation rules.
 
