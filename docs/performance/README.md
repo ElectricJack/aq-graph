@@ -1,5 +1,10 @@
 # Current performance evidence
 
+- [Schema 8 first application load](schema8-load-first/README.md): transactional readiness projection and bounded search prefix; all 200/s sustained, 1,000/s burst and recovery offers completed within measured service p95 budgets. Fixed 200-client saturation still exceeds the mutation budget.
+- [Schema 8 maintenance profile](schema8-load-maintenance/README.md): same binary after explicit vacuum, with another vacuum overlapping live 200-client traffic; conditions and remaining limits are retained.
+
+The following schema-7 profiles are retained historical evidence:
+
 - [Schema 7 full baseline](schema7-load/README.md): 100,000 nodes / 500,000 edges, release build and PostgreSQL 17; failed the proposed latency and 200/s workload targets.
 - [Fresh optimized-query experiment](schema7-load-optimized/README.md): severe early overload during overlapping maintenance; interrupted open-loop phase, retained as failed/incomplete evidence.
 - [Post-maintenance steady-state followup](schema7-load-optimized-steady/README.md): the same optimized binary after explicit VACUUM/ANALYZE on the previously written fixture. Its conditions differ from the original baseline; it does not establish fresh-load or maintenance acceptance.
@@ -8,7 +13,7 @@ The [benchmark protocol](../benchmark.md) defines the workload and interpretatio
 
 # Historical schema-3 performance results
 
-These measurements apply to the earlier schema-3 contract and binary recorded below. They predate schema-4/5 parent/readiness, endpoint-matrix and knowledge-authorization changes. They are **not capacity or latency evidence for the current schema-7 implementation**. Raw artifacts remain unchanged historical evidence; current compatibility tests and a small fixture smoke do not replace a full representative load rerun.
+These measurements apply to the earlier schema-3 contract and binary recorded below. They predate schema-4/5 parent/readiness, endpoint-matrix and knowledge-authorization changes. They are **not capacity or latency evidence for the current schema-8 implementation**. Raw artifacts remain unchanged historical evidence; current compatibility tests and a small fixture smoke do not replace a full representative load rerun.
 
 Measured 2026-10-30T06:58:51Z through 2026-10-30T07:01:54Z. This is a local development-machine measurement, not a production VPS capacity guarantee.
 

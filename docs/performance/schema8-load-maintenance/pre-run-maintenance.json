@@ -1,0 +1,635 @@
+{
+  "operation": "VACUUM (ANALYZE)",
+  "before": {
+    "sampled_at": "2026-10-30T18:21:52.736468+00:00",
+    "configuration": {
+      "autovacuum": {
+        "setting": "on",
+        "unit": null
+      },
+      "autovacuum_analyze_scale_factor": {
+        "setting": "0.1",
+        "unit": null
+      },
+      "autovacuum_analyze_threshold": {
+        "setting": "50",
+        "unit": null
+      },
+      "autovacuum_max_workers": {
+        "setting": "3",
+        "unit": null
+      },
+      "autovacuum_naptime": {
+        "setting": "60",
+        "unit": "s"
+      },
+      "autovacuum_vacuum_scale_factor": {
+        "setting": "0.2",
+        "unit": null
+      },
+      "autovacuum_vacuum_threshold": {
+        "setting": "50",
+        "unit": null
+      },
+      "autovacuum_work_mem": {
+        "setting": "-1",
+        "unit": "kB"
+      },
+      "effective_cache_size": {
+        "setting": "524288",
+        "unit": "8kB"
+      },
+      "fsync": {
+        "setting": "on",
+        "unit": null
+      },
+      "full_page_writes": {
+        "setting": "on",
+        "unit": null
+      },
+      "jit": {
+        "setting": "on",
+        "unit": null
+      },
+      "maintenance_work_mem": {
+        "setting": "65536",
+        "unit": "kB"
+      },
+      "max_connections": {
+        "setting": "100",
+        "unit": null
+      },
+      "shared_buffers": {
+        "setting": "16384",
+        "unit": "8kB"
+      },
+      "synchronous_commit": {
+        "setting": "on",
+        "unit": null
+      },
+      "track_io_timing": {
+        "setting": "on",
+        "unit": null
+      },
+      "work_mem": {
+        "setting": "4096",
+        "unit": "kB"
+      }
+    },
+    "tables": [
+      {
+        "name": "_sqlx_migrations",
+        "live_tuples": 8,
+        "dead_tuples": 8,
+        "modifications_since_analyze": 2,
+        "last_vacuum": null,
+        "last_autovacuum": null,
+        "last_analyze": "2026-10-30T18:17:02.877913+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 0,
+        "autovacuum_count": 0,
+        "analyze_count": 1,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 1,
+        "all_visible_pages_estimate": 0,
+        "relation_options": null,
+        "total_bytes": 32768
+      },
+      {
+        "name": "history_entries",
+        "live_tuples": 820612,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 20612,
+        "last_vacuum": null,
+        "last_autovacuum": "2026-10-30T18:18:30.452535+00:00",
+        "last_analyze": "2026-10-30T18:17:03.317324+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 0,
+        "autovacuum_count": 1,
+        "analyze_count": 1,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 103927,
+        "all_visible_pages_estimate": 103927,
+        "relation_options": null,
+        "total_bytes": 997236736
+      },
+      {
+        "name": "idempotency_receipts",
+        "live_tuples": 23705,
+        "dead_tuples": 770,
+        "modifications_since_analyze": 1144,
+        "last_vacuum": null,
+        "last_autovacuum": "2026-10-30T18:21:03.375391+00:00",
+        "last_analyze": "2026-10-30T18:17:03.331404+00:00",
+        "last_autoanalyze": "2026-10-30T18:21:03.6078+00:00",
+        "vacuum_count": 0,
+        "autovacuum_count": 3,
+        "analyze_count": 1,
+        "autoanalyze_count": 3,
+        "heap_pages_estimate": 5314,
+        "all_visible_pages_estimate": 5282,
+        "relation_options": null,
+        "total_bytes": 47407104
+      },
+      {
+        "name": "edge_versions",
+        "live_tuples": 500001,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 1,
+        "last_vacuum": null,
+        "last_autovacuum": "2026-10-30T18:18:37.935652+00:00",
+        "last_analyze": "2026-10-30T18:17:03.64929+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 0,
+        "autovacuum_count": 1,
+        "analyze_count": 1,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 29412,
+        "all_visible_pages_estimate": 29411,
+        "relation_options": null,
+        "total_bytes": 278765568
+      },
+      {
+        "name": "link_sets",
+        "live_tuples": 100002,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 2,
+        "last_vacuum": null,
+        "last_autovacuum": "2026-10-30T18:18:38.206146+00:00",
+        "last_analyze": "2026-10-30T18:17:03.676897+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 0,
+        "autovacuum_count": 1,
+        "analyze_count": 2,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 1031,
+        "all_visible_pages_estimate": 1031,
+        "relation_options": null,
+        "total_bytes": 32047104
+      },
+      {
+        "name": "link_set_members",
+        "live_tuples": 713237,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 16,
+        "last_vacuum": null,
+        "last_autovacuum": "2026-10-30T18:18:41.20508+00:00",
+        "last_analyze": "2026-10-30T18:17:03.830485+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 0,
+        "autovacuum_count": 1,
+        "analyze_count": 1,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 7353,
+        "all_visible_pages_estimate": 7353,
+        "relation_options": null,
+        "total_bytes": 105906176
+      },
+      {
+        "name": "workspaces",
+        "live_tuples": 1,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": null,
+        "last_autovacuum": null,
+        "last_analyze": "2026-10-30T18:17:03.833752+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 0,
+        "autovacuum_count": 0,
+        "analyze_count": 1,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 1,
+        "all_visible_pages_estimate": 0,
+        "relation_options": null,
+        "total_bytes": 24576
+      },
+      {
+        "name": "credentials",
+        "live_tuples": 1,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": null,
+        "last_autovacuum": null,
+        "last_analyze": "2026-10-30T18:17:03.837378+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 0,
+        "autovacuum_count": 0,
+        "analyze_count": 1,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 1,
+        "all_visible_pages_estimate": 0,
+        "relation_options": null,
+        "total_bytes": 49152
+      },
+      {
+        "name": "change_sets",
+        "live_tuples": 23719,
+        "dead_tuples": 781,
+        "modifications_since_analyze": 1090,
+        "last_vacuum": null,
+        "last_autovacuum": "2026-10-30T18:21:04.845462+00:00",
+        "last_analyze": "2026-10-30T18:17:03.840637+00:00",
+        "last_autoanalyze": "2026-10-30T18:21:05.227653+00:00",
+        "vacuum_count": 0,
+        "autovacuum_count": 3,
+        "analyze_count": 1,
+        "autoanalyze_count": 3,
+        "heap_pages_estimate": 4380,
+        "all_visible_pages_estimate": 4329,
+        "relation_options": null,
+        "total_bytes": 38805504
+      },
+      {
+        "name": "node_revisions",
+        "live_tuples": 317888,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 20611,
+        "last_vacuum": null,
+        "last_autovacuum": "2026-10-30T18:18:57.019599+00:00",
+        "last_analyze": "2026-10-30T18:17:04.425297+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 0,
+        "autovacuum_count": 1,
+        "analyze_count": 1,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 61883,
+        "all_visible_pages_estimate": 61880,
+        "relation_options": null,
+        "total_bytes": 589627392
+      },
+      {
+        "name": "edges",
+        "live_tuples": 500001,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 1,
+        "last_vacuum": null,
+        "last_autovacuum": "2026-10-30T18:18:59.176063+00:00",
+        "last_analyze": "2026-10-30T18:17:04.530714+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 0,
+        "autovacuum_count": 1,
+        "analyze_count": 2,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 8486,
+        "all_visible_pages_estimate": 8484,
+        "relation_options": null,
+        "total_bytes": 311697408
+      },
+      {
+        "name": "nodes",
+        "live_tuples": 100226,
+        "dead_tuples": 14717,
+        "modifications_since_analyze": 3567,
+        "last_vacuum": null,
+        "last_autovacuum": "2026-10-30T18:19:12.492925+00:00",
+        "last_analyze": "2026-10-30T18:17:07.570572+00:00",
+        "last_autoanalyze": "2026-10-30T18:20:12.353445+00:00",
+        "vacuum_count": 0,
+        "autovacuum_count": 1,
+        "analyze_count": 1,
+        "autoanalyze_count": 1,
+        "heap_pages_estimate": 33554,
+        "all_visible_pages_estimate": 32574,
+        "relation_options": null,
+        "total_bytes": 354189312
+      },
+      {
+        "name": "node_ready_projection",
+        "live_tuples": 100000,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": null,
+        "last_autovacuum": "2026-10-30T18:19:05.459358+00:00",
+        "last_analyze": null,
+        "last_autoanalyze": "2026-10-30T18:19:05.564926+00:00",
+        "vacuum_count": 0,
+        "autovacuum_count": 1,
+        "analyze_count": 0,
+        "autoanalyze_count": 1,
+        "heap_pages_estimate": 1031,
+        "all_visible_pages_estimate": 1029,
+        "relation_options": null,
+        "total_bytes": 17825792
+      }
+    ],
+    "vacuum_progress": [],
+    "maintenance_activity": []
+  },
+  "started_epoch_seconds": 1793384512.7408414,
+  "finished_epoch_seconds": 1793384517.6358109,
+  "after": {
+    "sampled_at": "2026-10-30T18:21:57.651862+00:00",
+    "configuration": {
+      "autovacuum": {
+        "setting": "on",
+        "unit": null
+      },
+      "autovacuum_analyze_scale_factor": {
+        "setting": "0.1",
+        "unit": null
+      },
+      "autovacuum_analyze_threshold": {
+        "setting": "50",
+        "unit": null
+      },
+      "autovacuum_max_workers": {
+        "setting": "3",
+        "unit": null
+      },
+      "autovacuum_naptime": {
+        "setting": "60",
+        "unit": "s"
+      },
+      "autovacuum_vacuum_scale_factor": {
+        "setting": "0.2",
+        "unit": null
+      },
+      "autovacuum_vacuum_threshold": {
+        "setting": "50",
+        "unit": null
+      },
+      "autovacuum_work_mem": {
+        "setting": "-1",
+        "unit": "kB"
+      },
+      "effective_cache_size": {
+        "setting": "524288",
+        "unit": "8kB"
+      },
+      "fsync": {
+        "setting": "on",
+        "unit": null
+      },
+      "full_page_writes": {
+        "setting": "on",
+        "unit": null
+      },
+      "jit": {
+        "setting": "on",
+        "unit": null
+      },
+      "maintenance_work_mem": {
+        "setting": "65536",
+        "unit": "kB"
+      },
+      "max_connections": {
+        "setting": "100",
+        "unit": null
+      },
+      "shared_buffers": {
+        "setting": "16384",
+        "unit": "8kB"
+      },
+      "synchronous_commit": {
+        "setting": "on",
+        "unit": null
+      },
+      "track_io_timing": {
+        "setting": "on",
+        "unit": null
+      },
+      "work_mem": {
+        "setting": "4096",
+        "unit": "kB"
+      }
+    },
+    "tables": [
+      {
+        "name": "_sqlx_migrations",
+        "live_tuples": 8,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": "2026-10-30T18:21:52.754111+00:00",
+        "last_autovacuum": null,
+        "last_analyze": "2026-10-30T18:21:52.755412+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 1,
+        "autovacuum_count": 0,
+        "analyze_count": 2,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 1,
+        "all_visible_pages_estimate": 1,
+        "relation_options": null,
+        "total_bytes": 65536
+      },
+      {
+        "name": "history_entries",
+        "live_tuples": 819884,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": "2026-10-30T18:21:52.796354+00:00",
+        "last_autovacuum": "2026-10-30T18:18:30.452535+00:00",
+        "last_analyze": "2026-10-30T18:21:53.120045+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 1,
+        "autovacuum_count": 1,
+        "analyze_count": 2,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 109089,
+        "all_visible_pages_estimate": 109089,
+        "relation_options": null,
+        "total_bytes": 997236736
+      },
+      {
+        "name": "idempotency_receipts",
+        "live_tuples": 23707,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": "2026-10-30T18:21:53.189481+00:00",
+        "last_autovacuum": "2026-10-30T18:21:03.375391+00:00",
+        "last_analyze": "2026-10-30T18:21:53.308567+00:00",
+        "last_autoanalyze": "2026-10-30T18:21:03.6078+00:00",
+        "vacuum_count": 1,
+        "autovacuum_count": 3,
+        "analyze_count": 2,
+        "autoanalyze_count": 3,
+        "heap_pages_estimate": 5359,
+        "all_visible_pages_estimate": 5359,
+        "relation_options": null,
+        "total_bytes": 47407104
+      },
+      {
+        "name": "edge_versions",
+        "live_tuples": 500001,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": "2026-10-30T18:21:53.314517+00:00",
+        "last_autovacuum": "2026-10-30T18:18:37.935652+00:00",
+        "last_analyze": "2026-10-30T18:21:53.48385+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 1,
+        "autovacuum_count": 1,
+        "analyze_count": 2,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 29412,
+        "all_visible_pages_estimate": 29412,
+        "relation_options": null,
+        "total_bytes": 278765568
+      },
+      {
+        "name": "link_sets",
+        "live_tuples": 100002,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": "2026-10-30T18:21:53.514417+00:00",
+        "last_autovacuum": "2026-10-30T18:18:38.206146+00:00",
+        "last_analyze": "2026-10-30T18:21:53.539877+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 1,
+        "autovacuum_count": 1,
+        "analyze_count": 3,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 1031,
+        "all_visible_pages_estimate": 1031,
+        "relation_options": null,
+        "total_bytes": 32047104
+      },
+      {
+        "name": "link_set_members",
+        "live_tuples": 713237,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": "2026-10-30T18:21:53.545054+00:00",
+        "last_autovacuum": "2026-10-30T18:18:41.20508+00:00",
+        "last_analyze": "2026-10-30T18:21:53.603258+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 1,
+        "autovacuum_count": 1,
+        "analyze_count": 2,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 7353,
+        "all_visible_pages_estimate": 7353,
+        "relation_options": null,
+        "total_bytes": 105906176
+      },
+      {
+        "name": "workspaces",
+        "live_tuples": 1,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": "2026-10-30T18:21:53.606916+00:00",
+        "last_autovacuum": null,
+        "last_analyze": "2026-10-30T18:21:53.607001+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 1,
+        "autovacuum_count": 0,
+        "analyze_count": 2,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 1,
+        "all_visible_pages_estimate": 1,
+        "relation_options": null,
+        "total_bytes": 57344
+      },
+      {
+        "name": "credentials",
+        "live_tuples": 1,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": "2026-10-30T18:21:53.610309+00:00",
+        "last_autovacuum": null,
+        "last_analyze": "2026-10-30T18:21:53.610839+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 1,
+        "autovacuum_count": 0,
+        "analyze_count": 2,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 1,
+        "all_visible_pages_estimate": 1,
+        "relation_options": null,
+        "total_bytes": 81920
+      },
+      {
+        "name": "change_sets",
+        "live_tuples": 23708,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": "2026-10-30T18:21:53.629951+00:00",
+        "last_autovacuum": "2026-10-30T18:21:04.845462+00:00",
+        "last_analyze": "2026-10-30T18:21:53.911817+00:00",
+        "last_autoanalyze": "2026-10-30T18:21:05.227653+00:00",
+        "vacuum_count": 1,
+        "autovacuum_count": 3,
+        "analyze_count": 2,
+        "autoanalyze_count": 3,
+        "heap_pages_estimate": 4380,
+        "all_visible_pages_estimate": 4380,
+        "relation_options": null,
+        "total_bytes": 38805504
+      },
+      {
+        "name": "node_revisions",
+        "live_tuples": 320690,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": "2026-10-30T18:21:54.202864+00:00",
+        "last_autovacuum": "2026-10-30T18:18:57.019599+00:00",
+        "last_analyze": "2026-10-30T18:21:54.448061+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 1,
+        "autovacuum_count": 1,
+        "analyze_count": 2,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 66691,
+        "all_visible_pages_estimate": 66691,
+        "relation_options": null,
+        "total_bytes": 589635584
+      },
+      {
+        "name": "edges",
+        "live_tuples": 500001,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": "2026-10-30T18:21:54.460913+00:00",
+        "last_autovacuum": "2026-10-30T18:18:59.176063+00:00",
+        "last_analyze": "2026-10-30T18:21:54.532396+00:00",
+        "last_autoanalyze": null,
+        "vacuum_count": 1,
+        "autovacuum_count": 1,
+        "analyze_count": 3,
+        "autoanalyze_count": 0,
+        "heap_pages_estimate": 8486,
+        "all_visible_pages_estimate": 8486,
+        "relation_options": null,
+        "total_bytes": 311697408
+      },
+      {
+        "name": "nodes",
+        "live_tuples": 100097,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": "2026-10-30T18:21:54.654174+00:00",
+        "last_autovacuum": "2026-10-30T18:19:12.492925+00:00",
+        "last_analyze": "2026-10-30T18:21:57.585476+00:00",
+        "last_autoanalyze": "2026-10-30T18:20:12.353445+00:00",
+        "vacuum_count": 1,
+        "autovacuum_count": 1,
+        "analyze_count": 2,
+        "autoanalyze_count": 1,
+        "heap_pages_estimate": 33168,
+        "all_visible_pages_estimate": 33168,
+        "relation_options": null,
+        "total_bytes": 351027200
+      },
+      {
+        "name": "node_ready_projection",
+        "live_tuples": 100000,
+        "dead_tuples": 0,
+        "modifications_since_analyze": 0,
+        "last_vacuum": "2026-10-30T18:21:57.593758+00:00",
+        "last_autovacuum": "2026-10-30T18:19:05.459358+00:00",
+        "last_analyze": "2026-10-30T18:21:57.617073+00:00",
+        "last_autoanalyze": "2026-10-30T18:19:05.564926+00:00",
+        "vacuum_count": 1,
+        "autovacuum_count": 1,
+        "analyze_count": 1,
+        "autoanalyze_count": 1,
+        "heap_pages_estimate": 1031,
+        "all_visible_pages_estimate": 1031,
+        "relation_options": null,
+        "total_bytes": 17825792
+      }
+    ],
+    "vacuum_progress": [],
+    "maintenance_activity": []
+  }
+}

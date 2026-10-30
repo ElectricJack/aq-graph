@@ -1,0 +1,26 @@
+{
+  "rust_command": "AQ_GRAPH_TEST_DATABASE_URL=<disposable PostgreSQL17> cargo test --locked",
+  "rust_tests_passed": 125,
+  "postgresql_tests": 101,
+  "failures": 0,
+  "ignored": 0,
+  "python_tests_passed": 9,
+  "checks": [
+    "cargo fmt --check",
+    "cargo clippy --locked --all-targets -- -D warnings",
+    "python3 -m unittest discover -s scripts",
+    "local Markdown link targets"
+  ],
+  "source_sha256": "3324486322be05ee84f75628022fa5e3ce53ae34739b84c759d8bdd0a3f3fffc",
+  "source_digest_method": "SHA256 over sorted tracked plus untracked src,migrations,Cargo.toml,Cargo.lock,benchmark.py,observe.py; path NUL content NUL",
+  "binary_sha256": "eb9c8f41002cb5d9675f87de0cadbe34e7d74cfc60d2449cd23ac4df76921fea",
+  "notes": [
+    "Complete Rust suite includes real PostgreSQL17 tests; no skipped tests.",
+    "Full tests and compilation completed before timed load; Docker rebuild/recovery ran afterward.",
+    "Both full profiles used identical runtime/harness source and release binary; final source digest verified independently.",
+    "Raw compressed request logs and artifacts scanned against local validation credentials without exposure."
+  ],
+  "schema7_to_8_backfill_execution_ms": 1386.030069,
+  "readiness_projection_discrepancies_after_both_full_profiles": 0,
+  "deployment_recovery_passed": true
+}

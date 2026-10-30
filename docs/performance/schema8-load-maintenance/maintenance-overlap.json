@@ -1,0 +1,7 @@
+{
+  "start_epoch_seconds": 1793384607.653663,
+  "end_epoch_seconds": 1793384617.1039224,
+  "successful_mutation_completions_during_maintenance": 2113,
+  "successful_independent_writes_proven": false,
+  "limitation": "Service route logs combine mutation subtypes; successful mutation completions can include replay/no-op. Independent-write overlap needs subtype or history evidence."
+}

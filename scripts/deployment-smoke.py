@@ -79,11 +79,13 @@ try:
             return json.load(response)
     def mutate(key, operations):
         return api('/mutations', {'idempotency_key': key, 'operations': operations})
-    a, b, edge = (str(uuid.uuid4()) for _ in range(3))
+    a, b, edge, child, parent_edge = (str(uuid.uuid4()) for _ in range(5))
     request = {'idempotency_key':'drill-create', 'operations':[
         {'op':'create_node','id':a,'kind':'task','title':'Recovery task','task_state':'active'},
         {'op':'create_node','id':b,'kind':'knowledge','title':'Recovery evidence'},
-        {'op':'add_edge','id':edge,'source':a,'target':b,'edge_type':'references','target_revision':1}]}
+        {'op':'create_node','id':child,'kind':'task','title':'Recovery child','task_state':'active'},
+        {'op':'add_edge','id':edge,'source':a,'target':b,'edge_type':'references','target_revision':1},
+        {'op':'add_edge','id':parent_edge,'source':a,'target':child,'edge_type':'parent-child'}]}
     receipt = api('/mutations', request)
     n = api('/nodes/' + a)
     mutate('drill-summary', [{'op':'set_summary','id':a,'expected_version':n['version'], 'source_revision':n['content_revision'],'summary':'Retained summary'}])
@@ -92,8 +94,10 @@ try:
     draft_id = draft.get('id', draft.get('change_set_id'))
     assert draft_id, draft
     paths = ['/nodes/'+a, '/nodes/'+b, '/nodes/'+a+'/history?limit=100', '/nodes/'+a+'/revisions/2',
-             '/nodes/'+a+'/revisions/3', '/nodes/'+a+'/diff?from=1&to=3', '/changesets/'+draft_id]
+             '/nodes/'+a+'/revisions/3', '/nodes/'+a+'/revisions/4', '/nodes/'+a+'/diff?from=1&to=3',
+             '/nodes/'+child, '/ready?limit=20', '/changesets/'+draft_id]
     expected = {p:api(p) for p in paths}
+    assert [n['id'] for n in expected['/ready?limit=20']['items']] == [child]
     def verify():
         assert {p:api(p) for p in paths} == expected
         assert api('/mutations', request) == receipt
@@ -148,7 +152,7 @@ try:
     else:
         raise AssertionError('Restored restart did not verify')
     print(json.dumps({'result':'passed','image':IMAGE,'project':PROJECT,'port':PORT,
-                      'checks':['credential rerun','nonroot/read-only','private PostgreSQL','fresh start','restart','same-schema recreate','exact revisions/links/history/draft/summary','receipt replay','backup/restore','invalid restore','existing destination refusal','restored write'],
+                      'checks':['credential rerun','nonroot/read-only','private PostgreSQL','fresh start','restart','same-schema recreate','exact revisions/links/history/draft/summary','ready leaf projection','receipt replay','backup/restore','invalid restore','existing destination refusal','restored write'],
                       'database_snapshot': source_snapshot,
                       'image_id': inspection['Image'],
                       'postgres_version': compose('exec','-T','postgres','psql','-U','aq_graph','-d','aq_graph','-Atc','SHOW server_version',capture=True).stdout.strip(),

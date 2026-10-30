@@ -300,18 +300,13 @@ impl Store {
         // Two indexed ancestor joins suffice; a per-candidate recursive CTE can
         // cause repeated full node scans and JIT overhead even on small graphs.
         // A future hierarchy-depth increase must also extend this predicate.
-        // Select narrow leaf identities before fetching bodies. A LIMIT-driven
-        // primary-key walk otherwise loads tens of thousands of early-ID parents.
-        // The ordered set encourages lazy guard evaluation in measured plans. The
-        // lateral LIMIT is an optimizer barrier despite the unique node identity;
-        // removing it can reintroduce a body-first scan before the page limit.
-        let vs=sqlx::query_scalar::<_,Value>("WITH candidates AS MATERIALIZED (
-SELECT id FROM (
-SELECT id FROM nodes WHERE workspace_id=$1 AND kind='task' AND task_state='active' AND NOT deleted AND ($2::uuid IS NULL OR id>$2)
-EXCEPT
-SELECT pc.source FROM edges pc JOIN nodes child ON child.id=pc.target AND child.workspace_id=pc.workspace_id
-WHERE pc.workspace_id=$1 AND pc.edge_type='parent-child' AND NOT pc.deleted AND NOT child.deleted AND ($2::uuid IS NULL OR pc.source>$2)
-) leaves ORDER BY id
+        // The transactional projection supplies an ordered, narrow leaf index.
+        // Keep the lateral barrier so bodies are fetched only after the guards.
+        let vs=sqlx::query_scalar::<_,Value>("WITH candidates AS NOT MATERIALIZED (
+SELECT node_id AS id FROM node_ready_projection
+WHERE workspace_id=$1 AND eligible AND live_child_count=0
+AND node_id >= COALESCE($2::uuid,'00000000-0000-0000-0000-000000000000'::uuid)
+AND ($2::uuid IS NULL OR node_id>$2)
 )
 SELECT to_jsonb(n)-'search_document' FROM candidates c
 CROSS JOIN LATERAL (SELECT n.* FROM nodes n WHERE n.workspace_id=$1 AND n.id=c.id AND NOT n.retired

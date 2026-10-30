@@ -1,0 +1,124 @@
+{
+  "utc": "2026-10-30T18:22:05.714576+00:00",
+  "database_bytes": 2779150003,
+  "counts": {
+    "nodes": 100000,
+    "edges": 500001,
+    "revisions": 320611,
+    "history_entries": 820612,
+    "edge_versions": 500001,
+    "link_sets": 100002,
+    "link_memberships": 713237,
+    "changesets": 23708
+  },
+  "tables": [
+    {
+      "relname": "_sqlx_migrations",
+      "heap_bytes": 8192,
+      "index_bytes": 16384,
+      "total_bytes": 65536
+    },
+    {
+      "relname": "change_sets",
+      "heap_bytes": 35880960,
+      "index_bytes": 2875392,
+      "total_bytes": 38805504
+    },
+    {
+      "relname": "credentials",
+      "heap_bytes": 8192,
+      "index_bytes": 32768,
+      "total_bytes": 81920
+    },
+    {
+      "relname": "edge_versions",
+      "heap_bytes": 240943104,
+      "index_bytes": 37724160,
+      "total_bytes": 278765568
+    },
+    {
+      "relname": "edges",
+      "heap_bytes": 69517312,
+      "index_bytes": 242122752,
+      "total_bytes": 311697408
+    },
+    {
+      "relname": "history_entries",
+      "heap_bytes": 893657088,
+      "index_bytes": 103301120,
+      "total_bytes": 997236736
+    },
+    {
+      "relname": "idempotency_receipts",
+      "heap_bytes": 43900928,
+      "index_bytes": 3457024,
+      "total_bytes": 47407104
+    },
+    {
+      "relname": "link_set_members",
+      "heap_bytes": 60235776,
+      "index_bytes": 45629440,
+      "total_bytes": 105906176
+    },
+    {
+      "relname": "link_sets",
+      "heap_bytes": 8445952,
+      "index_bytes": 23568384,
+      "total_bytes": 32047104
+    },
+    {
+      "relname": "node_ready_projection",
+      "heap_bytes": 8445952,
+      "index_bytes": 9347072,
+      "total_bytes": 17825792
+    },
+    {
+      "relname": "node_revisions",
+      "heap_bytes": 546332672,
+      "index_bytes": 43114496,
+      "total_bytes": 589635584
+    },
+    {
+      "relname": "nodes",
+      "heap_bytes": 271712256,
+      "index_bytes": 70844416,
+      "total_bytes": 351027200
+    },
+    {
+      "relname": "workspaces",
+      "heap_bytes": 8192,
+      "index_bytes": 16384,
+      "total_bytes": 57344
+    }
+  ],
+  "database_stats": {
+    "datid": "16735",
+    "datname": "aq_graph_bench_schema8",
+    "numbackends": 21,
+    "xact_commit": 418164,
+    "xact_rollback": 15693,
+    "blks_read": 3209992,
+    "blks_hit": 161343610,
+    "tup_returned": 60526070,
+    "tup_fetched": 36557097,
+    "tup_inserted": 3229321,
+    "tup_updated": 169312,
+    "tup_deleted": 275,
+    "conflicts": 0,
+    "temp_files": 71,
+    "temp_bytes": 269425504,
+    "deadlocks": 0,
+    "checksum_failures": null,
+    "checksum_last_failure": null,
+    "blk_read_time": 13257.755,
+    "blk_write_time": 10453.016,
+    "session_time": 4054314.435,
+    "active_time": 513059.722,
+    "idle_in_transaction_time": 445062.808,
+    "sessions": 160,
+    "sessions_abandoned": 2,
+    "sessions_fatal": 0,
+    "sessions_killed": 0,
+    "stats_reset": null
+  }
+}

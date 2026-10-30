@@ -93,9 +93,11 @@ class HarnessTests(unittest.TestCase):
                 return dict(operation='get', status='200', error_code=None, latency_ms=20, bytes=1)
             def close(self):
                 pass
-        args = types.SimpleNamespace(open_workers=2,rate=400,duration=.02,burst_seconds=.02)
+        observations=[]
+        args = types.SimpleNamespace(open_workers=2,rate=400,duration=.02,burst_seconds=.02,snapshot=observations.append)
         with patch.object(benchmark, 'Worker', Client):
             result = benchmark.arrival(args, {})
+        self.assertEqual(observations,['sustained_arrival_boundary_requested','burst_arrival_boundary_requested','recovery_arrival_boundary_requested','open_loop_after_arrivals_before_drain_requested','open_loop_after_drain'])
         phases = result['phases']
         self.assertEqual([p['offered'] for p in phases], [8,40,8])
         self.assertGreater(sum(p['client_queue_dropped'] for p in phases), 0)
@@ -104,6 +106,37 @@ class HarnessTests(unittest.TestCase):
             if phase['completed']:
                 self.assertIn('client_queue', phase)
                 self.assertIn('http_latency', phase)
+
+    def test_database_guard_precedes_maintenance(self):
+        args = types.SimpleNamespace(database_url_env='BENCH_TEST_URL',psql='psql')
+        with patch.dict(benchmark.os.environ, {'BENCH_TEST_URL':'postgres://localhost/production'}):
+            with patch.object(benchmark.subprocess,'check_output',return_value='production\n') as sql:
+                with self.assertRaises(SystemExit):
+                    benchmark.database_sql(args)
+        self.assertEqual(sql.call_count,1)
+        self.assertEqual(sql.call_args.args[0][-1],'SELECT current_database()')
+
+    def test_sql_failure_redacts_connection_diagnostics(self):
+        args=types.SimpleNamespace(database_url_env='BENCH_TEST_URL',psql='psql')
+        failure=benchmark.subprocess.CalledProcessError(1,['psql'],stderr='private credentials')
+        with patch.dict(benchmark.os.environ,{'BENCH_TEST_URL':'postgres://localhost/aq_graph_bench_test'}), \
+             patch.object(benchmark.subprocess,'check_output',side_effect=failure):
+            with self.assertRaises(SystemExit) as raised:
+                benchmark.database_sql(args)
+        self.assertNotIn('private',str(raised.exception))
+
+    def test_maintenance_records_before_after_without_transaction(self):
+        args = types.SimpleNamespace(output='unused.json')
+        sql = Mock()
+        with patch.object(benchmark,'database_sql',return_value=sql), \
+             patch.object(benchmark,'database_state',side_effect=[{'sample':'before'},{'sample':'after'}]), \
+             patch.object(benchmark.pathlib.Path,'write_text') as write:
+            benchmark.maintain(args)
+        sql.assert_called_once_with('VACUUM (ANALYZE)')
+        report = benchmark.json.loads(write.call_args.args[0])
+        self.assertEqual(report['before']['sample'],'before')
+        self.assertEqual(report['after']['sample'],'after')
+        self.assertGreaterEqual(report['finished_epoch_seconds'],report['started_epoch_seconds'])
 
     def test_failures_drops_and_queue_latency_remain_in_report(self):
         samples = [dict(operation='get',status='200',error_code=None,latency_ms=100,http_latency_ms=20,client_queue_ms=80,bytes=5),
