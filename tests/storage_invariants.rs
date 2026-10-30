@@ -506,7 +506,15 @@ async fn fulltext_search_paginates_matching_live_knowledge_and_preserves_rare_te
     loop {
         let page = f
             .store
-            .search(&f.p, "authentication", ListQuery { limit: 3, cursor })
+            .search_nodes(
+                &f.p,
+                "authentication",
+                NodeFilters {
+                    kind: Some(NodeKind::Knowledge),
+                    ..Default::default()
+                },
+                ListQuery { limit: 3, cursor },
+            )
             .await
             .unwrap();
         assert!(
@@ -546,4 +554,68 @@ async fn fulltext_search_paginates_matching_live_knowledge_and_preserves_rare_te
             .items
             .is_empty()
     );
+}
+
+#[tokio::test]
+async fn concurrent_retirement_and_successor_link_removal_cannot_break_pointer() {
+    let f = Fixture::new().await;
+    for _ in 0..10 {
+        let old = Uuid::new_v4();
+        let successor = Uuid::new_v4();
+        let edge = Uuid::new_v4();
+        f.node(old, "old assertion", "task").await;
+        f.node(successor, "replacement", "knowledge").await;
+        f.apply(&Uuid::new_v4().to_string(), vec![json!({"op":"add_edge","id":edge,"source":successor,"target":old,"edge_type":"supersedes"})]).await.unwrap();
+        let retire_key = Uuid::new_v4().to_string();
+        let remove_key = Uuid::new_v4().to_string();
+        let (retired, removed) = tokio::join!(
+            f.apply(
+                &retire_key,
+                vec![update(
+                    old,
+                    1,
+                    json!({"retired":true,"retirement_reason":"replaced","successor_id":successor})
+                )]
+            ),
+            f.apply(
+                &remove_key,
+                vec![json!({"op":"remove_edge","id":edge,"expected_version":1})]
+            )
+        );
+        assert!(
+            retired.is_ok() || removed.is_ok(),
+            "one serialization must succeed: {retired:?} {removed:?}"
+        );
+        assert!(
+            !(retired.is_ok() && removed.is_ok()),
+            "cannot commit a dangling successor"
+        );
+        let dangling: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM nodes n WHERE n.workspace_id=$1 AND n.successor_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM edges e WHERE e.workspace_id=n.workspace_id AND e.source=n.successor_id AND e.target=n.id AND e.edge_type='supersedes' AND NOT e.deleted))").bind(f.p.workspace_id).fetch_one(&f.store.pool).await.unwrap();
+        assert!(!dangling);
+    }
+}
+
+#[tokio::test]
+async fn competing_summary_and_content_edit_never_attaches_stale_summary() {
+    let f = Fixture::new().await;
+    for kind in ["task", "knowledge"] {
+        for _ in 0..8 {
+            let id = Uuid::new_v4();
+            f.node(id, "original", kind).await;
+            let summary_key = Uuid::new_v4().to_string();
+            let edit_key = Uuid::new_v4().to_string();
+            let (summary, edit) = tokio::join!(
+                f.apply(&summary_key, vec![json!({"op":"set_summary","id":id,"expected_version":1,"source_revision":1,"summary":"original summary"})]),
+                f.apply(&edit_key, vec![update(id,1,json!({"title":"new material"}))])
+            );
+            assert_ne!(summary.is_ok(), edit.is_ok(), "exactly one CAS wins");
+            let node = f.store.get_node(&f.p, id).await.unwrap();
+            if node.title == "new material" {
+                assert!(node.summary.is_none());
+            } else {
+                assert_eq!(node.summary_of_revision, Some(1));
+            }
+            assert_eq!(node.content_revision, 2);
+        }
+    }
 }

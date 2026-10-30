@@ -66,7 +66,7 @@ VALUES('{WORKSPACE}','benchmark','{hashlib.sha256(token.encode()).hexdigest()}',
 ON CONFLICT(workspace_id,actor_id) DO UPDATE SET token_hash=excluded.token_hash;
 INSERT INTO change_sets(id,workspace_id,actor_id,name,reason,operations,status,result,applied_at)
 VALUES('{CHANGESET}','{WORKSPACE}','benchmark','offline synthetic fixture','Benchmark only: generated full snapshots and edge history','[]','applied','{{}}',clock_timestamp());
-INSERT INTO nodes(id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,labels,metadata,task_state,knowledge_type,verification,retired,provenance,created_at,updated_at,created_by)
+INSERT INTO nodes(id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,labels,metadata,task_state,content_type,verification,retired,provenance,created_at,updated_at,created_by,valid_from,valid_until,review_at)
 SELECT lpad(to_hex(g),32,'0')::uuid,'{WORKSPACE}',CASE WHEN g<={task_count} THEN 'task' ELSE 'knowledge' END,
  CASE WHEN g%10=0 THEN 11 ELSE 1 END,CASE WHEN g%10=0 THEN 11 ELSE 1 END,
  CASE WHEN g<={task_count} THEN 'Implement authentication component ' ELSE 'Authentication decision reference ' END || g,
@@ -74,11 +74,14 @@ SELECT lpad(to_hex(g),32,'0')::uuid,'{WORKSPACE}',CASE WHEN g<={task_count} THEN
  CASE WHEN g<={task_count} THEN 'Review evidence; implement; verify expected behavior and recovery.' ELSE '' END,
  jsonb_build_array('component-'||(g%30),'priority-'||(g%4)),jsonb_build_object('benchmark:seed',42,'benchmark:index',g),
  CASE WHEN g>{task_count} THEN NULL WHEN g<={root_count*2} THEN CASE WHEN g%20=9 THEN 'draft' ELSE 'active' END WHEN g%10<6 THEN 'completed' WHEN g%10<9 THEN 'active' WHEN g%20=9 THEN 'draft' ELSE 'canceled' END,
- CASE WHEN g>{task_count} THEN (ARRAY['fact','decision','policy','procedure','incident','reference','note'])[1+g%7] END,
- CASE WHEN g>{task_count} THEN 'unverified' END,
+ (ARRAY['fact','decision','policy','procedure','incident','reference','note'])[1+g%7],
+ 'unverified',
  false,
- CASE WHEN g>{task_count} THEN jsonb_build_array(jsonb_build_object('source_id','benchmark-'||g,'kind','url','url','https://example.invalid/benchmark/'||g,'observed_at','2026-01-01T00:00:00Z','retained',false)) ELSE '[]' END,
- '2026-01-01T00:00:00Z'::timestamptz,'2026-01-01T00:00:00Z'::timestamptz,'benchmark'
+ jsonb_build_array(jsonb_build_object('source_id','benchmark-'||g,'kind','url','url','https://example.invalid/benchmark/'||g,'observed_at','2026-01-01T00:00:00Z','retained',false)),
+ '2026-01-01T00:00:00Z'::timestamptz,'2026-01-01T00:00:00Z'::timestamptz,'benchmark',
+ CASE WHEN g%4=0 THEN '2026-01-01T00:00:00Z'::timestamptz END,
+ CASE WHEN g%4=0 THEN '2027-01-01T00:00:00Z'::timestamptz END,
+ CASE WHEN g%5=0 THEN '2026-10-01T00:00:00Z'::timestamptz END
 FROM generate_series(1,{args.nodes}) g;
 INSERT INTO node_revisions(workspace_id,node_id,revision,snapshot,actor_id,operation,reason,change_set_id,created_at)
 SELECT n.workspace_id,n.id,r,
@@ -141,7 +144,7 @@ SELECT json_build_object('nodes',(SELECT count(*) FROM nodes),'edges',(SELECT co
         raise SystemExit('Offline fixture failed. Writes are transactional, but a post-commit analyze/report failure may leave a committed fixture; inspect the isolated database before retrying.')
     counts = json.loads(result.stdout.strip().splitlines()[-1])
     configuration=json.loads(sql("SELECT json_build_object('postgres_version',version(),'fsync',current_setting('fsync'),'synchronous_commit',current_setting('synchronous_commit'),'full_page_writes',current_setting('full_page_writes'),'track_io_timing',current_setting('track_io_timing'),'timezone',current_setting('TimeZone'),'max_connections',current_setting('max_connections'),'schema_version',(SELECT max(version) FROM _sqlx_migrations))"))
-    manifest = {'postgres_configuration':configuration,'format_version':3,'baseline_revision_offset':1,'semantic_profile':'schema6 common revisions: complete attributed current-state/link baseline; earlier synthetic relationship sets unavailable; typed unverified knowledge and three-level acyclic forest','seed':42,'workspace':WORKSPACE,'nodes':args.nodes,'edges_requested':args.edges,'counts':counts,'fixture_method':'offline SQL, synthetic snapshots and relationship history; not ingestion throughput','elapsed_seconds':time.monotonic()-started}
+    manifest = {'postgres_configuration':configuration,'format_version':4,'baseline_revision_offset':1,'semantic_profile':'schema7 shared fields: common classifications/typed sources/unverified defaults,25percent validity windows,20percent review markers; complete relationship baselines and three-level forest','seed':42,'workspace':WORKSPACE,'nodes':args.nodes,'edges_requested':args.edges,'counts':counts,'fixture_method':'offline SQL, synthetic snapshots and relationship history; not ingestion throughput','elapsed_seconds':time.monotonic()-started}
     pathlib.Path(args.manifest).write_text(json.dumps(manifest, indent=2)+'\n')
     print(json.dumps(manifest, indent=2))
 

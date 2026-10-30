@@ -27,7 +27,9 @@ pub(super) async fn before(tx: &mut Tx<'_>, workspace: Uuid, ops: &[Mutation]) -
             }
             Mutation::UpdateNode { id, .. }
             | Mutation::DeleteNode { id, .. }
-            | Mutation::VerifyKnowledge { id, .. } => {
+            | Mutation::VerifyKnowledge { id, .. }
+            | Mutation::VerifyNode { id, .. }
+            | Mutation::SetSummary { id, .. } => {
                 nodes.insert(*id);
             }
             Mutation::RestoreNode { id, revision, .. } => {

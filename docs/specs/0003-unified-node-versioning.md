@@ -14,9 +14,9 @@ Immutable relationship versions are stored separately. Node revisions reference 
 
 The same endpoints and commands apply to both kinds. Exact revision reads return the historical node and its recorded relationship versions. Diffs include fields and links. Restoration is an atomic, expected-version-checked operation that creates a new revision without removing intervening history. Removed links regain their stable identities with new edge versions; links absent from the requested revision are removed.
 
-By default restoration preserves the current lifecycle: task state, retired state/reason, and deletion state. `include_lifecycle: true` explicitly restores those historical values too. This default applies equally to task and knowledge nodes. A deleted node cannot regain active relationships while remaining deleted; that restoration requires an explicit lifecycle restore to a live revision.
+By default restoration preserves the current lifecycle: task state, retired state/reason, successor pointer, and deletion state. `include_lifecycle: true` explicitly restores those historical values too and requires administrator authority for either kind. This default applies equally to task and knowledge nodes. A deleted node cannot regain active relationships while remaining deleted; that restoration requires an explicit lifecycle restore to a live revision.
 
-Restoration rechecks current workspace access, permissions, endpoint availability, revision pins, single-parent/depth/cycle rules, and completion guards. A previously valid revision can be incompatible with today's graph; refusal rolls back the entire operation. Restore does not bypass authority checks or reinstate historical verification badges. A meaningful knowledge correction resets verification; a true no-op preserves current verification. At most 100 relationship changes may be restored in one operation.
+Restoration rechecks current workspace access, permissions, endpoint availability, revision pins, single-parent/depth/cycle rules, and completion guards. A previously valid revision can be incompatible with today's graph; refusal rolls back the entire operation. Restore does not bypass authority checks or reinstate historical verification badges. A meaningful correction to either kind resets verification; a true no-op preserves current verification. At most 100 relationship changes may be restored in one operation.
 
 ## Existing history
 
@@ -25,3 +25,5 @@ Migration 0006 leaves existing snapshots and history payloads unchanged. Their e
 ## Verification
 
 Run the same behavioral scenarios for both kinds: creation, content and lifecycle revisions, links, exact reads, diffs, restoration, no-ops, CAS, replay, workspace isolation, and rollback. Exercise structural restoration against concurrent graph constraints and verify migrations preserve old history. Existing tests that asserted intentionally superseded semantics must be updated explicitly; source compatibility maps must retain those divergences. Measure current-query behavior separately from revision-write cost; prior benchmark results do not establish performance of this revision engine.
+
+The [shared node model](0004-shared-node-model.md) extends this contract with common metadata, derived summary invalidation, and explicit lifecycle-restore authority.

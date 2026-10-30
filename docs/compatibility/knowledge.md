@@ -31,7 +31,9 @@ The graph contract exercised by these translations is:
 - A writer may submit an immutable named draft correcting another author's finding, while only admin applies knowledge proposals. Application rechecks expected versions and authority, commits once, and is idempotent.
 - Credential downgrades and revocation are rechecked before an idempotency receipt is replayed; a receipt is not an authorization bypass.
 
-The JSON mutation is `{"op":"verify_knowledge","id":"UUID","expected_version":1,"verification":"verified","evidence":[...]}` inside the existing mutation envelope. Retirement uses `update_node` with `patch.retired=true`, `patch.retirement_reason`, and the envelope's reason. Names and exact status categories should stay synchronized with `docs/api.md` and the published schema when implemented.
+The preferred shared JSON mutation is `{"op":"verify_node","id":"UUID","expected_version":1,"verification":"verified","evidence":[...]}` inside the existing mutation envelope. Retirement uses `update_node` with `patch.retired=true`, `patch.retirement_reason`, and the envelope's reason. Names and exact status categories should stay synchronized with `docs/api.md` and the published schema when implemented.
+
+The [schema 7 shared-node model](../specs/0004-shared-node-model.md) extends provenance, verification, retirement, summaries and validity metadata to tasks. `verify_knowledge` remains an accepted operation alias; shared clients use `verify_node`. Current node output names the classification `content_type`. Default search includes both kinds, while knowledge-only callers supply `kind=knowledge`. Lifecycle restoration requires admin for either kind. Administrators may correct retirement reasons and successor pointers without unretiring content.
 
 ## Exact source-to-test map
 

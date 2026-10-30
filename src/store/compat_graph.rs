@@ -25,10 +25,10 @@ pub(super) async fn validate_edge(
         EdgeType::MotivatedBy | EdgeType::Produces => {
             a.kind == NodeKind::Task && b.kind == NodeKind::Knowledge
         }
-        EdgeType::Supports | EdgeType::Contradicts | EdgeType::Supersedes => {
+        EdgeType::Supports | EdgeType::Contradicts => {
             a.kind == NodeKind::Knowledge && b.kind == NodeKind::Knowledge
         }
-        EdgeType::References => true,
+        EdgeType::References | EdgeType::Supersedes => true,
     };
     if !valid {
         return Err(Error::Validation(format!(
@@ -69,9 +69,11 @@ pub(super) async fn validate_edge(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn set_parent(
     tx: &mut Tx<'_>,
     p: &Principal,
+    authority: &Principal,
     change: Uuid,
     id: Uuid,
     expected_version: i64,
@@ -85,6 +87,10 @@ pub(super) async fn set_parent(
             "only tasks can have structural parents".into(),
         ));
     }
+    knowledge_rules::authorize_edit(authority, &child)?;
+    if child.retired {
+        return Err(Error::Forbidden);
+    }
     if child.deleted {
         return Err(Error::Conflict(
             "deleted task must be restored before reparenting".into(),
@@ -95,6 +101,13 @@ pub(super) async fn set_parent(
     let old_parent = current.as_ref().map(|e| e.source);
     if old_parent == parent_id {
         return encode(&child);
+    }
+    for parent in [old_parent, parent_id].into_iter().flatten() {
+        let node = load_node_write(tx, p.workspace_id, parent).await?;
+        knowledge_rules::authorize_edit(authority, &node)?;
+        if node.retired {
+            return Err(Error::Forbidden);
+        }
     }
     if let Some(mut e) = current {
         e.deleted = true;

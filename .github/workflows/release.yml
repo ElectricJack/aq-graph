@@ -42,7 +42,7 @@ jobs:
           python3 - <<'PY'
           import json, os
           with open('dist/COMPATIBILITY.json', 'w') as output:
-              json.dump({'release':os.environ['RELEASE_TAG'],'api_version':1,'schema_version':6}, output, indent=2)
+              json.dump({'release':os.environ['RELEASE_TAG'],'api_version':1,'schema_version':7}, output, indent=2)
           PY
           archive="aq-graph-${RELEASE_TAG}-${{ matrix.artifact }}.tar.gz"
           tar -C dist -czf "$archive" .
@@ -85,4 +85,4 @@ jobs:
             org.opencontainers.image.version=${{ github.ref_name }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             io.aq-graph.api-version=1
-            io.aq-graph.schema-version=6
+            io.aq-graph.schema-version=7

@@ -222,3 +222,5 @@ checks unchanged-set reuse, exact older edge payloads after live edits, explicit
 legacy unavailability, and detection of an illegal same-version edge overwrite.
 These upgrade/helper checks add regression coverage without inflating the v1
 source translation count.
+
+Schema 7 deliberately allows `supersedes` across either node kind to support shared retirement successors. `supports` and `contradicts` remain knowledge-to-knowledge. The endpoint-matrix comparison and source inventory preserve this explicit divergence.

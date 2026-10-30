@@ -69,7 +69,7 @@ Use a versioned HTTP API with structured JSON initially. Reuse connections and p
 
 Give every record a stable opaque identity, a workspace, a kind, a current version token, and creation metadata. The implementation already uses one `nodes` table and one Rust `Node` type, with kind-specific field validation. Keep queryable structure typed rather than encoding all useful fields as unrestricted JSON. Namespaced extension metadata may use JSON where it does not obscure common query paths.
 
-**Proposed simplification, not yet a runtime schema change:** use a common field contract for task and knowledge content, provenance, revision-bound summaries, validity windows, review dates, and replacement relationships. Optional fields belong to the common node structure when their meaning applies to either kind. Keep execution state and acceptance criteria as task-specific planning properties, and distinguish execution completion from evidence verification. A validity window is not a task deadline. Archival/retirement, verification, and execution should remain separate concepts even in one structure. This direction requires a follow-up field/validation design; it does not imply that the current API already accepts knowledge-only fields on tasks.
+The [shared node model](0004-shared-node-model.md) is implemented: both kinds share content, classification, provenance, verification, revision-bound summaries, validity windows, review dates, retirement, and replacement pointers. Execution state and acceptance criteria remain task-specific. Execution completion, evidence verification, and retirement are separate concepts; validity windows are not task deadlines.
 
 Tasks contain durable planning content such as title, description, acceptance criteria, labels, and lifecycle state. Proposed minimum lifecycle states are draft, active, completed, and canceled. Graph readiness is derived separately. Reopening a task is a lifecycle transition, not deletion of its completion history.
 
@@ -102,9 +102,9 @@ History is a schema-level policy for each data category. Ordinary writers cannot
 | Data | Policy |
 | --- | --- |
 | Task title, description, acceptance criteria, meaningful planning metadata | Immutable full-content revisions |
-| Knowledge content, provenance, verification, retirement | Immutable full-content revisions |
+| Shared content, provenance, verification, summaries, validity/review dates, retirement and successors | Immutable full-content revisions for both kinds |
 | Dependencies and informational relationships | Immutable addition, modification, and removal records |
-| Task activation, completion, reopening, cancellation | Append lifecycle events |
+| Task activation, completion, reopening, cancellation | Immutable revisions and appended lifecycle events |
 | AQ execution assignments and attempt transitions | AQ-owned; optional immutable external event references in graph records |
 | Worker heartbeats, lease refreshes, connection state | Outside aq-graph history |
 | Readiness projections, search indexes, embeddings | Rebuildable data with source-version information |

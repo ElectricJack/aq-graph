@@ -147,7 +147,9 @@ async fn evidence_relationships_require_two_knowledge_endpoints() {
     let task = c.node("task", "active").await;
     let a = c.node("knowledge", "").await;
     let b = c.node("knowledge", "").await;
-    for kind in ["supports", "contradicts", "supersedes"] {
+    // Shared schema 7 permits supersedes between either kind; replacement tests
+    // live in shared_nodes.rs. Evidence polarity remains knowledge-only.
+    for kind in ["supports", "contradicts"] {
         c.success(vec![edge(a, b, kind)]).await;
         let (s, v) = c.mutation(vec![edge(task, b, kind)]).await;
         assert_eq!(

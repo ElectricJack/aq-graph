@@ -29,13 +29,14 @@ pub(super) async fn restore_node(
     let before = load_node_write(tx, p.workspace_id, id).await?;
     expected(before.version, wanted_version)?;
     knowledge_rules::authorize_edit(authority, &before)?;
-    if before.kind == NodeKind::Knowledge {
+    if before.kind == NodeKind::Knowledge || include_lifecycle || before.retired {
         authority.require_admin()?;
         if !preview {
             live_authority(tx, p, true).await?;
         }
     }
-    let snapshot = load_revision(tx, p.workspace_id, id, rev).await?;
+    let old: Node = decode(load_revision(tx, p.workspace_id, id, rev).await?)?;
+    let snapshot = encode(&old)?;
     let historical = revision_links::load_links(tx, p.workspace_id, id, rev).await?;
     let values=sqlx::query_scalar::<_,Value>("SELECT to_jsonb(e) FROM edges e WHERE workspace_id=$1 AND NOT deleted AND (source=$2 OR (target=$2 AND edge_type IN ('blocks','parent-child'))) ORDER BY id FOR UPDATE").bind(p.workspace_id).bind(id).fetch_all(&mut **tx).await?;
     let current: Vec<Edge> = values.into_iter().map(decode).collect::<Result<_>>()?;
@@ -56,18 +57,30 @@ pub(super) async fn restore_node(
             "restore changes more than 100 relationships".into(),
         ));
     }
+    for edge in remove.iter().chain(add.iter()) {
+        if matches!(edge.edge_type, EdgeType::Blocks | EdgeType::ParentChild) {
+            for endpoint in [edge.source, edge.target] {
+                let node = load_node_write(tx, p.workspace_id, endpoint).await?;
+                knowledge_rules::authorize_edit(authority, &node)?;
+            }
+        }
+    }
     let mut value = encode(&before)?;
     for field in DURABLE_FIELDS {
         if matches!(
             *field,
-            "verification" | "last_verified_at" | "last_verified_by"
+            "verification"
+                | "last_verified_at"
+                | "last_verified_by"
+                | "summary"
+                | "summary_of_revision"
         ) {
             continue;
         }
         if !include_lifecycle
             && matches!(
                 *field,
-                "task_state" | "retired" | "retirement_reason" | "deleted"
+                "task_state" | "retired" | "retirement_reason" | "successor_id" | "deleted"
             )
         {
             continue;
@@ -76,7 +89,23 @@ pub(super) async fn restore_node(
     }
     let mut n: Node = decode(value)?;
     knowledge_rules::validate_sources(&n.provenance)?;
+    if before.retired != n.retired || before.successor_id != n.successor_id {
+        authority.require_admin()?;
+        if !preview {
+            live_authority(tx, p, true).await?;
+        }
+    }
+    if n.content_type.is_none() {
+        n.content_type = Some(KnowledgeType::Note);
+    }
     knowledge_rules::validate_retirement(&n)?;
+    knowledge_rules::validate_temporal(&n)?;
+    if let Some(successor) = n.successor_id {
+        let successor = load_node(tx, p.workspace_id, successor).await?;
+        if successor.deleted {
+            return Err(Error::Conflict("successor cannot be deleted".into()));
+        }
+    }
     if !durable_changed(&before, &n)? && remove.is_empty() && add.is_empty() {
         return Ok(before);
     }
@@ -84,12 +113,13 @@ pub(super) async fn restore_node(
         return Err(Error::Conflict("cannot restore active relationships on a deleted node; explicitly restore lifecycle to a live revision".into()));
     }
     knowledge_rules::reset_verification(&mut n);
+    knowledge_rules::clear_summary(&mut n);
     save_node(tx, &n, false).await?;
     let mut changed = vec![id];
     for mut e in remove {
         let source = load_node_write(tx, p.workspace_id, e.source).await?;
         knowledge_rules::authorize_edit(authority, &source)?;
-        if source.kind == NodeKind::Knowledge && source.retired && source.id != id {
+        if source.retired && source.id != id {
             return Err(Error::Forbidden);
         }
         e.deleted = true;
@@ -116,7 +146,7 @@ pub(super) async fn restore_node(
     for mut e in add {
         let source = load_node_write(tx, p.workspace_id, e.source).await?;
         knowledge_rules::authorize_edit(authority, &source)?;
-        if source.kind == NodeKind::Knowledge && source.retired && source.id != id {
+        if source.retired && source.id != id {
             return Err(Error::Forbidden);
         }
         compat_graph::validate_edge(tx, p, e.source, e.target, e.edge_type).await?;

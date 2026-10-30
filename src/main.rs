@@ -71,12 +71,26 @@ enum Command {
     },
     Search {
         query: String,
-        #[arg(long)]
-        include_retired: bool,
+        #[arg(long, value_parser = ["task", "knowledge"])]
+        kind: Option<String>,
+        #[command(flatten)]
+        filters: DateFilters,
         #[arg(long)]
         include_disputed: bool,
         #[command(flatten)]
         page: Paging,
+    },
+    /// Attach or clear a summary derived from the current logical revision.
+    Summary {
+        id: Uuid,
+        #[command(flatten)]
+        change: ChangeOptions,
+        #[arg(long)]
+        source_revision: i64,
+        #[arg(long, required_unless_present = "clear", conflicts_with = "clear")]
+        file: Option<PathBuf>,
+        #[arg(long)]
+        clear: bool,
     },
     History {
         id: Uuid,
@@ -116,6 +130,17 @@ struct Paging {
     #[arg(long)]
     cursor: Option<String>,
 }
+#[derive(Args, Default)]
+struct DateFilters {
+    /// Keep records valid at this descriptive instant (not an execution deadline).
+    #[arg(long, value_parser = parse_timestamp)]
+    valid_at: Option<String>,
+    /// Keep records with a nonempty review marker due by this instant.
+    #[arg(long, value_parser = parse_timestamp)]
+    review_due_at: Option<String>,
+    #[arg(long)]
+    include_retired: bool,
+}
 #[derive(Args)]
 struct ChangeOptions {
     /// Expected current version; stale updates return a conflict.
@@ -126,6 +151,38 @@ struct ChangeOptions {
     #[arg(long)]
     idempotency_key: Option<String>,
 }
+#[derive(Args, Default)]
+struct SharedFields {
+    /// Content classification, independent of task versus knowledge kind.
+    #[arg(long = "type", value_parser = ["fact", "decision", "policy", "procedure", "incident", "reference", "note"])]
+    content_type: Option<String>,
+    /// JSON array of typed source descriptors.
+    #[arg(long, alias = "sources-file")]
+    provenance_file: Option<PathBuf>,
+    #[arg(long, value_parser = parse_timestamp)]
+    valid_from: Option<String>,
+    #[arg(long, value_parser = parse_timestamp)]
+    valid_until: Option<String>,
+    #[arg(long, value_parser = parse_timestamp)]
+    review_at: Option<String>,
+    #[arg(long, value_parser = ["unverified"])]
+    verification: Option<String>,
+}
+#[derive(Args, Default)]
+struct SharedPatch {
+    #[command(flatten)]
+    fields: SharedFields,
+    #[arg(long, conflicts_with = "valid_from")]
+    clear_valid_from: bool,
+    #[arg(long, conflicts_with = "valid_until")]
+    clear_valid_until: bool,
+    #[arg(long, conflicts_with = "review_at")]
+    clear_review_at: bool,
+    #[arg(long)]
+    retired: Option<bool>,
+    #[arg(long)]
+    retirement_reason: Option<String>,
+}
 #[derive(Args)]
 struct CreateOptions {
     #[arg(long)]
@@ -134,20 +191,57 @@ struct CreateOptions {
     body: Option<String>,
     #[arg(long)]
     file: Option<PathBuf>,
-    #[arg(long, default_value = "")]
-    acceptance_criteria: String,
     #[arg(long = "label")]
     labels: Vec<String>,
+    #[command(flatten)]
+    fields: SharedFields,
     #[arg(long)]
     reason: Option<String>,
     #[arg(long)]
     idempotency_key: Option<String>,
+}
+#[derive(Args)]
+struct UpdateOptions {
+    #[command(flatten)]
+    change: ChangeOptions,
+    #[arg(long)]
+    title: Option<String>,
+    #[arg(long, conflicts_with = "file")]
+    body: Option<String>,
+    #[arg(long)]
+    file: Option<PathBuf>,
+    #[arg(long = "label")]
+    labels: Option<Vec<String>>,
+    #[command(flatten)]
+    shared: SharedPatch,
+}
+#[derive(Args)]
+struct VerifyOptions {
+    #[arg(long, default_value = "verified", value_parser = ["verified", "disputed"])]
+    verification: String,
+    #[arg(long)]
+    evidence_file: PathBuf,
+    #[command(flatten)]
+    change: ChangeOptions,
+}
+#[derive(Args)]
+struct RetireOptions {
+    #[command(flatten)]
+    change: ChangeOptions,
+    /// Existing successor record, with a supersedes edge from successor to this record.
+    #[arg(long)]
+    successor: Option<Uuid>,
+    /// Atomically add a new successor→record supersedes edge before retiring.
+    #[arg(long, requires = "successor")]
+    link_successor: bool,
 }
 #[derive(Subcommand)]
 enum TaskCommand {
     Create {
         #[command(flatten)]
         options: CreateOptions,
+        #[arg(long, default_value = "")]
+        acceptance_criteria: String,
         #[arg(long, default_value = "draft", value_parser = ["draft", "active"])]
         state: String,
     },
@@ -167,6 +261,8 @@ enum TaskCommand {
     List {
         #[command(flatten)]
         page: Paging,
+        #[command(flatten)]
+        filters: DateFilters,
     },
     Ready {
         #[command(flatten)]
@@ -195,17 +291,19 @@ enum TaskCommand {
     Update {
         id: Uuid,
         #[command(flatten)]
-        change: ChangeOptions,
-        #[arg(long)]
-        title: Option<String>,
-        #[arg(long, conflicts_with = "file")]
-        body: Option<String>,
-        #[arg(long)]
-        file: Option<PathBuf>,
+        options: UpdateOptions,
         #[arg(long)]
         acceptance_criteria: Option<String>,
-        #[arg(long = "label")]
-        labels: Option<Vec<String>>,
+    },
+    Verify {
+        id: Uuid,
+        #[command(flatten)]
+        options: VerifyOptions,
+    },
+    Retire {
+        id: Uuid,
+        #[command(flatten)]
+        options: RetireOptions,
     },
     Activate {
         id: Uuid,
@@ -236,7 +334,7 @@ enum TaskCommand {
         id: Uuid,
         #[arg(long)]
         revision: i64,
-        /// Restore historical lifecycle and tombstone state as well as content/relationships.
+        /// Restore historical lifecycle and tombstone state too.
         #[arg(long)]
         include_lifecycle: bool,
         #[command(flatten)]
@@ -248,13 +346,6 @@ enum KnowledgeCommand {
     Create {
         #[command(flatten)]
         options: CreateOptions,
-        #[arg(long = "type", default_value = "note", value_parser = ["fact", "decision", "policy", "procedure", "incident", "reference", "note"])]
-        knowledge_type: String,
-        #[arg(long, default_value = "unverified", value_parser = ["unverified"])]
-        verification: String,
-        /// JSON array of attributed source references.
-        #[arg(long)]
-        provenance_file: Option<PathBuf>,
     },
     Show {
         id: Uuid,
@@ -262,48 +353,29 @@ enum KnowledgeCommand {
     List {
         #[command(flatten)]
         page: Paging,
+        #[command(flatten)]
+        filters: DateFilters,
     },
     Update {
         id: Uuid,
         #[command(flatten)]
-        change: ChangeOptions,
-        #[arg(long)]
-        title: Option<String>,
-        #[arg(long, conflicts_with = "file")]
-        body: Option<String>,
-        #[arg(long)]
-        file: Option<PathBuf>,
-        #[arg(long, value_parser = ["unverified"])]
-        verification: Option<String>,
-        #[arg(long)]
-        retired: Option<bool>,
-        #[arg(long)]
-        retirement_reason: Option<String>,
-        #[arg(long)]
-        provenance_file: Option<PathBuf>,
+        options: UpdateOptions,
     },
-    /// Assert verification as an administrator, with named evidence and a reason.
     Verify {
         id: Uuid,
-        #[arg(long, default_value = "verified", value_parser = ["verified", "disputed"])]
-        verification: String,
-        #[arg(long)]
-        evidence_file: PathBuf,
         #[command(flatten)]
-        change: ChangeOptions,
+        options: VerifyOptions,
     },
-    /// Retire knowledge as an administrator; --reason is required.
     Retire {
         id: Uuid,
         #[command(flatten)]
-        change: ChangeOptions,
+        options: RetireOptions,
     },
-    /// Restore exact historical content/relationships; preserve lifecycle unless requested.
     Restore {
         id: Uuid,
         #[arg(long)]
         revision: i64,
-        /// Restore historical lifecycle and tombstone state as well as content/relationships.
+        /// Restore historical lifecycle and tombstone state too.
         #[arg(long)]
         include_lifecycle: bool,
         #[command(flatten)]
@@ -389,6 +461,11 @@ fn local_error(e: impl std::fmt::Display) -> Failure {
 }
 fn invalid(e: impl std::fmt::Display) -> Failure {
     fail("validation", e.to_string(), 2)
+}
+fn parse_timestamp(value: &str) -> std::result::Result<String, String> {
+    chrono::DateTime::parse_from_rfc3339(value)
+        .map(|date| date.to_rfc3339())
+        .map_err(|_| "expected an RFC3339 timestamp with timezone".into())
 }
 fn migration_failure(error: aq_graph::domain::Error) -> Failure {
     let message = match error {
@@ -647,6 +724,46 @@ impl Client {
     async fn patch(&self, id: Uuid, change: ChangeOptions, patch: Value) -> Result<Value> {
         self.mutation(vec![json!({"op":"update_node", "id":id, "expected_version":change.expected_version, "patch":patch})], change.reason, change.idempotency_key).await
     }
+    async fn verify(&self, id: Uuid, options: VerifyOptions) -> Result<Value> {
+        if options
+            .change
+            .reason
+            .as_deref()
+            .is_none_or(|v| v.trim().is_empty())
+        {
+            return Err(invalid("verify requires a nonempty --reason"));
+        }
+        let evidence = read_json(&options.evidence_file)?;
+        if !evidence.is_array() {
+            return Err(invalid(
+                "evidence file must contain a JSON array of named source descriptors",
+            ));
+        }
+        self.mutation(vec![json!({"op":"verify_node","id":id,"expected_version":options.change.expected_version,"verification":options.verification,"evidence":evidence})],options.change.reason,options.change.idempotency_key).await
+    }
+    async fn retire(&self, id: Uuid, options: RetireOptions) -> Result<Value> {
+        let reason = options
+            .change
+            .reason
+            .as_deref()
+            .filter(|s| !s.trim().is_empty())
+            .ok_or_else(|| invalid("retire requires a nonempty --reason"))?;
+        let mut patch = json!({"retired":true,"retirement_reason":reason});
+        let mut operations = vec![];
+        if let Some(successor) = options.successor {
+            if options.link_successor {
+                operations.push(json!({"op":"add_edge","source":successor,"target":id,"edge_type":"supersedes"}));
+            }
+            patch["successor_id"] = json!(successor);
+        }
+        operations.push(json!({"op":"update_node","id":id,"expected_version":options.change.expected_version,"patch":patch}));
+        self.mutation(
+            operations,
+            options.change.reason,
+            options.change.idempotency_key,
+        )
+        .await
+    }
 }
 fn page_query(page: Paging) -> Vec<(&'static str, String)> {
     let mut q = vec![("limit", page.limit.to_string())];
@@ -655,6 +772,17 @@ fn page_query(page: Paging) -> Vec<(&'static str, String)> {
     }
     q
 }
+fn date_query(query: &mut Vec<(&'static str, String)>, filters: DateFilters) {
+    if let Some(value) = filters.valid_at {
+        query.push(("valid_at", value));
+    }
+    if let Some(value) = filters.review_due_at {
+        query.push(("review_due_at", value));
+    }
+    if filters.include_retired {
+        query.push(("include_retired", "true".into()));
+    }
+}
 fn body_text(body: Option<String>, file: Option<PathBuf>) -> Result<String> {
     match file {
         Some(file) => read_text(&file),
@@ -662,9 +790,73 @@ fn body_text(body: Option<String>, file: Option<PathBuf>) -> Result<String> {
     }
 }
 fn create_operation(kind: &str, options: &mut CreateOptions) -> Result<Value> {
-    Ok(
-        json!({"op":"create_node", "kind":kind, "title":options.title, "body":body_text(options.body.take(), options.file.take())?, "acceptance_criteria":options.acceptance_criteria, "labels":options.labels, "metadata":{}, "provenance":[]}),
-    )
+    let mut op = json!({"op":"create_node","kind":kind,"title":options.title,"body":body_text(options.body.take(),options.file.take())?,"labels":options.labels,"metadata":{},"provenance":[],"content_type":"note","verification":"unverified"});
+    for (key, value) in shared_fields(std::mem::take(&mut options.fields))? {
+        op[key] = value;
+    }
+    Ok(op)
+}
+fn shared_fields(fields: SharedFields) -> Result<serde_json::Map<String, Value>> {
+    let mut values = serde_json::Map::new();
+    for (key, value) in [
+        ("content_type", fields.content_type),
+        ("valid_from", fields.valid_from),
+        ("valid_until", fields.valid_until),
+        ("review_at", fields.review_at),
+        ("verification", fields.verification),
+    ] {
+        if let Some(value) = value {
+            values.insert(key.into(), json!(value));
+        }
+    }
+    if let Some(file) = fields.provenance_file {
+        let provenance = read_json(&file)?;
+        if !provenance.is_array() {
+            return Err(invalid(
+                "provenance file must contain a JSON array of source descriptors",
+            ));
+        }
+        values.insert("provenance".into(), provenance);
+    }
+    Ok(values)
+}
+fn update_patch(options: &mut UpdateOptions) -> Result<serde_json::Map<String, Value>> {
+    let shared = std::mem::take(&mut options.shared);
+    let mut patch = shared_fields(shared.fields)?;
+    if let Some(value) = options.title.take() {
+        patch.insert("title".into(), json!(value));
+    }
+    if options.body.is_some() || options.file.is_some() {
+        patch.insert(
+            "body".into(),
+            json!(body_text(options.body.take(), options.file.take())?),
+        );
+    }
+    if let Some(value) = options.labels.take() {
+        patch.insert("labels".into(), json!(value));
+    }
+    for (field, clear) in [
+        ("valid_from", shared.clear_valid_from),
+        ("valid_until", shared.clear_valid_until),
+        ("review_at", shared.clear_review_at),
+    ] {
+        if clear {
+            patch.insert(field.into(), Value::Null);
+        }
+    }
+    if let Some(value) = shared.retired {
+        patch.insert("retired".into(), json!(value));
+    }
+    if let Some(value) = shared.retirement_reason.or_else(|| {
+        if shared.retired == Some(true) {
+            options.change.reason.clone()
+        } else {
+            None
+        }
+    }) {
+        patch.insert("retirement_reason".into(), json!(value));
+    }
+    Ok(patch)
 }
 async fn run(cli: Cli) -> Result<Value> {
     if let Command::Serve {
@@ -772,55 +964,57 @@ async fn run(cli: Cli) -> Result<Value> {
     let client = Client::new(config)?;
     match cli.command {
         Command::Task { command } => match command {
-            TaskCommand::Create { mut options, state } => { let mut op = create_operation("task", &mut options)?; op["task_state"] = json!(state); client.mutation(vec![op], options.reason, options.idempotency_key).await },
-            TaskCommand::Show { id, context, depth, limit, max_bytes, direction } => { if context { client.get(&format!("/nodes/{id}/context"), vec![("depth",depth.to_string()),("limit",limit.to_string()),("max_bytes",max_bytes.to_string()),("direction",direction)]).await } else { client.get(&format!("/nodes/{id}"), vec![]).await } },
-            TaskCommand::List { page } => { let mut query = page_query(page); query.push(("kind", "task".into())); client.get("/nodes", query).await },
-            TaskCommand::Ready { page } => client.get("/ready", page_query(page)).await,
-            TaskCommand::Tree { id, depth, limit, max_bytes } => client.get(&format!("/nodes/{id}/tree"), vec![("depth",depth.to_string()),("limit",limit.to_string()),("max_bytes",max_bytes.to_string())]).await,
-            TaskCommand::SetParent { id, parent, root: _, change } => client.mutation(vec![json!({"op":"set_parent","id":id,"expected_version":change.expected_version,"parent_id":parent})], change.reason, change.idempotency_key).await,
-            TaskCommand::Update { id, change, title, body, file, acceptance_criteria, labels } => {
-                let mut patch = serde_json::Map::new();
-                if let Some(v) = title { patch.insert("title".into(), json!(v)); }
-                if body.is_some() || file.is_some() { patch.insert("body".into(), json!(body_text(body,file)?)); }
-                if let Some(v) = acceptance_criteria { patch.insert("acceptance_criteria".into(),json!(v)); }
-                if let Some(v) = labels { patch.insert("labels".into(),json!(v)); } client.patch(id,change,Value::Object(patch)).await
+            TaskCommand::Create { mut options, acceptance_criteria, state } => {
+                let mut operation=create_operation("task",&mut options)?;
+                operation["task_state"]=json!(state);
+                operation["acceptance_criteria"]=json!(acceptance_criteria);
+                client.mutation(vec![operation],options.reason,options.idempotency_key).await
             },
-            TaskCommand::Activate { id, change } | TaskCommand::Reopen { id, change } => client.patch(id,change,json!({"task_state":"active"})).await,
-            TaskCommand::Complete { id, change } => client.patch(id,change,json!({"task_state":"completed"})).await,
-            TaskCommand::Cancel { id, change } => client.patch(id,change,json!({"task_state":"canceled"})).await,
-            TaskCommand::Delete { id, change } => client.mutation(vec![json!({"op":"delete_node","id":id,"expected_version":change.expected_version})],change.reason,change.idempotency_key).await,
-            TaskCommand::Restore { id, revision, include_lifecycle, change } => client.mutation(vec![json!({"op":"restore_node","id":id,"expected_version":change.expected_version,"revision":revision,"include_lifecycle":include_lifecycle})],change.reason,change.idempotency_key).await,
+            TaskCommand::Show { id, context, depth, limit, max_bytes, direction } => {
+                if context { client.get(&format!("/nodes/{id}/context"),vec![("depth",depth.to_string()),("limit",limit.to_string()),("max_bytes",max_bytes.to_string()),("direction",direction)]).await }
+                else { client.get(&format!("/nodes/{id}"),vec![]).await }
+            },
+            TaskCommand::List { page,filters } => { let mut query=page_query(page);query.push(("kind","task".into()));date_query(&mut query,filters);client.get("/nodes",query).await },
+            TaskCommand::Ready { page } => client.get("/ready",page_query(page)).await,
+            TaskCommand::Tree { id,depth,limit,max_bytes } => client.get(&format!("/nodes/{id}/tree"),vec![("depth",depth.to_string()),("limit",limit.to_string()),("max_bytes",max_bytes.to_string())]).await,
+            TaskCommand::SetParent { id,parent,root:_,change } => client.mutation(vec![json!({"op":"set_parent","id":id,"expected_version":change.expected_version,"parent_id":parent})],change.reason,change.idempotency_key).await,
+            TaskCommand::Update { id,mut options,acceptance_criteria } => {
+                let mut patch=update_patch(&mut options)?;
+                if let Some(value)=acceptance_criteria { patch.insert("acceptance_criteria".into(),json!(value)); }
+                client.patch(id,options.change,Value::Object(patch)).await
+            },
+            TaskCommand::Verify { id,options } => client.verify(id,options).await,
+            TaskCommand::Retire { id,options } => client.retire(id,options).await,
+            TaskCommand::Activate { id,change } | TaskCommand::Reopen { id,change } => client.patch(id,change,json!({"task_state":"active"})).await,
+            TaskCommand::Complete { id,change } => client.patch(id,change,json!({"task_state":"completed"})).await,
+            TaskCommand::Cancel { id,change } => client.patch(id,change,json!({"task_state":"canceled"})).await,
+            TaskCommand::Delete { id,change } => client.mutation(vec![json!({"op":"delete_node","id":id,"expected_version":change.expected_version})],change.reason,change.idempotency_key).await,
+            TaskCommand::Restore { id,revision,include_lifecycle,change } => client.mutation(vec![json!({"op":"restore_node","id":id,"expected_version":change.expected_version,"revision":revision,"include_lifecycle":include_lifecycle})],change.reason,change.idempotency_key).await,
         },
         Command::Knowledge { command } => match command {
-            KnowledgeCommand::Create { mut options, knowledge_type, verification, provenance_file } => { let mut op = create_operation("knowledge", &mut options)?; op["knowledge_type"] = json!(knowledge_type); op["verification"] = json!(verification);
-                if let Some(file) = provenance_file { op["provenance"] = read_json(&file)?; } client.mutation(vec![op],options.reason,options.idempotency_key).await },
+            KnowledgeCommand::Create { mut options } => { let operation=create_operation("knowledge",&mut options)?;client.mutation(vec![operation],options.reason,options.idempotency_key).await },
             KnowledgeCommand::Show { id } => client.get(&format!("/nodes/{id}"),vec![]).await,
-            KnowledgeCommand::List { page } => { let mut query = page_query(page); query.push(("kind","knowledge".into())); client.get("/nodes",query).await },
-            KnowledgeCommand::Update { id, change, title, body, file, verification, retired, retirement_reason, provenance_file } => { let mut patch = serde_json::Map::new();
-                if let Some(v) = title { patch.insert("title".into(),json!(v)); }
-                if body.is_some() || file.is_some() { patch.insert("body".into(),json!(body_text(body,file)?)); }
-                if let Some(v) = verification { patch.insert("verification".into(),json!(v)); }
-                if let Some(v) = retired { patch.insert("retired".into(),json!(v)); }
-                if let Some(v) = retirement_reason.or_else(|| if retired == Some(true) { change.reason.clone() } else { None }) { patch.insert("retirement_reason".into(),json!(v)); }
-                if let Some(file) = provenance_file { patch.insert("provenance".into(),read_json(&file)?); } client.patch(id,change,Value::Object(patch)).await },
-            KnowledgeCommand::Verify { id, verification, evidence_file, change } => {
-                if change.reason.as_deref().is_none_or(|v| v.trim().is_empty()) { return Err(invalid("knowledge verify requires a nonempty --reason")); }
-                let evidence = read_json(&evidence_file)?;
-                if !evidence.is_array() { return Err(invalid("evidence file must contain a JSON array of named source descriptors")); }
-                client.mutation(vec![json!({"op":"verify_knowledge","id":id,"expected_version":change.expected_version,"verification":verification,"evidence":evidence})], change.reason, change.idempotency_key).await
-            },
-            KnowledgeCommand::Retire { id, change } => {
-                let reason = change.reason.as_deref().filter(|s| !s.trim().is_empty()).ok_or_else(|| invalid("knowledge retire requires a nonempty --reason"))?;
-                client.patch(id,ChangeOptions { expected_version:change.expected_version, reason:change.reason.clone(), idempotency_key:change.idempotency_key.clone() },json!({"retired":true,"retirement_reason":reason})).await
-            },
-            KnowledgeCommand::Restore { id, revision, include_lifecycle, change } => client.mutation(vec![json!({"op":"restore_node","id":id,"expected_version":change.expected_version,"revision":revision,"include_lifecycle":include_lifecycle})],change.reason,change.idempotency_key).await,
+            KnowledgeCommand::List { page,filters } => { let mut query=page_query(page);query.push(("kind","knowledge".into()));date_query(&mut query,filters);client.get("/nodes",query).await },
+            KnowledgeCommand::Update { id,mut options } => { let patch=update_patch(&mut options)?;client.patch(id,options.change,Value::Object(patch)).await },
+            KnowledgeCommand::Verify { id,options } => client.verify(id,options).await,
+            KnowledgeCommand::Retire { id,options } => client.retire(id,options).await,
+            KnowledgeCommand::Restore { id,revision,include_lifecycle,change } => client.mutation(vec![json!({"op":"restore_node","id":id,"expected_version":change.expected_version,"revision":revision,"include_lifecycle":include_lifecycle})],change.reason,change.idempotency_key).await,
         },
         Command::Link { command } => match command {
             LinkCommand::Add { source,target,edge_type,source_revision,target_revision,description,reason,idempotency_key } => client.mutation(vec![json!({"op":"add_edge","source":source,"target":target,"edge_type":edge_type,"source_revision":source_revision,"target_revision":target_revision,"description":description})],reason,idempotency_key).await,
             LinkCommand::Remove { id,change } => client.mutation(vec![json!({"op":"remove_edge","id":id,"expected_version":change.expected_version})],change.reason,change.idempotency_key).await,
         },
-        Command::Search { query,page,include_retired,include_disputed } => { let mut q = page_query(page); q.push(("q",query)); if include_retired { q.push(("include_retired","true".into())); }
-            if include_disputed { q.push(("include_disputed","true".into())); } client.get("/search",q).await },
+        Command::Search { query,page,kind,filters,include_disputed } => {
+            let mut parameters=page_query(page);parameters.push(("q",query));
+            if let Some(kind)=kind { parameters.push(("kind",kind)); }
+            date_query(&mut parameters,filters);
+            if include_disputed { parameters.push(("include_disputed","true".into())); }
+            client.get("/search",parameters).await
+        },
+        Command::Summary { id,change,source_revision,file,clear } => {
+            let summary=if clear {None} else {Some(read_text(file.as_deref().ok_or_else(|| invalid("summary requires --file or --clear"))?)?)};
+            client.mutation(vec![json!({"op":"set_summary","id":id,"expected_version":change.expected_version,"source_revision":source_revision,"summary":summary})],change.reason,change.idempotency_key).await
+        },
         Command::History { id,page } => client.get(&format!("/nodes/{id}/history"),page_query(page)).await,
         Command::Revision { id,revision } => client.get(&format!("/nodes/{id}/revisions/{revision}"),vec![]).await,
         Command::Diff { id,from,to } => client.get(&format!("/nodes/{id}/diff"),vec![("from",from.to_string()),("to",to.to_string())]).await,
@@ -1111,7 +1305,7 @@ mod tests {
                     "--reason",
                     "Review evidence",
                 ],
-                json!({"op":"verify_knowledge","id":record,"expected_version":3,"verification":"verified","evidence":read_json(&evidence).unwrap()}),
+                json!({"op":"verify_node","id":record,"expected_version":3,"verification":"verified","evidence":read_json(&evidence).unwrap()}),
             ),
             (
                 vec![
@@ -1262,6 +1456,69 @@ mod tests {
             let result = run(Cli::try_parse_from(argv).unwrap()).await.unwrap();
             assert_eq!(result["query"], expected);
         }
+        for kind in ["task", "knowledge"] {
+            let result = run(Cli::try_parse_from([
+                "aq-graph",
+                "--config",
+                config.to_str().unwrap(),
+                kind,
+                "list",
+                "--valid-at",
+                "2026-11-01T00:00:00Z",
+                "--review-due-at",
+                "2026-12-01T00:00:00Z",
+                "--include-retired",
+            ])
+            .unwrap())
+            .await
+            .unwrap();
+            let url = reqwest::Url::parse(&format!(
+                "http://example.test/?{}",
+                result["query"].as_str().unwrap()
+            ))
+            .unwrap();
+            let query: std::collections::HashMap<_, _> = url.query_pairs().collect();
+            assert_eq!(query["kind"], kind);
+            assert_eq!(
+                query["valid_at"],
+                parse_timestamp("2026-11-01T00:00:00Z").unwrap()
+            );
+            assert_eq!(
+                query["review_due_at"],
+                parse_timestamp("2026-12-01T00:00:00Z").unwrap()
+            );
+            assert_eq!(query["include_retired"], "true");
+        }
+        for kind in [None, Some("task"), Some("knowledge")] {
+            let mut argv = vec![
+                "aq-graph",
+                "--config",
+                config.to_str().unwrap(),
+                "search",
+                "authentication",
+                "--valid-at",
+                "2026-11-01T00:00:00Z",
+            ];
+            if let Some(kind) = kind {
+                argv.extend(["--kind", kind]);
+            }
+            let result = run(Cli::try_parse_from(argv).unwrap()).await.unwrap();
+            let url = reqwest::Url::parse(&format!(
+                "http://example.test/?{}",
+                result["query"].as_str().unwrap()
+            ))
+            .unwrap();
+            let query: std::collections::HashMap<_, _> = url.query_pairs().collect();
+            assert_eq!(
+                query.get("kind").map(|v| v.as_ref()),
+                kind,
+                "default search leaves kind unfiltered"
+            );
+            assert_eq!(
+                query["valid_at"],
+                parse_timestamp("2026-11-01T00:00:00Z").unwrap()
+            );
+        }
         let result = run(Cli::try_parse_from([
             "aq-graph",
             "--config",
@@ -1306,5 +1563,270 @@ mod tests {
             assert!(!error.message.contains("secret"));
             assert!(!error.message.contains("postgres://"));
         }
+    }
+
+    #[tokio::test]
+    async fn common_fields_verification_successors_and_summary_use_one_wire_contract() {
+        let directory = tempfile::tempdir().unwrap();
+        let (endpoint, observed, handle) = mock_server(StatusCode::OK, Some("1")).await;
+        let token = directory.path().join("token");
+        private_write(&token, b"test-only-shared-fields-credential-012345", false).unwrap();
+        let config = directory.path().join("config.json");
+        private_write(
+            &config,
+            &serde_json::to_vec(&Config {
+                endpoint,
+                workspace: Uuid::new_v4(),
+                token_file: Some(token),
+            })
+            .unwrap(),
+            false,
+        )
+        .unwrap();
+        let evidence = directory.path().join("evidence.json");
+        fs::write(&evidence,r#"[{"source_id":"evidence","kind":"url","url":"https://example.test/review","observed_at":"2026-10-30T00:00:00Z","retained":false}]"#).unwrap();
+        let summary = directory.path().join("summary.txt");
+        fs::write(&summary, "α\r\nexact summary").unwrap();
+        let record = Uuid::new_v4().to_string();
+        let successor = Uuid::new_v4().to_string();
+        for kind in ["task", "knowledge"] {
+            let mut argv = vec![
+                "aq-graph",
+                "--config",
+                config.to_str().unwrap(),
+                kind,
+                "create",
+                "--title",
+                "Shared fields",
+                "--type",
+                "procedure",
+                "--provenance-file",
+                evidence.to_str().unwrap(),
+                "--valid-from",
+                "2026-01-01T00:00:00Z",
+                "--valid-until",
+                "2027-01-01T00:00:00Z",
+                "--review-at",
+                "2026-11-01T00:00:00Z",
+            ];
+            if kind == "task" {
+                argv.extend(["--acceptance-criteria", "Task criterion"]);
+            }
+            run(Cli::try_parse_from(argv).unwrap()).await.unwrap();
+            let operation = observed.lock().unwrap().last().unwrap().1["operations"][0].clone();
+            assert_eq!(operation["kind"], kind);
+            assert_eq!(operation["content_type"], "procedure");
+            assert!(operation.get("knowledge_type").is_none());
+            assert_eq!(operation["provenance"], read_json(&evidence).unwrap());
+            assert_eq!(
+                operation["valid_from"],
+                parse_timestamp("2026-01-01T00:00:00Z").unwrap()
+            );
+            assert_eq!(
+                operation["valid_until"],
+                parse_timestamp("2027-01-01T00:00:00Z").unwrap()
+            );
+            assert_eq!(
+                operation["review_at"],
+                parse_timestamp("2026-11-01T00:00:00Z").unwrap()
+            );
+            assert_eq!(
+                operation.get("acceptance_criteria").is_some(),
+                kind == "task"
+            );
+
+            run(Cli::try_parse_from([
+                "aq-graph",
+                "--config",
+                config.to_str().unwrap(),
+                kind,
+                "update",
+                &record,
+                "--expected-version",
+                "5",
+                "--type",
+                "fact",
+                "--clear-valid-from",
+                "--valid-until",
+                "2027-01-01T00:00:00Z",
+                "--clear-review-at",
+            ])
+            .unwrap())
+            .await
+            .unwrap();
+            let operation = observed.lock().unwrap().last().unwrap().1["operations"][0].clone();
+            assert_eq!(
+                operation,
+                json!({"op":"update_node","id":record,"expected_version":5,"patch":{"content_type":"fact","valid_from":null,"valid_until":parse_timestamp("2027-01-01T00:00:00Z").unwrap(),"review_at":null}})
+            );
+
+            run(Cli::try_parse_from([
+                "aq-graph",
+                "--config",
+                config.to_str().unwrap(),
+                kind,
+                "verify",
+                &record,
+                "--expected-version",
+                "5",
+                "--evidence-file",
+                evidence.to_str().unwrap(),
+                "--reason",
+                "Reviewed evidence",
+            ])
+            .unwrap())
+            .await
+            .unwrap();
+            assert_eq!(
+                observed.lock().unwrap().last().unwrap().1["operations"][0],
+                json!({"op":"verify_node","id":record,"expected_version":5,"verification":"verified","evidence":read_json(&evidence).unwrap()})
+            );
+
+            for link in [false, true] {
+                let mut argv = vec![
+                    "aq-graph",
+                    "--config",
+                    config.to_str().unwrap(),
+                    kind,
+                    "retire",
+                    &record,
+                    "--expected-version",
+                    "5",
+                    "--reason",
+                    "Replaced",
+                    "--successor",
+                    &successor,
+                ];
+                if link {
+                    argv.push("--link-successor");
+                }
+                run(Cli::try_parse_from(argv).unwrap()).await.unwrap();
+                let request = observed.lock().unwrap().last().unwrap().1.clone();
+                let operations = request["operations"].as_array().unwrap();
+                assert_eq!(operations.len(), if link { 2 } else { 1 });
+                if link {
+                    assert_eq!(
+                        operations[0],
+                        json!({"op":"add_edge","source":successor,"target":record,"edge_type":"supersedes"})
+                    );
+                }
+                assert_eq!(
+                    operations.last().unwrap(),
+                    &json!({"op":"update_node","id":record,"expected_version":5,"patch":{"retired":true,"retirement_reason":"Replaced","successor_id":successor}})
+                );
+            }
+        }
+        for clear in [false, true] {
+            let mut argv = vec![
+                "aq-graph",
+                "--config",
+                config.to_str().unwrap(),
+                "summary",
+                &record,
+                "--expected-version",
+                "5",
+                "--source-revision",
+                "4",
+            ];
+            if clear {
+                argv.push("--clear");
+            } else {
+                argv.extend(["--file", summary.to_str().unwrap()]);
+            }
+            run(Cli::try_parse_from(argv).unwrap()).await.unwrap();
+            assert_eq!(
+                observed.lock().unwrap().last().unwrap().1["operations"][0],
+                json!({"op":"set_summary","id":record,"expected_version":5,"source_revision":4,"summary":if clear {Value::Null}else{json!("α\r\nexact summary")}})
+            );
+        }
+        handle.abort();
+    }
+
+    #[test]
+    fn shared_field_args_reject_invalid_dates_conflicting_clears_and_task_only_knowledge_fields() {
+        let id = Uuid::new_v4().to_string();
+        for kind in ["task", "knowledge"] {
+            assert!(
+                Cli::try_parse_from([
+                    "aq-graph",
+                    kind,
+                    "create",
+                    "--title",
+                    "T",
+                    "--valid-from",
+                    "2026-01-01"
+                ])
+                .is_err()
+            );
+            assert!(
+                Cli::try_parse_from([
+                    "aq-graph",
+                    kind,
+                    "update",
+                    &id,
+                    "--expected-version",
+                    "1",
+                    "--valid-from",
+                    "2026-01-01T00:00:00Z",
+                    "--clear-valid-from"
+                ])
+                .is_err()
+            );
+            assert!(
+                Cli::try_parse_from([
+                    "aq-graph",
+                    kind,
+                    "update",
+                    &id,
+                    "--expected-version",
+                    "1",
+                    "--valid-until",
+                    "2026-01-01T00:00:00Z",
+                    "--clear-valid-until"
+                ])
+                .is_err()
+            );
+            assert!(
+                Cli::try_parse_from([
+                    "aq-graph",
+                    kind,
+                    "update",
+                    &id,
+                    "--expected-version",
+                    "1",
+                    "--review-at",
+                    "2026-01-01T00:00:00Z",
+                    "--clear-review-at"
+                ])
+                .is_err()
+            );
+        }
+        assert!(
+            Cli::try_parse_from([
+                "aq-graph",
+                "knowledge",
+                "create",
+                "--title",
+                "T",
+                "--acceptance-criteria",
+                "Task only"
+            ])
+            .is_err()
+        );
+        assert!(
+            Cli::try_parse_from([
+                "aq-graph",
+                "summary",
+                &id,
+                "--expected-version",
+                "1",
+                "--source-revision",
+                "1",
+                "--clear",
+                "--file",
+                "summary.txt"
+            ])
+            .is_err()
+        );
     }
 }

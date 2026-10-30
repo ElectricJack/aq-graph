@@ -384,7 +384,7 @@
     "/v1/workspaces/{workspace}/nodes": {
       "get": {
         "operationId": "get__v1_workspaces_workspace_nodes",
-        "description": "",
+        "description": "Shared current-record list; disputed records included.",
         "parameters": [
           {
             "name": "workspace",
@@ -420,7 +420,40 @@
             "required": false,
             "schema": {
               "$ref": "#/components/schemas/NodeKind"
-            }
+            },
+            "description": "Both kinds by default."
+          },
+          {
+            "name": "include_retired",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Include retired records; deletion is always excluded."
+          },
+          {
+            "name": "valid_at",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Timezone required; UTC microseconds after normalization."
+            },
+            "description": "Half-open validity: null lower/upper bounds are unbounded; valid_from <= t < valid_until."
+          },
+          {
+            "name": "review_due_at",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Timezone required; UTC microseconds after normalization."
+            },
+            "description": "Require a nonnull review_at <= the requested timestamp."
           }
         ],
         "responses": {
@@ -1715,7 +1748,7 @@
     "/v1/workspaces/{workspace}/search": {
       "get": {
         "operationId": "get__v1_workspaces_workspace_search",
-        "description": "",
+        "description": "Shared current-record title/body full-text search; disputed records excluded by default.",
         "parameters": [
           {
             "name": "workspace",
@@ -1762,7 +1795,8 @@
             "schema": {
               "type": "boolean",
               "default": false
-            }
+            },
+            "description": "Include retired records; deletion is always excluded."
           },
           {
             "name": "include_disputed",
@@ -1771,7 +1805,39 @@
             "schema": {
               "type": "boolean",
               "default": false
-            }
+            },
+            "description": "Include disputed records in search."
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/NodeKind"
+            },
+            "description": "Both kinds by default."
+          },
+          {
+            "name": "valid_at",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Timezone required; UTC microseconds after normalization."
+            },
+            "description": "Half-open validity: null lower/upper bounds are unbounded; valid_from <= t < valid_until."
+          },
+          {
+            "name": "review_due_at",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Timezone required; UTC microseconds after normalization."
+            },
+            "description": "Require a nonnull review_at <= the requested timestamp."
           }
         ],
         "responses": {
@@ -3878,7 +3944,8 @@
           "incident",
           "reference",
           "note"
-        ]
+        ],
+        "deprecated": true
       },
       "Verification": {
         "type": "string",
@@ -3963,16 +4030,6 @@
               }
             ]
           },
-          "knowledge_type": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/KnowledgeType"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "verification": {
             "anyOf": [
               {
@@ -3981,7 +4038,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "New nodes of either kind start unverified; assertions are independent of task completion."
           },
           "provenance": {
             "type": "array",
@@ -4043,6 +4101,88 @@
                 "type": "null"
               }
             ]
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContentType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 8192,
+                "readOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary_of_revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 1,
+                "readOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timezone required; UTC microseconds after normalization."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timezone required; UTC microseconds after normalization."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timezone required; UTC microseconds after normalization."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "successor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -4057,15 +4197,26 @@
           "labels",
           "metadata",
           "task_state",
-          "knowledge_type",
           "verification",
           "provenance",
           "retired",
           "deleted",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "created_by",
+          "last_verified_by",
+          "last_verified_at",
+          "retirement_reason",
+          "content_type",
+          "summary",
+          "summary_of_revision",
+          "valid_from",
+          "valid_until",
+          "review_at",
+          "successor_id"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Canonical current and exact-revision response. All nullable shared keys are present; raw history and retained legacy receipts use their original payload shapes."
       },
       "NodePatch": {
         "type": "object",
@@ -4144,12 +4295,14 @@
           "knowledge_type": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/KnowledgeType"
+                "$ref": "#/components/schemas/ContentType"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "deprecated": true,
+            "description": "Accepted input alias for content_type. Do not provide both names."
           },
           "verification": {
             "type": "null",
@@ -4191,10 +4344,78 @@
                 "type": "null"
               }
             ]
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContentType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timezone required; UTC microseconds after normalization."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timezone required; UTC microseconds after normalization."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timezone required; UTC microseconds after normalization."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "successor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Explicit null clears the retirement successor; absence leaves it unchanged."
           }
         },
         "required": [],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "content_type",
+                "knowledge_type"
+              ]
+            }
+          }
+        ]
       },
       "Edge": {
         "type": "object",
@@ -4339,12 +4560,14 @@
           "knowledge_type": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/KnowledgeType"
+                "$ref": "#/components/schemas/ContentType"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "deprecated": true,
+            "description": "Accepted input alias for content_type. Do not provide both names."
           },
           "verification": {
             "anyOf": [
@@ -4364,6 +4587,52 @@
               "$ref": "#/components/schemas/Source"
             },
             "description": "Unique source_id values, at most 16384 UTF-8 bytes total."
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContentType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timezone required; UTC microseconds after normalization."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timezone required; UTC microseconds after normalization."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timezone required; UTC microseconds after normalization."
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -4371,7 +4640,40 @@
           "kind",
           "title"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "content_type",
+                "knowledge_type"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "knowledge"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "properties": {
+                "task_state": {
+                  "type": "null"
+                },
+                "acceptance_criteria": {
+                  "type": "string",
+                  "maxLength": 0
+                }
+              }
+            }
+          }
+        ]
       },
       "UpdateNode": {
         "type": "object",
@@ -4446,7 +4748,7 @@
           "include_lifecycle": {
             "type": "boolean",
             "default": false,
-            "description": "Restore task_state, retired, retirement_reason and deleted only when true; knowledge verification is always reset."
+            "description": "Admin-only for both kinds. Restore task_state, retired, retirement_reason, successor_id and deleted when true; meaningful restore clears verification and derived summaries."
           }
         },
         "required": [
@@ -4577,6 +4879,12 @@
           },
           {
             "$ref": "#/components/schemas/VerifyKnowledge"
+          },
+          {
+            "$ref": "#/components/schemas/VerifyNode"
+          },
+          {
+            "$ref": "#/components/schemas/SetSummary"
           }
         ],
         "discriminator": {
@@ -4589,7 +4897,9 @@
             "add_edge": "#/components/schemas/AddEdge",
             "remove_edge": "#/components/schemas/RemoveEdge",
             "set_parent": "#/components/schemas/SetParent",
-            "verify_knowledge": "#/components/schemas/VerifyKnowledge"
+            "verify_knowledge": "#/components/schemas/VerifyKnowledge",
+            "verify_node": "#/components/schemas/VerifyNode",
+            "set_summary": "#/components/schemas/SetSummary"
           }
         }
       },
@@ -4635,7 +4945,10 @@
                     "type": "object",
                     "properties": {
                       "op": {
-                        "const": "verify_knowledge"
+                        "enum": [
+                          "verify_node",
+                          "verify_knowledge"
+                        ]
                       }
                     },
                     "required": [
@@ -4712,7 +5025,10 @@
                     "type": "object",
                     "properties": {
                       "op": {
-                        "const": "verify_knowledge"
+                        "enum": [
+                          "verify_node",
+                          "verify_knowledge"
+                        ]
                       }
                     },
                     "required": [
@@ -4790,13 +5106,16 @@
           "results": {
             "type": "array",
             "items": {
-              "description": "Current node or edge resulting from each operation.",
+              "description": "Committed node/edge result. Old idempotency receipts preserve the original LegacyNode payload without alias rewriting.",
               "oneOf": [
                 {
                   "$ref": "#/components/schemas/Node"
                 },
                 {
                   "$ref": "#/components/schemas/Edge"
+                },
+                {
+                  "$ref": "#/components/schemas/LegacyNode"
                 }
               ]
             }
@@ -5660,7 +5979,9 @@
           "verification",
           "evidence"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "deprecated": true,
+        "description": "Legacy operation name for shared task/knowledge verification; same authority and evidence rules."
       },
       "Tree": {
         "type": "object",
@@ -5746,6 +6067,385 @@
           }
         ],
         "description": "Exact node and owned link versions: all outgoing links plus incoming blocks/parent-child. Legacy missing link sets are explicitly unavailable."
+      },
+      "ContentType": {
+        "type": "string",
+        "enum": [
+          "fact",
+          "decision",
+          "policy",
+          "procedure",
+          "incident",
+          "reference",
+          "note"
+        ],
+        "description": "Shared content classification for tasks and knowledge."
+      },
+      "VerifyNode": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "const": "verify_node"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "verification": {
+            "enum": [
+              "verified",
+              "disputed"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            },
+            "description": "Unique source_id values, at most 16384 UTF-8 bytes total.",
+            "minItems": 1
+          }
+        },
+        "required": [
+          "op",
+          "id",
+          "expected_version",
+          "verification",
+          "evidence"
+        ],
+        "additionalProperties": false,
+        "description": "Admin-only evidence assertion on either kind; nonempty mutation reason required."
+      },
+      "SetSummary": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "const": "set_summary"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "source_revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8192,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "op",
+          "id",
+          "expected_version",
+          "source_revision",
+          "summary"
+        ],
+        "additionalProperties": false,
+        "description": "Store derived text citing the current record revision; null clears summary and citation. Other meaningful changes invalidate it."
+      },
+      "NodeFilters": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/NodeKind"
+          },
+          "include_retired": {
+            "type": "boolean",
+            "default": false
+          },
+          "include_disputed": {
+            "type": "boolean",
+            "default": false,
+            "description": "Search only; lists include disputed records."
+          },
+          "valid_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timezone required; UTC microseconds after normalization."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review_due_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timezone required; UTC microseconds after normalization."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "LegacyNode": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/NodeKind"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "description": "Expected-version/CAS token, advancing on every authoritative record mutation."
+          },
+          "content_revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "description": "Common immutable revision identifier covering content, lifecycle, deletion and owned relationships."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 262144
+          },
+          "acceptance_criteria": {
+            "type": "string",
+            "maxLength": 16384
+          },
+          "labels": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Namespaced keys, e.g. aq:priority; at most 16384 UTF-8 bytes."
+          },
+          "task_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Verification"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "New nodes of either kind start unverified; assertions are independent of task completion."
+          },
+          "provenance": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Original retained descriptor payload; earlier releases allowed broader shapes."
+          },
+          "retired": {
+            "type": "boolean"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": "string",
+            "description": "Immutable authenticated creator. Legacy snapshots may omit this field; legacy default is legacy:unknown.",
+            "readOnly": true
+          },
+          "last_verified_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true
+          },
+          "last_verified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true
+          },
+          "retirement_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4096
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 8192,
+                "readOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary_of_revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 1,
+                "readOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timezone required; UTC microseconds after normalization."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timezone required; UTC microseconds after normalization."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timezone required; UTC microseconds after normalization."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "successor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "knowledge_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KnowledgeType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "kind",
+          "version",
+          "content_revision",
+          "title",
+          "body",
+          "acceptance_criteria",
+          "labels",
+          "metadata",
+          "task_state",
+          "verification",
+          "provenance",
+          "retired",
+          "deleted",
+          "created_at",
+          "updated_at",
+          "knowledge_type"
+        ],
+        "additionalProperties": false,
+        "description": "Original pre-schema-7 node payload preserved in retained idempotency receipts. Fresh node reads use canonical content_type."
       }
     }
   }

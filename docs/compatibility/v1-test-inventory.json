@@ -28241,7 +28241,7 @@
         {
           "path": "tests/v1_graph_parity.rs",
           "function": "evidence_relationships_require_two_knowledge_endpoints",
-          "assertions": "supports/contradicts/supersedes require Knowledge→Knowledge; helper-source matrix extension",
+          "assertions": "supports/contradicts require Knowledge→Knowledge. Schema7 intentionally permits supersedes across both kinds; historical schema5 endpoint parity does not apply to replacement links.",
           "result": "passed",
           "historical_result": "passed_schema5"
         },
@@ -28263,7 +28263,8 @@
         "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
         "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
         "API adaptation and remaining obligations: docs/compatibility/graph.md. AQ project→workspace, legacy IDs→opaque UUID; no claim that private SQLAlchemy pointers/locks are the v2 API.",
-        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical."
+        "Schema6: task and knowledge use shared record+relationship revisions. Default restore preserves lifecycle/retirement/tombstone; include_lifecycle opts in. Verification badges remain current-policy assertions. Original schema5 evidence is historical.",
+        "Schema7 shared successor contract deliberately broadens supersedes endpoints to either node kind. Related v2 contract coverage is in tests/shared_nodes.rs; full v1 matrix parity remains unclaimed."
       ],
       "schema5_verification": {
         "result": "passed",

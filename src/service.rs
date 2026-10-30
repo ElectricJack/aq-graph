@@ -12,6 +12,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::{delete, get, post},
 };
+use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sqlx::Row;
@@ -339,16 +340,30 @@ async fn health_ready(State(state): State<HttpState>) -> Response {
     }
 }
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct NodesQuery {
     kind: Option<NodeKind>,
     limit: Option<u32>,
     cursor: Option<String>,
+    #[serde(default)]
+    include_retired: bool,
+    valid_at: Option<DateTime<Utc>>,
+    review_due_at: Option<DateTime<Utc>>,
 }
 impl NodesQuery {
     fn page(&self) -> ListQuery {
         ListQuery {
             limit: self.limit.unwrap_or(50),
             cursor: self.cursor.clone(),
+        }
+    }
+    fn filters(self) -> NodeFilters {
+        NodeFilters {
+            kind: self.kind,
+            include_retired: self.include_retired,
+            include_disputed: false,
+            valid_at: self.valid_at,
+            review_due_at: self.review_due_at,
         }
     }
 }
@@ -359,7 +374,7 @@ async fn list_nodes(
 ) -> Result<Json<Page<Node>>> {
     let q = parse_query(q)?;
     let page = q.page();
-    Ok(Json(s.store.list_nodes(&p, q.kind, page).await?))
+    Ok(Json(s.store.list_filtered(&p, q.filters(), page).await?))
 }
 async fn get_node(
     State(s): State<HttpState>,
@@ -401,12 +416,15 @@ async fn ready(
 #[serde(deny_unknown_fields)]
 struct SearchQuery {
     q: String,
+    kind: Option<NodeKind>,
     limit: Option<u32>,
     cursor: Option<String>,
     #[serde(default)]
     include_retired: bool,
     #[serde(default)]
     include_disputed: bool,
+    valid_at: Option<DateTime<Utc>>,
+    review_due_at: Option<DateTime<Utc>>,
 }
 async fn search(
     State(s): State<HttpState>,
@@ -414,17 +432,23 @@ async fn search(
     q: std::result::Result<Query<SearchQuery>, QueryRejection>,
 ) -> Result<Json<Page<Node>>> {
     let q = parse_query(q)?;
+    let filters = NodeFilters {
+        kind: q.kind,
+        include_retired: q.include_retired,
+        include_disputed: q.include_disputed,
+        valid_at: q.valid_at,
+        review_due_at: q.review_due_at,
+    };
     Ok(Json(
         s.store
-            .search_filtered(
+            .search_nodes(
                 &p,
                 &q.q,
+                filters,
                 ListQuery {
                     limit: q.limit.unwrap_or(50),
                     cursor: q.cursor,
                 },
-                q.include_retired,
-                q.include_disputed,
             )
             .await?,
     ))

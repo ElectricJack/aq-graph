@@ -3,8 +3,10 @@ use crate::domain::*;
 use crate::knowledge_rules;
 mod compat_graph;
 mod preview;
+mod queries;
 mod restore;
 mod revision_links;
+mod successors;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -238,7 +240,9 @@ impl Store {
                     }
             )
         });
-        self.write_tx_with(structural).await
+        let successor_change = ops.iter().any(|op| matches!(op,
+            Mutation::UpdateNode { patch, .. } if patch.retired.is_some() || !patch.successor_id.is_keep()));
+        self.write_tx_with(structural || successor_change).await
     }
     async fn write_tx_with(&self, serializable: bool) -> Result<Tx<'_>> {
         let mut tx = self.pool.begin().await?;
@@ -277,9 +281,15 @@ impl Store {
         kind: Option<NodeKind>,
         q: ListQuery,
     ) -> Result<Page<Node>> {
-        let n = limit(&q)?;
-        let vs=sqlx::query_scalar::<_,Value>("SELECT to_jsonb(n)-'search_document' FROM nodes n WHERE workspace_id=$1 AND NOT deleted AND ($2::text IS NULL OR kind=$2) AND ($3::uuid IS NULL OR id>$3) ORDER BY id LIMIT $4").bind(p.workspace_id).bind(kind.as_ref().map(tag).transpose()?).bind(cursor(&q)?).bind(n+1).fetch_all(&self.pool).await?;
-        node_page(vs, n)
+        self.list_filtered(
+            p,
+            NodeFilters {
+                kind,
+                ..Default::default()
+            },
+            q,
+        )
+        .await
     }
     pub async fn ready(&self, p: &Principal, q: ListQuery) -> Result<Page<Node>> {
         let n = limit(&q)?;
@@ -287,14 +297,14 @@ impl Store {
         // Two indexed ancestor joins suffice; a per-candidate recursive CTE can
         // cause repeated full node scans and JIT overhead even on small graphs.
         // A future hierarchy-depth increase must also extend this predicate.
-        let vs=sqlx::query_scalar::<_,Value>("SELECT to_jsonb(n)-'search_document' FROM nodes n WHERE workspace_id=$1 AND kind='task' AND task_state='active' AND NOT deleted AND ($2::uuid IS NULL OR id>$2)
+        let vs=sqlx::query_scalar::<_,Value>("SELECT to_jsonb(n)-'search_document' FROM nodes n WHERE workspace_id=$1 AND kind='task' AND task_state='active' AND NOT deleted AND NOT retired AND ($2::uuid IS NULL OR id>$2)
 AND NOT EXISTS (SELECT 1 FROM edges pc JOIN nodes child ON child.id=pc.target AND child.workspace_id=pc.workspace_id WHERE pc.workspace_id=n.workspace_id AND pc.source=n.id AND pc.edge_type='parent-child' AND NOT pc.deleted AND NOT child.deleted)
 AND NOT EXISTS (
  SELECT 1 FROM edges pe JOIN nodes parent ON parent.id=pe.source AND parent.workspace_id=pe.workspace_id
  LEFT JOIN edges ge ON ge.workspace_id=pe.workspace_id AND ge.target=parent.id AND ge.edge_type='parent-child' AND NOT ge.deleted
  LEFT JOIN nodes grandparent ON grandparent.id=ge.source AND grandparent.workspace_id=ge.workspace_id
  WHERE pe.workspace_id=n.workspace_id AND pe.target=n.id AND pe.edge_type='parent-child' AND NOT pe.deleted
- AND (parent.deleted OR parent.task_state='draft' OR grandparent.deleted OR grandparent.task_state='draft'))
+ AND (parent.deleted OR parent.retired OR parent.task_state='draft' OR grandparent.deleted OR grandparent.retired OR grandparent.task_state='draft'))
 AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id=e.source WHERE e.workspace_id=n.workspace_id AND e.target=n.id AND e.edge_type='blocks' AND NOT e.deleted AND (prerequisite.deleted OR prerequisite.task_state IS DISTINCT FROM 'completed')) ORDER BY id LIMIT $3").bind(p.workspace_id).bind(cursor(&q)?).bind(n+1).fetch_all(&self.pool).await?;
         node_page(vs, n)
     }
@@ -309,17 +319,17 @@ AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id
         include_retired: bool,
         include_disputed: bool,
     ) -> Result<Page<Node>> {
-        let n = limit(&q)?;
-        if text.trim().is_empty() || text.len() > 1024 {
-            return Err(Error::Validation(
-                "search text must contain 1..1024 bytes".into(),
-            ));
-        }
-        // Select matching identifiers before ordering and fetching complete bodies.
-        // This preserves selective GIN plans and prevents LIMIT-driven primary-key
-        // scans from walking a large population of unrelated task records.
-        let vs=sqlx::query_scalar::<_,Value>("WITH matching AS MATERIALIZED (SELECT id FROM nodes WHERE workspace_id=$1 AND kind='knowledge' AND NOT deleted AND ($5 OR NOT retired) AND ($6 OR verification <> 'disputed') AND search_document @@ websearch_to_tsquery('english',$2) AND ($3::uuid IS NULL OR id>$3)), selected AS MATERIALIZED (SELECT id FROM matching ORDER BY id LIMIT $4) SELECT to_jsonb(n)-'search_document' FROM selected JOIN nodes n ON n.id=selected.id AND n.workspace_id=$1 ORDER BY selected.id").bind(p.workspace_id).bind(text).bind(cursor(&q)?).bind(n+1).bind(include_retired).bind(include_disputed).fetch_all(&self.pool).await?;
-        node_page(vs, n)
+        self.search_nodes(
+            p,
+            text,
+            NodeFilters {
+                include_retired,
+                include_disputed,
+                ..Default::default()
+            },
+            q,
+        )
+        .await
     }
     pub async fn context(&self, p: &Principal, id: Uuid, q: ContextQuery) -> Result<Context> {
         q.validate()?;
@@ -763,7 +773,9 @@ AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id
                     let policy_draft = load_draft(&mut tx, p.workspace_id, id).await?;
                     let policy_operations: Vec<Mutation> =
                         decode(policy_draft["operations"].clone())?;
-                    if touches_knowledge(&mut tx, p, &policy_operations).await? {
+                    if touches_knowledge(&mut tx, p, &policy_operations).await?
+                        || requires_admin(&mut tx, p, &policy_operations).await?
+                    {
                         admin(p)?;
                         live_authority(&mut tx, p, true).await?;
                     }
@@ -813,7 +825,13 @@ const DURABLE_FIELDS: &[&str] = &[
     "acceptance_criteria",
     "labels",
     "metadata",
-    "knowledge_type",
+    "content_type",
+    "summary",
+    "summary_of_revision",
+    "valid_from",
+    "valid_until",
+    "review_at",
+    "successor_id",
     "verification",
     "retired",
     "provenance",
@@ -914,9 +932,9 @@ async fn save_node(tx: &mut Tx<'_>, n: &Node, create: bool) -> Result<()> {
     // JSON is only a transport into explicitly typed PostgreSQL columns.
     let v = encode(n)?;
     if create {
-        sqlx::query("INSERT INTO nodes (id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,labels,metadata,task_state,knowledge_type,verification,retired,provenance,deleted,created_at,updated_at,created_by,last_verified_by,last_verified_at,retirement_reason) SELECT id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,labels,metadata,task_state,knowledge_type,verification,retired,provenance,deleted,created_at,updated_at,created_by,last_verified_by,last_verified_at,retirement_reason FROM jsonb_populate_record(NULL::nodes,$1)").bind(v).execute(&mut **tx).await?;
+        sqlx::query("INSERT INTO nodes (id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,labels,metadata,task_state,content_type,verification,retired,provenance,deleted,created_at,updated_at,created_by,last_verified_by,last_verified_at,retirement_reason,summary,summary_of_revision,valid_from,valid_until,review_at,successor_id) SELECT id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,labels,metadata,task_state,content_type,verification,retired,provenance,deleted,created_at,updated_at,created_by,last_verified_by,last_verified_at,retirement_reason,summary,summary_of_revision,valid_from,valid_until,review_at,successor_id FROM jsonb_populate_record(NULL::nodes,$1)").bind(v).execute(&mut **tx).await?;
     } else {
-        sqlx::query("UPDATE nodes n SET version=r.version,content_revision=r.content_revision,title=r.title,body=r.body,acceptance_criteria=r.acceptance_criteria,labels=r.labels,metadata=r.metadata,task_state=r.task_state,knowledge_type=r.knowledge_type,verification=r.verification,retired=r.retired,provenance=r.provenance,deleted=r.deleted,updated_at=r.updated_at,last_verified_by=r.last_verified_by,last_verified_at=r.last_verified_at,retirement_reason=r.retirement_reason FROM jsonb_populate_record(NULL::nodes,$1) r WHERE n.id=r.id AND n.workspace_id=r.workspace_id").bind(v).execute(&mut **tx).await?;
+        sqlx::query("UPDATE nodes n SET version=r.version,content_revision=r.content_revision,title=r.title,body=r.body,acceptance_criteria=r.acceptance_criteria,labels=r.labels,metadata=r.metadata,task_state=r.task_state,content_type=r.content_type,verification=r.verification,retired=r.retired,provenance=r.provenance,deleted=r.deleted,updated_at=r.updated_at,last_verified_by=r.last_verified_by,last_verified_at=r.last_verified_at,retirement_reason=r.retirement_reason,summary=r.summary,summary_of_revision=r.summary_of_revision,valid_from=r.valid_from,valid_until=r.valid_until,review_at=r.review_at,successor_id=r.successor_id FROM jsonb_populate_record(NULL::nodes,$1) r WHERE n.id=r.id AND n.workspace_id=r.workspace_id").bind(v).execute(&mut **tx).await?;
     }
     Ok(())
 }
@@ -975,18 +993,22 @@ fn durable_changed(a: &Node, b: &Node) -> Result<bool> {
     let b = encode(b)?;
     Ok(DURABLE_FIELDS.iter().any(|f| a[f] != b[f]))
 }
+fn retirement_metadata_only(patch: &NodePatch) -> bool {
+    patch.title.is_none()
+        && patch.body.is_none()
+        && patch.acceptance_criteria.is_none()
+        && patch.labels.is_none()
+        && patch.metadata.is_none()
+        && patch.task_state.is_none()
+        && patch.content_type.is_none()
+        && patch.verification.is_none()
+        && patch.provenance.is_none()
+        && patch.valid_from.is_keep()
+        && patch.valid_until.is_keep()
+        && patch.review_at.is_keep()
+        && patch.retired != Some(false)
+}
 fn patch_node(n: &mut Node, patch: &NodePatch) -> Result<()> {
-    if n.kind == NodeKind::Task
-        && (patch.knowledge_type.is_some()
-            || patch.verification.is_some()
-            || patch.retired.is_some()
-            || patch.provenance.is_some()
-            || patch.retirement_reason.is_some())
-    {
-        return Err(Error::Validation(
-            "knowledge fields cannot be set on a task".into(),
-        ));
-    }
     if n.kind == NodeKind::Knowledge
         && (patch.task_state.is_some() || patch.acceptance_criteria.is_some())
     {
@@ -1012,12 +1034,12 @@ fn patch_node(n: &mut Node, patch: &NodePatch) -> Result<()> {
     if let Some(v) = patch.task_state {
         n.task_state = Some(v);
     }
-    if let Some(v) = patch.knowledge_type {
-        n.knowledge_type = Some(v);
+    if let Some(v) = patch.content_type {
+        n.content_type = Some(v);
     }
     if patch.verification.is_some() {
         return Err(Error::Validation(
-            "use verify_knowledge to change verification".into(),
+            "use verify_node to change verification".into(),
         ));
     }
     if let Some(v) = &patch.retirement_reason {
@@ -1029,18 +1051,31 @@ fn patch_node(n: &mut Node, patch: &NodePatch) -> Result<()> {
     if let Some(v) = &patch.provenance {
         n.provenance = v.clone();
     }
+    patch.valid_from.apply_to(&mut n.valid_from);
+    patch.valid_until.apply_to(&mut n.valid_until);
+    patch.review_at.apply_to(&mut n.review_at);
+    patch.successor_id.apply_to(&mut n.successor_id);
     Ok(())
 }
 async fn requires_admin(tx: &mut Tx<'_>, p: &Principal, ops: &[Mutation]) -> Result<bool> {
     for op in ops {
         match op {
-            Mutation::VerifyKnowledge { .. } => return Ok(true),
+            Mutation::VerifyKnowledge { .. } | Mutation::VerifyNode { .. } => return Ok(true),
             Mutation::UpdateNode { patch, .. }
-                if patch.retired.is_some() || patch.retirement_reason.is_some() =>
+                if patch.retired.is_some()
+                    || patch.retirement_reason.is_some()
+                    || !patch.successor_id.is_keep() =>
             {
                 return Ok(true);
             }
-            Mutation::RestoreNode { id, .. } => {
+            Mutation::RestoreNode {
+                id,
+                include_lifecycle,
+                ..
+            } => {
+                if *include_lifecycle {
+                    return Ok(true);
+                }
                 let created_kind = ops.iter().find_map(|op| match op {
                     Mutation::CreateNode {
                         id: Some(created_id),
@@ -1078,11 +1113,13 @@ async fn touches_knowledge(tx: &mut Tx<'_>, p: &Principal, ops: &[Mutation]) -> 
                 kind: NodeKind::Knowledge,
                 ..
             }
-            | Mutation::VerifyKnowledge { .. } => return Ok(true),
+            | Mutation::VerifyKnowledge { .. }
+            | Mutation::VerifyNode { .. } => return Ok(true),
             Mutation::CreateNode { .. } | Mutation::SetParent { .. } => continue,
             Mutation::UpdateNode { id, .. }
             | Mutation::DeleteNode { id, .. }
-            | Mutation::RestoreNode { id, .. } => *id,
+            | Mutation::RestoreNode { id, .. }
+            | Mutation::SetSummary { id, .. } => *id,
             Mutation::AddEdge { source, .. } => *source,
             Mutation::RemoveEdge { id, .. } => {
                 let created_source = ops.iter().find_map(|op| match op {
@@ -1123,6 +1160,7 @@ async fn checkpoint_nodes(
     for id in ids {
         let mut n = load_node_write(tx, p.workspace_id, id).await?;
         knowledge_rules::reset_verification(&mut n);
+        knowledge_rules::clear_summary(&mut n);
         n.version += 1;
         n.content_revision += 1;
         n.updated_at = server_time();
@@ -1164,9 +1202,12 @@ async fn execute(
                 labels,
                 metadata,
                 task_state,
-                knowledge_type,
+                content_type,
                 verification,
                 provenance,
+                valid_from,
+                valid_until,
+                review_at,
             } => {
                 let now = server_time();
                 let n = Node {
@@ -1185,16 +1226,14 @@ async fn execute(
                     } else {
                         None
                     },
-                    knowledge_type: if *kind == NodeKind::Knowledge {
-                        Some(knowledge_type.unwrap_or(KnowledgeType::Note))
-                    } else {
-                        None
-                    },
-                    verification: if *kind == NodeKind::Knowledge {
-                        Some(verification.unwrap_or(Verification::Unverified))
-                    } else {
-                        None
-                    },
+                    content_type: Some(content_type.unwrap_or(KnowledgeType::Note)),
+                    verification: Some(verification.unwrap_or(Verification::Unverified)),
+                    summary: None,
+                    summary_of_revision: None,
+                    valid_from: *valid_from,
+                    valid_until: *valid_until,
+                    review_at: *review_at,
+                    successor_id: None,
                     retired: false,
                     provenance: provenance.clone(),
                     deleted: false,
@@ -1236,11 +1275,12 @@ async fn execute(
                     ));
                 }
                 knowledge_rules::authorize_edit(&edit_authority, &before)?;
-                if before.kind == NodeKind::Knowledge && before.retired {
+                if before.retired && !retirement_metadata_only(patch) {
                     return Err(Error::Forbidden);
                 }
-                if before.kind == NodeKind::Knowledge
-                    && (patch.retired.is_some() || patch.retirement_reason.is_some())
+                if patch.retired.is_some()
+                    || patch.retirement_reason.is_some()
+                    || !patch.successor_id.is_keep()
                 {
                     edit_authority.require_admin()?;
                     if !preview {
@@ -1255,10 +1295,18 @@ async fn execute(
                 let mut n = before.clone();
                 patch_node(&mut n, patch)?;
                 knowledge_rules::validate_retirement(&n)?;
+                knowledge_rules::validate_temporal(&n)?;
+                if let Some(successor) = n.successor_id {
+                    let successor = load_node(tx, p.workspace_id, successor).await?;
+                    if successor.deleted {
+                        return Err(Error::Conflict("successor cannot be deleted".into()));
+                    }
+                }
                 knowledge_rules::validate_sources(&n.provenance)?;
                 let content = durable_changed(&before, &n)?;
                 if content {
                     knowledge_rules::reset_verification(&mut n);
+                    knowledge_rules::clear_summary(&mut n);
                 }
                 let lifecycle = before.task_state != n.task_state;
                 if content || lifecycle {
@@ -1295,6 +1343,8 @@ async fn execute(
                 expected(n.version, *expected_version)?;
                 knowledge_rules::authorize_edit(&edit_authority, &n)?;
                 if !n.deleted {
+                    knowledge_rules::reset_verification(&mut n);
+                    knowledge_rules::clear_summary(&mut n);
                     n.deleted = true;
                     n.version += 1;
                     n.content_revision += 1;
@@ -1348,7 +1398,7 @@ async fn execute(
             } => {
                 let a = load_node_write(tx, p.workspace_id, *source).await?;
                 knowledge_rules::authorize_edit(&edit_authority, &a)?;
-                if a.kind == NodeKind::Knowledge && a.retired {
+                if a.retired {
                     return Err(Error::Forbidden);
                 }
                 if matches!(edge_type, EdgeType::Blocks | EdgeType::ParentChild) {
@@ -1360,6 +1410,12 @@ async fn execute(
                 }
                 compat_graph::validate_edge(tx, p, *source, *target, *edge_type).await?;
                 let b = load_node(tx, p.workspace_id, *target).await?;
+                if matches!(edge_type, EdgeType::Blocks | EdgeType::ParentChild) {
+                    knowledge_rules::authorize_edit(&edit_authority, &b)?;
+                    if b.retired {
+                        return Err(Error::Forbidden);
+                    }
+                }
                 if a.deleted || b.deleted {
                     return Err(Error::Conflict(
                         "relationships require live endpoints".into(),
@@ -1429,6 +1485,7 @@ async fn execute(
                     compat_graph::set_parent(
                         tx,
                         p,
+                        &edit_authority,
                         change,
                         *id,
                         *expected_version,
@@ -1438,7 +1495,13 @@ async fn execute(
                     .await?,
                 );
             }
-            Mutation::VerifyKnowledge {
+            Mutation::VerifyNode {
+                id,
+                expected_version,
+                verification,
+                evidence,
+            }
+            | Mutation::VerifyKnowledge {
                 id,
                 expected_version,
                 verification,
@@ -1450,11 +1513,43 @@ async fn execute(
                 let mut n = load_node_write(tx, p.workspace_id, *id).await?;
                 expected(n.version, *expected_version)?;
                 knowledge_rules::verify(&mut n, &edit_authority, *verification, evidence, reason)?;
+                knowledge_rules::clear_summary(&mut n);
                 n.version += 1;
                 n.content_revision += 1;
                 n.updated_at = server_time();
                 save_node(tx, &n, false).await?;
                 revision(tx, p, change, &n, "verified", reason).await?;
+                results.push(encode(&n)?);
+            }
+            Mutation::SetSummary {
+                id,
+                expected_version,
+                source_revision,
+                summary,
+            } => {
+                let mut n = load_node_write(tx, p.workspace_id, *id).await?;
+                expected(n.version, *expected_version)?;
+                knowledge_rules::authorize_edit(&edit_authority, &n)?;
+                if n.deleted || n.retired {
+                    return Err(Error::Conflict(
+                        "summary requires a live nonretired node".into(),
+                    ));
+                }
+                // Repeating an identical derived value does not manufacture history.
+                if n.summary == *summary
+                    && (summary.is_none() || n.summary_of_revision == Some(*source_revision))
+                {
+                    results.push(encode(&n)?);
+                    continue;
+                }
+                knowledge_rules::set_summary(&mut n, *source_revision, summary.as_deref())?;
+                knowledge_rules::reset_verification(&mut n);
+                n.version += 1;
+                n.content_revision += 1;
+                n.updated_at = server_time();
+                knowledge_rules::validate_summary(&n)?;
+                save_node(tx, &n, false).await?;
+                revision(tx, p, change, &n, "summary_changed", reason).await?;
                 results.push(encode(&n)?);
             }
             Mutation::RemoveEdge {
@@ -1465,10 +1560,14 @@ async fn execute(
                 expected(e.version, *expected_version)?;
                 let source_node = load_node_write(tx, p.workspace_id, e.source).await?;
                 knowledge_rules::authorize_edit(&edit_authority, &source_node)?;
-                if source_node.kind == NodeKind::Knowledge && source_node.retired {
+                if source_node.retired {
                     return Err(Error::Forbidden);
                 }
                 if !e.deleted {
+                    if matches!(e.edge_type, EdgeType::Blocks | EdgeType::ParentChild) {
+                        let target = load_node_write(tx, p.workspace_id, e.target).await?;
+                        knowledge_rules::authorize_edit(&edit_authority, &target)?;
+                    }
                     e.deleted = true;
                     e.version += 1;
                     sqlx::query(
@@ -1512,6 +1611,7 @@ async fn execute(
             ));
         }
     }
+    successors::validate(tx, p, ops).await?;
     Ok(results)
 }
 async fn lock_receipt(tx: &mut Tx<'_>, p: &Principal, operation: &str, key: &str) -> Result<()> {
