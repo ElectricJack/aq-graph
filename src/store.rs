@@ -1,5 +1,7 @@
 //! PostgreSQL authority for current graph state and selective immutable history.
 use crate::domain::*;
+use crate::knowledge_rules;
+mod compat_graph;
 use chrono::Utc;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{Value, json};
@@ -223,6 +225,14 @@ impl Store {
                 Mutation::AddEdge { .. }
                     | Mutation::RemoveEdge { .. }
                     | Mutation::DeleteNode { .. }
+                    | Mutation::SetParent { .. }
+                    | Mutation::UpdateNode {
+                        patch: NodePatch {
+                            task_state: Some(_),
+                            ..
+                        },
+                        ..
+                    }
             )
         });
         self.write_tx_with(structural).await
@@ -270,10 +280,32 @@ impl Store {
     }
     pub async fn ready(&self, p: &Principal, q: ListQuery) -> Result<Page<Node>> {
         let n = limit(&q)?;
-        let vs=sqlx::query_scalar::<_,Value>("SELECT to_jsonb(n)-'search_document' FROM nodes n WHERE workspace_id=$1 AND kind='task' AND task_state='active' AND NOT deleted AND ($2::uuid IS NULL OR id>$2) AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id=e.source WHERE e.workspace_id=n.workspace_id AND e.target=n.id AND e.edge_type='blocks' AND NOT e.deleted AND (prerequisite.deleted OR prerequisite.task_state IS DISTINCT FROM 'completed')) ORDER BY id LIMIT $3").bind(p.workspace_id).bind(cursor(&q)?).bind(n+1).fetch_all(&self.pool).await?;
+        // Schema 0004 and every structural mutation enforce at most three levels.
+        // Two indexed ancestor joins suffice; a per-candidate recursive CTE can
+        // cause repeated full node scans and JIT overhead even on small graphs.
+        // A future hierarchy-depth increase must also extend this predicate.
+        let vs=sqlx::query_scalar::<_,Value>("SELECT to_jsonb(n)-'search_document' FROM nodes n WHERE workspace_id=$1 AND kind='task' AND task_state='active' AND NOT deleted AND ($2::uuid IS NULL OR id>$2)
+AND NOT EXISTS (SELECT 1 FROM edges pc JOIN nodes child ON child.id=pc.target AND child.workspace_id=pc.workspace_id WHERE pc.workspace_id=n.workspace_id AND pc.source=n.id AND pc.edge_type='parent-child' AND NOT pc.deleted AND NOT child.deleted)
+AND NOT EXISTS (
+ SELECT 1 FROM edges pe JOIN nodes parent ON parent.id=pe.source AND parent.workspace_id=pe.workspace_id
+ LEFT JOIN edges ge ON ge.workspace_id=pe.workspace_id AND ge.target=parent.id AND ge.edge_type='parent-child' AND NOT ge.deleted
+ LEFT JOIN nodes grandparent ON grandparent.id=ge.source AND grandparent.workspace_id=ge.workspace_id
+ WHERE pe.workspace_id=n.workspace_id AND pe.target=n.id AND pe.edge_type='parent-child' AND NOT pe.deleted
+ AND (parent.deleted OR parent.task_state='draft' OR grandparent.deleted OR grandparent.task_state='draft'))
+AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id=e.source WHERE e.workspace_id=n.workspace_id AND e.target=n.id AND e.edge_type='blocks' AND NOT e.deleted AND (prerequisite.deleted OR prerequisite.task_state IS DISTINCT FROM 'completed')) ORDER BY id LIMIT $3").bind(p.workspace_id).bind(cursor(&q)?).bind(n+1).fetch_all(&self.pool).await?;
         node_page(vs, n)
     }
     pub async fn search(&self, p: &Principal, text: &str, q: ListQuery) -> Result<Page<Node>> {
+        self.search_filtered(p, text, q, false, false).await
+    }
+    pub async fn search_filtered(
+        &self,
+        p: &Principal,
+        text: &str,
+        q: ListQuery,
+        include_retired: bool,
+        include_disputed: bool,
+    ) -> Result<Page<Node>> {
         let n = limit(&q)?;
         if text.trim().is_empty() || text.len() > 1024 {
             return Err(Error::Validation(
@@ -283,7 +315,7 @@ impl Store {
         // Select matching identifiers before ordering and fetching complete bodies.
         // This preserves selective GIN plans and prevents LIMIT-driven primary-key
         // scans from walking a large population of unrelated task records.
-        let vs=sqlx::query_scalar::<_,Value>("WITH matching AS MATERIALIZED (SELECT id FROM nodes WHERE workspace_id=$1 AND kind='knowledge' AND NOT deleted AND search_document @@ websearch_to_tsquery('english',$2) AND ($3::uuid IS NULL OR id>$3)), selected AS MATERIALIZED (SELECT id FROM matching ORDER BY id LIMIT $4) SELECT to_jsonb(n)-'search_document' FROM selected JOIN nodes n ON n.id=selected.id AND n.workspace_id=$1 ORDER BY selected.id").bind(p.workspace_id).bind(text).bind(cursor(&q)?).bind(n+1).fetch_all(&self.pool).await?;
+        let vs=sqlx::query_scalar::<_,Value>("WITH matching AS MATERIALIZED (SELECT id FROM nodes WHERE workspace_id=$1 AND kind='knowledge' AND NOT deleted AND ($5 OR NOT retired) AND ($6 OR verification <> 'disputed') AND search_document @@ websearch_to_tsquery('english',$2) AND ($3::uuid IS NULL OR id>$3)), selected AS MATERIALIZED (SELECT id FROM matching ORDER BY id LIMIT $4) SELECT to_jsonb(n)-'search_document' FROM selected JOIN nodes n ON n.id=selected.id AND n.workspace_id=$1 ORDER BY selected.id").bind(p.workspace_id).bind(text).bind(cursor(&q)?).bind(n+1).bind(include_retired).bind(include_disputed).fetch_all(&self.pool).await?;
         node_page(vs, n)
     }
     pub async fn context(&self, p: &Principal, id: Uuid, q: ContextQuery) -> Result<Context> {
@@ -545,7 +577,11 @@ impl Store {
         payload: &str,
     ) -> Result<MutationResult> {
         let mut tx = self.mutation_tx(&req.operations).await?;
-        live_authority(&mut tx, p, false).await?;
+        live_authority(&mut tx, p, p.capability == Capability::Admin).await?;
+        if requires_admin(&mut tx, p, &req.operations).await? {
+            admin(p)?;
+            live_authority(&mut tx, p, true).await?;
+        }
         if let Some(v) = receipt(&mut tx, p, "mutate", &req.idempotency_key, payload).await? {
             return decode(v);
         }
@@ -564,7 +600,15 @@ impl Store {
             "applied",
         )
         .await?;
-        let results = execute(&mut tx, p, id, req.reason.as_deref(), &req.operations).await?;
+        let results = execute(
+            &mut tx,
+            p,
+            id,
+            req.reason.as_deref(),
+            &req.operations,
+            false,
+        )
+        .await?;
         let response = MutationResult {
             change_set_id: id,
             results,
@@ -597,7 +641,7 @@ impl Store {
         for attempt in 0..MAX_ATTEMPTS {
             let outcome: Result<Value> = tokio::time::timeout(Duration::from_secs(6), async {
                 let mut tx = self.write_tx_with(false).await?;
-                live_authority(&mut tx, p, false).await?;
+                live_authority(&mut tx, p, p.capability == Capability::Admin).await?;
                 if let Some(v) =
                     receipt(&mut tx, p, "create_draft", &req.idempotency_key, &payload).await?
                 {
@@ -657,7 +701,7 @@ impl Store {
         for attempt in 0..MAX_ATTEMPTS {
             let outcome: Result<Value> = tokio::time::timeout(Duration::from_secs(6), async {
                 let mut tx = self.write_tx().await?;
-                live_authority(&mut tx, p, false).await?;
+                live_authority(&mut tx, p, p.capability == Capability::Admin).await?;
                 let draft = load_draft(&mut tx, p.workspace_id, id).await?;
                 if draft["status"] != "draft" {
                     return Err(Error::Conflict(
@@ -667,7 +711,7 @@ impl Store {
                 let operations: Vec<Mutation> = decode(draft["operations"].clone())?;
                 let before = preview_before(&mut tx, p.workspace_id, &operations).await?;
                 let results =
-                    execute(&mut tx, p, id, draft["reason"].as_str(), &operations).await?;
+                    execute(&mut tx, p, id, draft["reason"].as_str(), &operations, true).await?;
                 let preview = preview_after(&mut tx, p.workspace_id, before).await?;
                 tx.rollback().await?;
                 Ok(json!({"valid":true,"change_set_id":id,"results":results,"preview":preview}))
@@ -693,7 +737,14 @@ impl Store {
             let outcome: Result<MutationResult> =
                 tokio::time::timeout(Duration::from_secs(6), async {
                     let mut tx = self.write_tx().await?;
-                    live_authority(&mut tx, p, false).await?;
+                    live_authority(&mut tx, p, p.capability == Capability::Admin).await?;
+                    let policy_draft = load_draft(&mut tx, p.workspace_id, id).await?;
+                    let policy_operations: Vec<Mutation> =
+                        decode(policy_draft["operations"].clone())?;
+                    if touches_knowledge(&mut tx, p, &policy_operations).await? {
+                        admin(p)?;
+                        live_authority(&mut tx, p, true).await?;
+                    }
                     if let Some(v) = receipt(&mut tx, p, operation, key, &payload).await? {
                         return decode(v);
                     }
@@ -709,7 +760,8 @@ impl Store {
                     }
                     let operations: Vec<Mutation> = decode(draft["operations"].clone())?;
                     let results =
-                        execute(&mut tx, p, id, draft["reason"].as_str(), &operations).await?;
+                        execute(&mut tx, p, id, draft["reason"].as_str(), &operations, false)
+                            .await?;
                     let response = MutationResult {
                         change_set_id: id,
                         results,
@@ -743,6 +795,9 @@ const DURABLE_FIELDS: &[&str] = &[
     "verification",
     "retired",
     "provenance",
+    "last_verified_at",
+    "last_verified_by",
+    "retirement_reason",
 ];
 fn validate_credential(actor: &str, token: &str) -> Result<()> {
     if actor.trim().is_empty() || actor.len() > 200 || token.len() < 32 || token.len() > 4096 {
@@ -835,9 +890,9 @@ async fn save_node(tx: &mut Tx<'_>, n: &Node, create: bool) -> Result<()> {
     // JSON is only a transport into explicitly typed PostgreSQL columns.
     let v = encode(n)?;
     if create {
-        sqlx::query("INSERT INTO nodes (id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,labels,metadata,task_state,knowledge_type,verification,retired,provenance,deleted,created_at,updated_at) SELECT id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,labels,metadata,task_state,knowledge_type,verification,retired,provenance,deleted,created_at,updated_at FROM jsonb_populate_record(NULL::nodes,$1)").bind(v).execute(&mut **tx).await?;
+        sqlx::query("INSERT INTO nodes (id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,labels,metadata,task_state,knowledge_type,verification,retired,provenance,deleted,created_at,updated_at,created_by,last_verified_by,last_verified_at,retirement_reason) SELECT id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,labels,metadata,task_state,knowledge_type,verification,retired,provenance,deleted,created_at,updated_at,created_by,last_verified_by,last_verified_at,retirement_reason FROM jsonb_populate_record(NULL::nodes,$1)").bind(v).execute(&mut **tx).await?;
     } else {
-        sqlx::query("UPDATE nodes n SET version=r.version,content_revision=r.content_revision,title=r.title,body=r.body,acceptance_criteria=r.acceptance_criteria,labels=r.labels,metadata=r.metadata,task_state=r.task_state,knowledge_type=r.knowledge_type,verification=r.verification,retired=r.retired,provenance=r.provenance,deleted=r.deleted,updated_at=r.updated_at FROM jsonb_populate_record(NULL::nodes,$1) r WHERE n.id=r.id AND n.workspace_id=r.workspace_id").bind(v).execute(&mut **tx).await?;
+        sqlx::query("UPDATE nodes n SET version=r.version,content_revision=r.content_revision,title=r.title,body=r.body,acceptance_criteria=r.acceptance_criteria,labels=r.labels,metadata=r.metadata,task_state=r.task_state,knowledge_type=r.knowledge_type,verification=r.verification,retired=r.retired,provenance=r.provenance,deleted=r.deleted,updated_at=r.updated_at,last_verified_by=r.last_verified_by,last_verified_at=r.last_verified_at,retirement_reason=r.retirement_reason FROM jsonb_populate_record(NULL::nodes,$1) r WHERE n.id=r.id AND n.workspace_id=r.workspace_id").bind(v).execute(&mut **tx).await?;
     }
     Ok(())
 }
@@ -896,7 +951,8 @@ fn patch_node(n: &mut Node, patch: &NodePatch) -> Result<()> {
         && (patch.knowledge_type.is_some()
             || patch.verification.is_some()
             || patch.retired.is_some()
-            || patch.provenance.is_some())
+            || patch.provenance.is_some()
+            || patch.retirement_reason.is_some())
     {
         return Err(Error::Validation(
             "knowledge fields cannot be set on a task".into(),
@@ -930,8 +986,13 @@ fn patch_node(n: &mut Node, patch: &NodePatch) -> Result<()> {
     if let Some(v) = patch.knowledge_type {
         n.knowledge_type = Some(v);
     }
-    if let Some(v) = patch.verification {
-        n.verification = Some(v);
+    if patch.verification.is_some() {
+        return Err(Error::Validation(
+            "use verify_knowledge to change verification".into(),
+        ));
+    }
+    if let Some(v) = &patch.retirement_reason {
+        n.retirement_reason = Some(v.clone());
     }
     if let Some(v) = patch.retired {
         n.retired = v;
@@ -941,13 +1002,113 @@ fn patch_node(n: &mut Node, patch: &NodePatch) -> Result<()> {
     }
     Ok(())
 }
+async fn requires_admin(tx: &mut Tx<'_>, p: &Principal, ops: &[Mutation]) -> Result<bool> {
+    for op in ops {
+        match op {
+            Mutation::VerifyKnowledge { .. } => return Ok(true),
+            Mutation::UpdateNode { patch, .. }
+                if patch.retired.is_some() || patch.retirement_reason.is_some() =>
+            {
+                return Ok(true);
+            }
+            Mutation::RestoreNode { id, .. } => {
+                let created_kind = ops.iter().find_map(|op| match op {
+                    Mutation::CreateNode {
+                        id: Some(created_id),
+                        kind,
+                        ..
+                    } if created_id == id => Some(*kind),
+                    _ => None,
+                });
+                let kind = match created_kind {
+                    Some(kind) => kind,
+                    None => load_node(tx, p.workspace_id, *id).await?.kind,
+                };
+                if kind == NodeKind::Knowledge {
+                    return Ok(true);
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(false)
+}
+async fn touches_knowledge(tx: &mut Tx<'_>, p: &Principal, ops: &[Mutation]) -> Result<bool> {
+    let mut created = std::collections::HashMap::new();
+    for op in ops {
+        if let Mutation::CreateNode {
+            id: Some(id), kind, ..
+        } = op
+        {
+            created.insert(*id, *kind);
+        }
+    }
+    for op in ops {
+        let id = match op {
+            Mutation::CreateNode {
+                kind: NodeKind::Knowledge,
+                ..
+            }
+            | Mutation::VerifyKnowledge { .. } => return Ok(true),
+            Mutation::CreateNode { .. } | Mutation::SetParent { .. } => continue,
+            Mutation::UpdateNode { id, .. }
+            | Mutation::DeleteNode { id, .. }
+            | Mutation::RestoreNode { id, .. } => *id,
+            Mutation::AddEdge { source, .. } => *source,
+            Mutation::RemoveEdge { id, .. } => {
+                let created_source = ops.iter().find_map(|op| match op {
+                    Mutation::AddEdge {
+                        id: Some(created_id),
+                        source,
+                        ..
+                    } if created_id == id => Some(*source),
+                    _ => None,
+                });
+                match created_source {
+                    Some(source) => source,
+                    None => load_edge(tx, p.workspace_id, *id).await?.source,
+                }
+            }
+        };
+        let kind = match created.get(&id) {
+            Some(kind) => *kind,
+            None => load_node(tx, p.workspace_id, id).await?.kind,
+        };
+        if kind == NodeKind::Knowledge {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+async fn invalidate_link_verification(
+    tx: &mut Tx<'_>,
+    p: &Principal,
+    change: Uuid,
+    mut n: Node,
+    reason: Option<&str>,
+) -> Result<()> {
+    if n.kind == NodeKind::Knowledge && n.verification != Some(Verification::Unverified) {
+        knowledge_rules::reset_verification(&mut n);
+        n.version += 1;
+        n.content_revision += 1;
+        n.updated_at = Utc::now();
+        save_node(tx, &n, false).await?;
+        revision(tx, p, change, &n, "verification_invalidated", reason).await?;
+    }
+    Ok(())
+}
 async fn execute(
     tx: &mut Tx<'_>,
     p: &Principal,
     change: Uuid,
     reason: Option<&str>,
     ops: &[Mutation],
+    preview: bool,
 ) -> Result<Vec<Value>> {
+    let mut edit_authority = p.clone();
+    if preview {
+        edit_authority.capability = Capability::Admin;
+    }
     check_operations(ops)?;
     let mut results = Vec::with_capacity(ops.len());
     let mut deleted_nodes = vec![];
@@ -998,7 +1159,12 @@ async fn execute(
                     deleted: false,
                     created_at: now,
                     updated_at: now,
+                    created_by: p.actor_id.clone(),
+                    last_verified_by: None,
+                    last_verified_at: None,
+                    retirement_reason: None,
                 };
+                knowledge_rules::validate_create(&n)?;
                 save_node(tx, &n, true).await?;
                 revision(tx, p, change, &n, "created", reason).await?;
                 if let Some(state) = n.task_state {
@@ -1028,9 +1194,31 @@ async fn execute(
                         "record is deleted; restore it before editing".into(),
                     ));
                 }
+                knowledge_rules::authorize_edit(&edit_authority, &before)?;
+                if before.kind == NodeKind::Knowledge && before.retired {
+                    return Err(Error::Forbidden);
+                }
+                if before.kind == NodeKind::Knowledge
+                    && (patch.retired.is_some() || patch.retirement_reason.is_some())
+                {
+                    edit_authority.require_admin()?;
+                    if !preview {
+                        live_authority(tx, p, true).await?;
+                    }
+                }
+                if patch.task_state == Some(TaskState::Completed)
+                    && before.task_state != Some(TaskState::Completed)
+                {
+                    compat_graph::validate_completion(tx, p, *id).await?;
+                }
                 let mut n = before.clone();
                 patch_node(&mut n, patch)?;
+                knowledge_rules::validate_retirement(&n)?;
+                knowledge_rules::validate_sources(&n.provenance)?;
                 let content = durable_changed(&before, &n)?;
+                if content {
+                    knowledge_rules::reset_verification(&mut n);
+                }
                 let lifecycle = before.task_state != n.task_state;
                 if content || lifecycle {
                     n.version += 1;
@@ -1064,6 +1252,7 @@ async fn execute(
             } => {
                 let mut n = load_node_write(tx, p.workspace_id, *id).await?;
                 expected(n.version, *expected_version)?;
+                knowledge_rules::authorize_edit(&edit_authority, &n)?;
                 if !n.deleted {
                     n.deleted = true;
                     n.version += 1;
@@ -1091,12 +1280,25 @@ async fn execute(
             } => {
                 let before = load_node_write(tx, p.workspace_id, *id).await?;
                 expected(before.version, *expected_version)?;
+                knowledge_rules::authorize_edit(&edit_authority, &before)?;
+                if before.kind == NodeKind::Knowledge {
+                    edit_authority.require_admin()?;
+                    if !preview {
+                        live_authority(tx, p, true).await?;
+                    }
+                }
                 let snapshot = load_revision(tx, p.workspace_id, *id, *rev).await?;
                 let mut value = encode(&before)?;
                 for f in DURABLE_FIELDS {
                     value[*f] = snapshot[*f].clone();
                 }
                 let mut n: Node = decode(value)?;
+                if n.kind == NodeKind::Knowledge {
+                    n.retired = false;
+                    n.retirement_reason = None;
+                    knowledge_rules::reset_verification(&mut n);
+                }
+                knowledge_rules::validate_sources(&n.provenance)?;
                 if durable_changed(&before, &n)? || before.deleted {
                     n.deleted = false;
                     n.version += 1;
@@ -1127,8 +1329,21 @@ async fn execute(
                 edge_type,
                 source_revision,
                 target_revision,
+                description,
             } => {
-                let a = load_node(tx, p.workspace_id, *source).await?;
+                let a = load_node_write(tx, p.workspace_id, *source).await?;
+                knowledge_rules::authorize_edit(&edit_authority, &a)?;
+                if a.kind == NodeKind::Knowledge && a.retired {
+                    return Err(Error::Forbidden);
+                }
+                if matches!(edge_type, EdgeType::Blocks | EdgeType::ParentChild) {
+                    let existing=sqlx::query_scalar::<_,Value>("SELECT to_jsonb(e) FROM edges e WHERE workspace_id=$1 AND source=$2 AND target=$3 AND edge_type=$4 AND NOT deleted").bind(p.workspace_id).bind(source).bind(target).bind(tag(edge_type)?).fetch_optional(&mut **tx).await?;
+                    if let Some(existing) = existing {
+                        results.push(existing);
+                        continue;
+                    }
+                }
+                compat_graph::validate_edge(tx, p, *source, *target, *edge_type).await?;
                 let b = load_node(tx, p.workspace_id, *target).await?;
                 if a.deleted || b.deleted {
                     return Err(Error::Conflict(
@@ -1165,18 +1380,10 @@ async fn execute(
                     version: 1,
                     deleted: false,
                     created_at: Utc::now(),
+                    description: description.clone(),
                 };
-                sqlx::query("INSERT INTO edges(id,workspace_id,source,target,edge_type,source_revision,target_revision,version,deleted,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)").bind(e.id).bind(e.workspace_id).bind(e.source).bind(e.target).bind(tag(&e.edge_type)?).bind(e.source_revision).bind(e.target_revision).bind(e.version).bind(e.deleted).bind(e.created_at).execute(&mut **tx).await?;
-                if matches!(edge_type, EdgeType::Blocks | EdgeType::ParentChild) {
-                    // The recursive read participates in SSI predicate tracking. Concurrent
-                    // complementary insertions cannot both commit a previously absent cycle.
-                    let cycle=sqlx::query_scalar::<_,bool>("WITH RECURSIVE reachable(id) AS (SELECT $3::uuid UNION SELECT e.target FROM edges e JOIN reachable r ON e.source=r.id WHERE e.workspace_id=$1 AND e.edge_type=$2 AND NOT e.deleted) SELECT EXISTS(SELECT 1 FROM reachable WHERE id=$4)").bind(p.workspace_id).bind(tag(edge_type)?).bind(target).bind(source).fetch_one(&mut **tx).await?;
-                    if cycle {
-                        return Err(Error::Validation(format!(
-                            "{edge_type} relationship would create a cycle"
-                        )));
-                    }
-                }
+                sqlx::query("INSERT INTO edges(id,workspace_id,source,target,edge_type,source_revision,target_revision,version,deleted,created_at,description) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)").bind(e.id).bind(e.workspace_id).bind(e.source).bind(e.target).bind(tag(&e.edge_type)?).bind(e.source_revision).bind(e.target_revision).bind(e.version).bind(e.deleted).bind(e.created_at).bind(&e.description).execute(&mut **tx).await?;
+                invalidate_link_verification(tx, p, change, a, reason).await?;
                 history_entry(
                     tx,
                     p,
@@ -1190,13 +1397,56 @@ async fn execute(
                 .await?;
                 results.push(encode(&e)?);
             }
+            Mutation::SetParent {
+                id,
+                expected_version,
+                parent_id,
+            } => {
+                results.push(
+                    compat_graph::set_parent(
+                        tx,
+                        p,
+                        change,
+                        *id,
+                        *expected_version,
+                        *parent_id,
+                        reason,
+                    )
+                    .await?,
+                );
+            }
+            Mutation::VerifyKnowledge {
+                id,
+                expected_version,
+                verification,
+                evidence,
+            } => {
+                if !preview {
+                    live_authority(tx, p, true).await?;
+                }
+                let mut n = load_node_write(tx, p.workspace_id, *id).await?;
+                expected(n.version, *expected_version)?;
+                knowledge_rules::verify(&mut n, &edit_authority, *verification, evidence, reason)?;
+                n.version += 1;
+                n.content_revision += 1;
+                n.updated_at = Utc::now();
+                save_node(tx, &n, false).await?;
+                revision(tx, p, change, &n, "verified", reason).await?;
+                results.push(encode(&n)?);
+            }
             Mutation::RemoveEdge {
                 id,
                 expected_version,
             } => {
                 let mut e = load_edge(tx, p.workspace_id, *id).await?;
                 expected(e.version, *expected_version)?;
+                let source_node = load_node_write(tx, p.workspace_id, e.source).await?;
+                knowledge_rules::authorize_edit(&edit_authority, &source_node)?;
+                if source_node.kind == NodeKind::Knowledge && source_node.retired {
+                    return Err(Error::Forbidden);
+                }
                 if !e.deleted {
+                    invalidate_link_verification(tx, p, change, source_node, reason).await?;
                     e.deleted = true;
                     e.version += 1;
                     sqlx::query(
@@ -1325,7 +1575,9 @@ async fn preview_before(tx: &mut Tx<'_>, workspace: Uuid, ops: &[Mutation]) -> R
             ),
             Mutation::UpdateNode { id, .. }
             | Mutation::DeleteNode { id, .. }
-            | Mutation::RestoreNode { id, .. } => ("node", *id),
+            | Mutation::RestoreNode { id, .. }
+            | Mutation::VerifyKnowledge { id, .. }
+            | Mutation::SetParent { id, .. } => ("node", *id),
             Mutation::AddEdge { id, .. } => (
                 "edge",
                 id.ok_or_else(|| Error::Internal("draft identity missing".into()))?,

@@ -1,11 +1,12 @@
 # Implementation status
 
-The standalone aq-graph baseline is implemented in Rust with PostgreSQL. Agent Q is not required to run it. The current release is 0.1.0, HTTP API v1, and schema migration 0003.
+The standalone aq-graph baseline is implemented in Rust with PostgreSQL. Agent Q is not required to run it. The current release is 0.1.0, HTTP API v1, and schema migration 0005.
 
 ## Available behavior
 
 - Task and knowledge records with explicit schemas, stable identities, workspace scope, optimistic version checks, and tombstones.
-- Typed dependency, hierarchy, and informational relationships; cycle protection and intrinsic task readiness.
+- Typed dependency, hierarchy, and informational relationships; combined cycle protection, single-parent/depth limits, atomic reparenting, bounded trees, and intrinsic readiness that respects draft ancestors and container children.
+- Knowledge author ownership, privileged evidence-backed verification/dispute, correction invalidation, reasoned retirement, typed provenance, and explicit retired/disputed search flags.
 - Bounded context retrieval, exact pinned revisions, current-record pagination, and full-text knowledge search.
 - Selective content revisions, lifecycle and relationship events, history, diffs, and restoration that preserves current task state.
 - Atomic mutation batches, persistent draft change sets, rollback-only validation previews, and atomic draft application.
@@ -17,11 +18,11 @@ Record edits acquire row locks before checking expected versions. Graph mutation
 
 ## Verification
 
-The full Rust suite passes 28 tests, including 15 tests against real PostgreSQL. Coverage includes competing updates and cycle insertions, delete/link races, concurrent administrator demotions, authorization isolation, draft replay and rollback, selective history, exact pinned content, oversized response rollback, full-text pagination, CLI retry keys, and transport overload/deadline behavior.
+The full Rust suite passes **74 tests**, including **58 against real PostgreSQL**. The first [v1 compatibility increment](compatibility/README.md) adds 22 graph scenarios, 11 knowledge scenarios, 10 upgrade-safety regressions, and three CLI tests to the original 28-test baseline. No database tests are skipped. Coverage includes competing updates and cycle insertions, delete/link races, concurrent administrator demotions, authorization isolation, draft replay and rollback, selective history, exact pinned content, oversized response rollback, full-text pagination, CLI retry keys, and transport overload/deadline behavior.
 
 Formatting, strict Clippy, shell syntax, Python compilation, YAML parsing, local documentation links, and OpenAPI schemas were checked. The optimized CLI and Python adapter were exercised over real HTTP. A native PostgreSQL dump was restored into a separate database and checked through the API for current state, links, exact history, authentication, and idempotent replay.
 
-Performance methodology is in [benchmarking](benchmark.md), with [local results and raw evidence](performance/README.md). The 100,000-node and 500,000-edge run sustained 200 requests/second and a 1,000/second burst with successful-request p95 around 9 ms and no server or transport failures. Deliberate mutation conflicts are counted separately. Maximum-load tail latency rises materially; these measurements do not establish production capacity on a small VPS.
+Performance methodology is in [benchmarking](benchmark.md), with [local results and raw evidence](performance/README.md). The historical schema-0003 100,000-node and 500,000-edge run sustained 200 requests/second and a 1,000/second burst with successful-request p95 around 9 ms and no server or transport failures. Deliberate mutation conflicts are counted separately. Maximum-load tail latency rises materially; these measurements do not establish production capacity on a small VPS or performance of the new schema-0005 hierarchy rules. A [schema-5 smoke comparison](performance/schema5-smoke/README.md) on 1,000 nodes and 5,000 edges caught a readiness-plan regression: bounded ancestor joins reduced local warm-cache p95 from about 55 ms to 6.2 ms with identical results. This debug-build, sequential check is not a concurrent capacity benchmark.
 
 ## Deployment and migration limits
 
@@ -32,3 +33,7 @@ Production ingress must enforce connection and slow-client write/idle limits in 
 The [AQ integration guide](aq-integration.md) and Python adapter establish the client boundary. Wiring the adapter into a selected AQ project, implementing a legacy-history import/export format, and executing a reconciled pilot cutover remain separate migration work. No existing AQ code or database was changed.
 
 Semantic search, asynchronous indexing, offline replicas and merging, whole-graph time travel, execution claims, and permanent erasure are deferred as specified. No synthetic benchmark history should be mistaken for a legacy migration capability.
+
+## V1 compatibility boundary
+
+[Specification 0002](specs/0002-v1-behavioral-compatibility.md) records the first compatibility increment and supersedes the original organizational-only hierarchy behavior. The [source inventory](compatibility/README.md) tracks 793 test definitions from 48 pinned v1 files; it does not claim all were translated or executed. Remaining obligations include historical link restoration, canonical content digests, richer knowledge fields/search, global sharing and source revocation, review authority, and migration tooling. Scheduling, claims, gates, and automatic container settlement remain AQ responsibilities.

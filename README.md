@@ -2,7 +2,7 @@
 
 A standalone Rust service and CLI for a shared task and knowledge graph. PostgreSQL holds current records, immutable content revisions, lifecycle events, relationship history, atomic batches and named drafts. It runs independently of Agent Q and never reads AQ databases.
 
-The baseline includes workspace-scoped read/write/admin credentials, version-checked mutations, idempotency, dependency and parent-child cycle protection, intrinsic readiness, bounded context, full-text knowledge search, history and content restoration. A ready task is active with every blocking prerequisite completed; readiness is not an execution claim. `A blocks B` means B depends on A.
+The baseline includes workspace-scoped read/write/admin credentials, version-checked mutations, idempotency, dependency and parent-child cycle protection, intrinsic readiness, bounded context, full-text knowledge search, history and content restoration. A ready task is an active leaf with every blocking prerequisite completed and no draft structural ancestor; readiness is not an execution claim. `A blocks B` means B depends on A.
 
 See [implementation status and verification limits](docs/implementation-status.md) for what is available and what remains before deployment and AQ migration.
 
@@ -55,6 +55,9 @@ Use IDs and current `version` values from responses in subsequent commands:
 
 ```sh
 aq-graph task show TASK_UUID --context --depth 2 --limit 50
+aq-graph task tree TASK_UUID --depth 2 --limit 50
+aq-graph task set-parent CHILD_UUID --parent PARENT_UUID --expected-version 1
+aq-graph task set-parent CHILD_UUID --root --expected-version 2
 aq-graph task update TASK_UUID --expected-version 1 --title "Implement login and logout"
 aq-graph task activate TASK_UUID --expected-version 2
 aq-graph task complete TASK_UUID --expected-version 3
@@ -64,18 +67,30 @@ aq-graph task list --limit 20
 aq-graph task ready --limit 20
 
 aq-graph knowledge create --title "Authentication decision" --type decision --file decision.md
-aq-graph knowledge update KNOWLEDGE_UUID --expected-version 1 --verification verified
-aq-graph knowledge update KNOWLEDGE_UUID --expected-version 2 --retired true
+aq-graph knowledge verify KNOWLEDGE_UUID --expected-version 1 \
+  --evidence-file evidence.json --reason "Confirmed against source"
+aq-graph knowledge retire KNOWLEDGE_UUID --expected-version 2 --reason "Replaced procedure"
+aq-graph knowledge restore KNOWLEDGE_UUID --expected-version 3 --revision 1
 aq-graph link add TASK_A_UUID TASK_B_UUID --type blocks
-aq-graph link add TASK_UUID KNOWLEDGE_UUID --type references --target-revision 1
+aq-graph link add TASK_UUID KNOWLEDGE_UUID --type references --target-revision 1 \
+  --description "Decision evidence"
 aq-graph link remove EDGE_UUID --expected-version 1
 aq-graph search "authentication"
+aq-graph search "authentication" --include-retired --include-disputed
 aq-graph history RECORD_UUID --limit 20
 aq-graph diff RECORD_UUID --from 1 --to 2
 aq-graph task restore TASK_UUID --expected-version 6 --revision 1
 ```
 
-Restoring content creates a new revision. It does not erase history or reverse lifecycle transitions. Delete tombstones preserve identity and history; attached active edges must be explicitly removed first. Knowledge supports provenance JSON arrays through `--provenance-file`.
+Restoring content creates a new revision. It does not erase history or reverse lifecycle transitions. Delete tombstones preserve identity and history; attached active edges must be explicitly removed first. Knowledge starts unverified. Verification/dispute and retirement require admin authority and a nonempty reason. A meaningful protected correction clears verification; a no-op preserves it. Ordinary writers edit their own unverified knowledge, and admins may correct other authors. Default search excludes retired/disputed records; direct authorized reads retain them.
+
+Knowledge supports typed provenance arrays through `--provenance-file`, and verification takes the same descriptor shape through `--evidence-file`. For example:
+
+```json
+[{"source_id":"decision-review","kind":"url","url":"https://example.com/review","observed_at":"2026-10-30T00:00:00Z"}]
+```
+
+Task parent changes are atomic and version checked. Each child has one live parent; the hierarchy has at most three levels and cannot jointly cycle with blocking edges. Completed parents refuse new children, and normal completion refuses open direct children. `task tree` returns structural children with truncation metadata. Informational edges do not affect readiness. Structural links cannot pin content revisions; see the API for the endpoint-kind matrix.
 
 Every command accepts global `--json`; success goes to stdout and errors to stderr. Human mode prints formatted JSON with all version and pagination metadata. List responses contain `next_cursor`; pass it using `--cursor`. Context discloses `truncated`. Limits and schemas are documented in the [API contract](docs/api.md) and [OpenAPI document](docs/openapi.json). The client sends API version 1 and rejects incompatible successful responses.
 
@@ -116,7 +131,7 @@ AQ_GRAPH_TEST_DATABASE_URL=postgres://USER@127.0.0.1/aq_graph_test cargo test --
 cargo build --locked --release
 ```
 
-CI runs Rust checks, PostgreSQL-backed tests, an image build, a Compose smoke test, and isolated backup restoration. Tag releases build Linux x86_64 and macOS arm64 CLI archives with SHA-256 checksums and a versioned GHCR image. The Linux release artifact targets glibc on Ubuntu 22.04 or newer. Windows and other targets are not yet release-tested. API v1 and schema migration `0003` are the initial compatibility contract. Schema-breaking upgrades need an explicit migration and recovery plan; never assume an older image can read a newer schema.
+CI runs Rust checks, PostgreSQL-backed tests, an image build, a Compose smoke test, and isolated backup restoration. Tag releases build Linux x86_64 and macOS arm64 CLI archives with SHA-256 checksums and a versioned GHCR image. The Linux release artifact targets glibc on Ubuntu 22.04 or newer. Windows and other targets are not yet release-tested. API v1 and schema migration `0005` are the initial compatibility contract. Schema-breaking upgrades need an explicit migration and recovery plan; never assume an older image can read a newer schema.
 
 See [operations](docs/operations.md) for credentials, backup, restore, upgrades and failure handling, and [benchmarking](docs/benchmark.md) for reproducible fixtures, mixed load and limitations. The [specification](docs/specs/0001-aq-graph.md) describes intended scope. Semantic search, AQ execution, whole-graph time travel, offline merging and permanent erasure are outside this baseline.
 

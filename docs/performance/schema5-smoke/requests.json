@@ -1,0 +1,65 @@
+{
+  "purpose": "small schema5 fixture/API/query-plan operational smoke; debug binary and warm local caches; not performance acceptance",
+  "time_utc": "2026-10-30T15:05:20Z",
+  "database": "aq_graph_bench_parity",
+  "fixture_nodes": 1000,
+  "fixture_edges": 5000,
+  "release_build": false,
+  "schema_version": 5,
+  "invariants": {
+    "multiple_parent_children": 0,
+    "nonforward_structural_blocking": 0,
+    "maximum_structural_level": 3,
+    "non_unverified_knowledge": 0,
+    "completed_structural_parents": 0
+  },
+  "requests": {
+    "ready": {
+      "attempts": 20,
+      "statuses": {
+        "200": 20
+      },
+      "client_latency_ms": {
+        "p50": 5.106375498144189,
+        "p95": 6.204156998137478,
+        "max": 6.214118002390023
+      },
+      "result_counts": [
+        20
+      ]
+    },
+    "search": {
+      "attempts": 20,
+      "statuses": {
+        "200": 20
+      },
+      "client_latency_ms": {
+        "p50": 3.716939001606079,
+        "p95": 4.301954002585262,
+        "max": 5.576054005359765
+      },
+      "result_counts": [
+        20
+      ]
+    },
+    "tree": {
+      "attempts": 20,
+      "statuses": {
+        "200": 20
+      },
+      "client_latency_ms": {
+        "p50": 3.286564999143593,
+        "p95": 3.8967260043136775,
+        "max": 4.82572599867126
+      },
+      "result_counts": [
+        1
+      ]
+    }
+  },
+  "ready_identity_parity": {
+    "equal": true,
+    "complete_result_count": 20,
+    "next_cursor": null
+  }
+}

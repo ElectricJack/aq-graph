@@ -55,6 +55,7 @@ def seed(args):
     if sql('SELECT count(*) FROM nodes') != '0':
         raise SystemExit('Refusing fixture writes: database already contains nodes; use a fresh benchmark database')
     task_count = args.nodes * 4 // 5
+    root_count = max(1, task_count // 3)
     # MD5-derived UUIDs are deterministic fixture identities, never credentials.
     # Sequential node UUIDs let independent benchmark clients select identical data.
     script = f"""
@@ -65,19 +66,19 @@ VALUES('{WORKSPACE}','benchmark','{hashlib.sha256(token.encode()).hexdigest()}',
 ON CONFLICT(workspace_id,actor_id) DO UPDATE SET token_hash=excluded.token_hash;
 INSERT INTO change_sets(id,workspace_id,actor_id,name,reason,operations,status,result,applied_at)
 VALUES('{CHANGESET}','{WORKSPACE}','benchmark','offline synthetic fixture','Benchmark only: generated full snapshots and edge history','[]','applied','{{}}',clock_timestamp());
-INSERT INTO nodes(id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,labels,metadata,task_state,knowledge_type,verification,retired,provenance,created_at,updated_at)
+INSERT INTO nodes(id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,labels,metadata,task_state,knowledge_type,verification,retired,provenance,created_at,updated_at,created_by)
 SELECT lpad(to_hex(g),32,'0')::uuid,'{WORKSPACE}',CASE WHEN g<={task_count} THEN 'task' ELSE 'knowledge' END,
  CASE WHEN g%10=0 THEN 11 ELSE 1 END,CASE WHEN g%10=0 THEN 11 ELSE 1 END,
  CASE WHEN g<={task_count} THEN 'Implement authentication component ' ELSE 'Authentication decision reference ' END || g,
  repeat('Authentication authorization PostgreSQL reliability evidence and migration procedure. ',CASE WHEN g%20=0 THEN 96 WHEN g%4=0 THEN 24 ELSE 6 END) || 'Record ' || g || ' current revision',
  CASE WHEN g<={task_count} THEN 'Review evidence; implement; verify expected behavior and recovery.' ELSE '' END,
  jsonb_build_array('component-'||(g%30),'priority-'||(g%4)),jsonb_build_object('benchmark:seed',42,'benchmark:index',g),
- CASE WHEN g>{task_count} THEN NULL WHEN g%10<6 THEN 'completed' WHEN g%10<9 THEN 'active' WHEN g%20=9 THEN 'draft' ELSE 'canceled' END,
+ CASE WHEN g>{task_count} THEN NULL WHEN g<={root_count*2} THEN CASE WHEN g%20=9 THEN 'draft' ELSE 'active' END WHEN g%10<6 THEN 'completed' WHEN g%10<9 THEN 'active' WHEN g%20=9 THEN 'draft' ELSE 'canceled' END,
  CASE WHEN g>{task_count} THEN (ARRAY['fact','decision','policy','procedure','incident','reference','note'])[1+g%7] END,
- CASE WHEN g>{task_count} THEN CASE WHEN g%20=0 THEN 'disputed' WHEN g%4=0 THEN 'verified' ELSE 'unverified' END END,
- g>{task_count} AND g%50=0,
- CASE WHEN g>{task_count} THEN jsonb_build_array(jsonb_build_object('source','https://example.invalid/benchmark/'||g,'attribution','synthetic fixture')) ELSE '[]' END,
- '2026-01-01T00:00:00Z'::timestamptz,'2026-01-01T00:00:00Z'::timestamptz
+ CASE WHEN g>{task_count} THEN 'unverified' END,
+ false,
+ CASE WHEN g>{task_count} THEN jsonb_build_array(jsonb_build_object('source_id','benchmark-'||g,'kind','url','url','https://example.invalid/benchmark/'||g,'observed_at','2026-01-01T00:00:00Z')) ELSE '[]' END,
+ '2026-01-01T00:00:00Z'::timestamptz,'2026-01-01T00:00:00Z'::timestamptz,'benchmark'
 FROM generate_series(1,{args.nodes}) g;
 INSERT INTO node_revisions(workspace_id,node_id,revision,snapshot,actor_id,operation,reason,change_set_id,created_at)
 SELECT n.workspace_id,n.id,r,
@@ -87,28 +88,29 @@ FROM nodes n CROSS JOIN LATERAL generate_series(1,n.content_revision::integer) r
 WHERE n.workspace_id='{WORKSPACE}';
 INSERT INTO history_entries(workspace_id,node_ids,entry_id,category,actor_id,operation,reason,change_set_id,data,created_at)
 SELECT workspace_id,ARRAY[node_id],md5(node_id::text||':'||revision)::uuid,'revision',actor_id,operation,reason,change_set_id,snapshot,created_at FROM node_revisions WHERE workspace_id='{WORKSPACE}';
--- 40% blocks, 20% parent-child, 40% information at the 5-edges/node baseline.
--- Structural edges only connect tasks and always point from smaller to larger UUID.
--- Information edges include concentrated hub targets, creating varied degree.
+-- One structural slot per node forms a forest of at most three levels.
+-- Each child has one parent, all structural/blocking arcs point to larger UUIDs.
+-- Structural parent states are active/draft, never completed with open children.
+-- Information edges respect the endpoint matrix and include knowledge hubs.
 WITH slots AS (
  SELECT i,1+((i-1)%{args.nodes}) AS s,(i-1)/{args.nodes} AS slot FROM generate_series(1,{args.edges}) i
 ), endpoints AS (
  SELECT *,CASE WHEN slot%5=4 THEN {task_count}+1+(s%20) ELSE 1+((s+37*(slot+1))%{args.nodes}) END AS t FROM slots
 ), typed AS (
  SELECT *,CASE WHEN s<={task_count} AND t<={task_count} AND slot%5<2 THEN 'blocks'
- WHEN s<={task_count} AND t<={task_count} AND slot%5=2 THEN 'parent-child'
+ WHEN s>{root_count} AND s<={task_count} AND slot%5=2 THEN 'parent-child'
  WHEN s<={task_count} AND t>{task_count} AND slot%5=4 THEN 'produces' ELSE 'references' END AS typ FROM endpoints
 )
 INSERT INTO edges(id,workspace_id,source,target,edge_type,version,deleted,created_at)
 SELECT md5('edge:'||i)::uuid,'{WORKSPACE}',
- lpad(to_hex(CASE WHEN typ IN('blocks','parent-child') THEN least(s,t) ELSE s END),32,'0')::uuid,
- lpad(to_hex(CASE WHEN typ IN('blocks','parent-child') THEN greatest(s,t) ELSE t END),32,'0')::uuid,
+ lpad(to_hex(CASE WHEN typ='parent-child' THEN CASE WHEN s<={root_count*2} THEN 1+((s-{root_count}-1)%{root_count}) ELSE {root_count}+1+((s-{root_count*2}-1)%{root_count}) END WHEN typ='blocks' THEN least(s,t) ELSE s END),32,'0')::uuid,
+ lpad(to_hex(CASE WHEN typ='parent-child' THEN s WHEN typ='blocks' THEN greatest(s,t) ELSE t END),32,'0')::uuid,
  typ,1,false,'2026-01-01T00:00:00Z' FROM typed WHERE s<>t;
 INSERT INTO history_entries(workspace_id,node_ids,entry_id,category,actor_id,operation,reason,change_set_id,data,created_at)
 SELECT workspace_id,ARRAY[source,target],md5('history:'||id)::uuid,'edge','benchmark','add_edge','Offline synthetic edge history','{CHANGESET}',to_jsonb(e),created_at FROM edges e WHERE workspace_id='{WORKSPACE}';
 COMMIT;
 ANALYZE;
-SELECT json_build_object('nodes',(SELECT count(*) FROM nodes),'edges',(SELECT count(*) FROM edges),'revisions',(SELECT count(*) FROM node_revisions),'history_entries',(SELECT count(*) FROM history_entries),'database_bytes',pg_database_size(current_database()),'table_bytes',(SELECT json_object_agg(relname,pg_total_relation_size(oid)) FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind='r'));
+SELECT json_build_object('nodes',(SELECT count(*) FROM nodes),'edges',(SELECT count(*) FROM edges),'revisions',(SELECT count(*) FROM node_revisions),'history_entries',(SELECT count(*) FROM history_entries),'database_bytes',pg_database_size(current_database()),'node_states',(SELECT json_object_agg(state,n) FROM (SELECT COALESCE(task_state,'knowledge:unverified') state,count(*) n FROM nodes GROUP BY 1) states),'edge_types',(SELECT json_object_agg(edge_type,n) FROM (SELECT edge_type,count(*) n FROM edges GROUP BY 1) types),'table_bytes',(SELECT json_object_agg(relname,pg_total_relation_size(oid)) FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind='r'));
 """
     started = time.monotonic()
     result = subprocess.run([args.psql, '-X', '-q', '-A', '-t', '-v', 'ON_ERROR_STOP=1'], input=script, env=env, text=True, capture_output=True)
@@ -116,8 +118,8 @@ SELECT json_build_object('nodes',(SELECT count(*) FROM nodes),'edges',(SELECT co
         # Avoid exposing connection-string diagnostics from libpq.
         raise SystemExit('Offline fixture failed. Writes are transactional, but a post-commit analyze/report failure may leave a committed fixture; inspect the isolated database before retrying.')
     counts = json.loads(result.stdout.strip().splitlines()[-1])
-    configuration=json.loads(sql("SELECT json_build_object('postgres_version',version(),'fsync',current_setting('fsync'),'synchronous_commit',current_setting('synchronous_commit'),'full_page_writes',current_setting('full_page_writes'),'track_io_timing',current_setting('track_io_timing'),'max_connections',current_setting('max_connections'))"))
-    manifest = {'postgres_configuration':configuration,'format_version':1,'seed':42,'workspace':WORKSPACE,'nodes':args.nodes,'edges_requested':args.edges,'counts':counts,'fixture_method':'offline SQL, synthetic snapshots and relationship history; not ingestion throughput','elapsed_seconds':time.monotonic()-started}
+    configuration=json.loads(sql("SELECT json_build_object('postgres_version',version(),'fsync',current_setting('fsync'),'synchronous_commit',current_setting('synchronous_commit'),'full_page_writes',current_setting('full_page_writes'),'track_io_timing',current_setting('track_io_timing'),'max_connections',current_setting('max_connections'),'schema_version',(SELECT max(version) FROM _sqlx_migrations))"))
+    manifest = {'postgres_configuration':configuration,'format_version':2,'semantic_profile':'schema5 core compatibility: typed unverified knowledge, single-parent three-level forest, acyclic combined structural/blocking graph','seed':42,'workspace':WORKSPACE,'nodes':args.nodes,'edges_requested':args.edges,'counts':counts,'fixture_method':'offline SQL, synthetic snapshots and relationship history; not ingestion throughput','elapsed_seconds':time.monotonic()-started}
     pathlib.Path(args.manifest).write_text(json.dumps(manifest, indent=2)+'\n')
     print(json.dumps(manifest, indent=2))
 

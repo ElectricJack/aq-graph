@@ -1,0 +1,60 @@
+{
+  "purpose": "small schema5 fixture/API/query-plan operational smoke; debug binary and warm local caches; not performance acceptance",
+  "time_utc": "2026-10-30T15:01:14Z",
+  "database": "aq_graph_bench_parity",
+  "fixture_nodes": 1000,
+  "fixture_edges": 5000,
+  "release_build": false,
+  "schema_version": 5,
+  "invariants": {
+    "multiple_parent_children": 0,
+    "nonforward_structural_blocking": 0,
+    "maximum_structural_level": 3,
+    "non_unverified_knowledge": 0,
+    "completed_structural_parents": 0
+  },
+  "requests": {
+    "ready": {
+      "attempts": 20,
+      "statuses": {
+        "200": 20
+      },
+      "client_latency_ms": {
+        "p50": 53.02856449998217,
+        "p95": 55.17387899453752,
+        "max": 77.53848099673633
+      },
+      "result_counts": [
+        20
+      ]
+    },
+    "search": {
+      "attempts": 20,
+      "statuses": {
+        "200": 20
+      },
+      "client_latency_ms": {
+        "p50": 3.6506119977275375,
+        "p95": 4.2148830034420826,
+        "max": 5.701905000023544
+      },
+      "result_counts": [
+        20
+      ]
+    },
+    "tree": {
+      "attempts": 20,
+      "statuses": {
+        "200": 20
+      },
+      "client_latency_ms": {
+        "p50": 3.4528214964666404,
+        "p95": 4.360911996627692,
+        "max": 4.770526000356767
+      },
+      "result_counts": [
+        1
+      ]
+    }
+  }
+}

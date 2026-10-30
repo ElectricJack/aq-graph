@@ -71,6 +71,10 @@ enum Command {
     },
     Search {
         query: String,
+        #[arg(long)]
+        include_retired: bool,
+        #[arg(long)]
+        include_disputed: bool,
         #[command(flatten)]
         page: Paging,
     },
@@ -162,6 +166,26 @@ enum TaskCommand {
         #[command(flatten)]
         page: Paging,
     },
+    /// Retrieve structural children within record, depth and response-byte bounds.
+    Tree {
+        id: Uuid,
+        #[arg(long, default_value_t = 2)]
+        depth: u32,
+        #[arg(long, default_value_t = 50)]
+        limit: u32,
+        #[arg(long, default_value_t = 262144)]
+        max_bytes: u32,
+    },
+    /// Atomically reparent a child or detach it to the root.
+    SetParent {
+        id: Uuid,
+        #[arg(long, required_unless_present = "root", conflicts_with = "root")]
+        parent: Option<Uuid>,
+        #[arg(long)]
+        root: bool,
+        #[command(flatten)]
+        change: ChangeOptions,
+    },
     Update {
         id: Uuid,
         #[command(flatten)]
@@ -217,7 +241,7 @@ enum KnowledgeCommand {
         options: CreateOptions,
         #[arg(long = "type", default_value = "note", value_parser = ["fact", "decision", "policy", "procedure", "incident", "reference", "note"])]
         knowledge_type: String,
-        #[arg(long, default_value = "unverified", value_parser = ["unverified", "verified", "disputed"])]
+        #[arg(long, default_value = "unverified", value_parser = ["unverified"])]
         verification: String,
         /// JSON array of attributed source references.
         #[arg(long)]
@@ -240,12 +264,38 @@ enum KnowledgeCommand {
         body: Option<String>,
         #[arg(long)]
         file: Option<PathBuf>,
-        #[arg(long, value_parser = ["unverified", "verified", "disputed"])]
+        #[arg(long, value_parser = ["unverified"])]
         verification: Option<String>,
         #[arg(long)]
         retired: Option<bool>,
         #[arg(long)]
+        retirement_reason: Option<String>,
+        #[arg(long)]
         provenance_file: Option<PathBuf>,
+    },
+    /// Assert verification as an administrator, with named evidence and a reason.
+    Verify {
+        id: Uuid,
+        #[arg(long, default_value = "verified", value_parser = ["verified", "disputed"])]
+        verification: String,
+        #[arg(long)]
+        evidence_file: PathBuf,
+        #[command(flatten)]
+        change: ChangeOptions,
+    },
+    /// Retire knowledge as an administrator; --reason is required.
+    Retire {
+        id: Uuid,
+        #[command(flatten)]
+        change: ChangeOptions,
+    },
+    /// Restore exact historical content as an unverified active record.
+    Restore {
+        id: Uuid,
+        #[arg(long)]
+        revision: i64,
+        #[command(flatten)]
+        change: ChangeOptions,
     },
 }
 #[derive(Subcommand)]
@@ -260,6 +310,8 @@ enum LinkCommand {
         source_revision: Option<i64>,
         #[arg(long)]
         target_revision: Option<i64>,
+        #[arg(long)]
+        description: Option<String>,
         #[arg(long)]
         reason: Option<String>,
         #[arg(long)]
@@ -325,6 +377,24 @@ fn local_error(e: impl std::fmt::Display) -> Failure {
 }
 fn invalid(e: impl std::fmt::Display) -> Failure {
     fail("validation", e.to_string(), 2)
+}
+fn migration_failure(error: aq_graph::domain::Error) -> Failure {
+    let message = match error {
+        aq_graph::domain::Error::Internal(detail)
+            if detail.contains("graph contract migration refused") =>
+        {
+            "migration 0004 refused existing graph data: inspect active endpoint kinds, multiple parents, hierarchy depth and combined cycles; reconcile explicitly on a restored copy before upgrading"
+        }
+        aq_graph::domain::Error::Internal(detail)
+            if detail.contains("knowledge compatibility preflight failed") =>
+        {
+            "migration 0005 requires explicit legacy knowledge reconciliation: verified/disputed records need recorded verification evidence and actor attribution, and retired records need reasons; follow the upgrade runbook before retrying"
+        }
+        _ => {
+            "database migration failed; verify schema/release compatibility, migration checksums and database availability using the operations runbook"
+        }
+    };
+    fail("migration", message, 1)
 }
 fn read_json(path: &Path) -> Result<Value> {
     serde_json::from_str(&read_text(path)?).map_err(invalid)
@@ -616,13 +686,7 @@ async fn run(cli: Cli) -> Result<Value> {
             }
         }
         let store = store.unwrap();
-        store.migrate().await.map_err(|_| {
-            fail(
-                "migration",
-                "database migration failed; inspect schema compatibility and database availability",
-                1,
-            )
-        })?;
+        store.migrate().await.map_err(migration_failure)?;
         if let Some(workspace) = bootstrap_workspace {
             let credential = token(bootstrap_token_file.as_deref(), "AQ_GRAPH_BOOTSTRAP_TOKEN")?;
             store
@@ -700,6 +764,8 @@ async fn run(cli: Cli) -> Result<Value> {
             TaskCommand::Show { id, context, depth, limit, max_bytes, direction } => { if context { client.get(&format!("/nodes/{id}/context"), vec![("depth",depth.to_string()),("limit",limit.to_string()),("max_bytes",max_bytes.to_string()),("direction",direction)]).await } else { client.get(&format!("/nodes/{id}"), vec![]).await } },
             TaskCommand::List { page } => { let mut query = page_query(page); query.push(("kind", "task".into())); client.get("/nodes", query).await },
             TaskCommand::Ready { page } => client.get("/ready", page_query(page)).await,
+            TaskCommand::Tree { id, depth, limit, max_bytes } => client.get(&format!("/nodes/{id}/tree"), vec![("depth",depth.to_string()),("limit",limit.to_string()),("max_bytes",max_bytes.to_string())]).await,
+            TaskCommand::SetParent { id, parent, root: _, change } => client.mutation(vec![json!({"op":"set_parent","id":id,"expected_version":change.expected_version,"parent_id":parent})], change.reason, change.idempotency_key).await,
             TaskCommand::Update { id, change, title, body, file, acceptance_criteria, labels } => {
                 let mut patch = serde_json::Map::new();
                 if let Some(v) = title { patch.insert("title".into(), json!(v)); }
@@ -718,18 +784,31 @@ async fn run(cli: Cli) -> Result<Value> {
                 if let Some(file) = provenance_file { op["provenance"] = read_json(&file)?; } client.mutation(vec![op],options.reason,options.idempotency_key).await },
             KnowledgeCommand::Show { id } => client.get(&format!("/nodes/{id}"),vec![]).await,
             KnowledgeCommand::List { page } => { let mut query = page_query(page); query.push(("kind","knowledge".into())); client.get("/nodes",query).await },
-            KnowledgeCommand::Update { id, change, title, body, file, verification, retired, provenance_file } => { let mut patch = serde_json::Map::new();
+            KnowledgeCommand::Update { id, change, title, body, file, verification, retired, retirement_reason, provenance_file } => { let mut patch = serde_json::Map::new();
                 if let Some(v) = title { patch.insert("title".into(),json!(v)); }
                 if body.is_some() || file.is_some() { patch.insert("body".into(),json!(body_text(body,file)?)); }
                 if let Some(v) = verification { patch.insert("verification".into(),json!(v)); }
                 if let Some(v) = retired { patch.insert("retired".into(),json!(v)); }
+                if let Some(v) = retirement_reason.or_else(|| if retired == Some(true) { change.reason.clone() } else { None }) { patch.insert("retirement_reason".into(),json!(v)); }
                 if let Some(file) = provenance_file { patch.insert("provenance".into(),read_json(&file)?); } client.patch(id,change,Value::Object(patch)).await },
+            KnowledgeCommand::Verify { id, verification, evidence_file, change } => {
+                if change.reason.as_deref().is_none_or(|v| v.trim().is_empty()) { return Err(invalid("knowledge verify requires a nonempty --reason")); }
+                let evidence = read_json(&evidence_file)?;
+                if !evidence.is_array() { return Err(invalid("evidence file must contain a JSON array of named source descriptors")); }
+                client.mutation(vec![json!({"op":"verify_knowledge","id":id,"expected_version":change.expected_version,"verification":verification,"evidence":evidence})], change.reason, change.idempotency_key).await
+            },
+            KnowledgeCommand::Retire { id, change } => {
+                let reason = change.reason.as_deref().filter(|s| !s.trim().is_empty()).ok_or_else(|| invalid("knowledge retire requires a nonempty --reason"))?;
+                client.patch(id,ChangeOptions { expected_version:change.expected_version, reason:change.reason.clone(), idempotency_key:change.idempotency_key.clone() },json!({"retired":true,"retirement_reason":reason})).await
+            },
+            KnowledgeCommand::Restore { id, revision, change } => client.mutation(vec![json!({"op":"restore_node","id":id,"expected_version":change.expected_version,"revision":revision})],change.reason,change.idempotency_key).await,
         },
         Command::Link { command } => match command {
-            LinkCommand::Add { source,target,edge_type,source_revision,target_revision,reason,idempotency_key } => client.mutation(vec![json!({"op":"add_edge","source":source,"target":target,"edge_type":edge_type,"source_revision":source_revision,"target_revision":target_revision})],reason,idempotency_key).await,
+            LinkCommand::Add { source,target,edge_type,source_revision,target_revision,description,reason,idempotency_key } => client.mutation(vec![json!({"op":"add_edge","source":source,"target":target,"edge_type":edge_type,"source_revision":source_revision,"target_revision":target_revision,"description":description})],reason,idempotency_key).await,
             LinkCommand::Remove { id,change } => client.mutation(vec![json!({"op":"remove_edge","id":id,"expected_version":change.expected_version})],change.reason,change.idempotency_key).await,
         },
-        Command::Search { query,page } => { let mut q = page_query(page); q.push(("q",query)); client.get("/search",q).await },
+        Command::Search { query,page,include_retired,include_disputed } => { let mut q = page_query(page); q.push(("q",query)); if include_retired { q.push(("include_retired","true".into())); }
+            if include_disputed { q.push(("include_disputed","true".into())); } client.get("/search",q).await },
         Command::History { id,page } => client.get(&format!("/nodes/{id}/history"),page_query(page)).await,
         Command::Diff { id,from,to } => client.get(&format!("/nodes/{id}/diff"),vec![("from",from.to_string()),("to",to.to_string())]).await,
         Command::Mutate { file } => client.post("/mutations",read_json(&file)?).await,
@@ -958,6 +1037,203 @@ mod tests {
             assert_eq!(error.exit, expected, "HTTP {status}");
             assert_eq!(error.idempotency_key.as_deref(), Some("test-retry-key"));
             handle.abort();
+        }
+    }
+
+    #[tokio::test]
+    async fn friendly_parent_verification_retirement_and_description_send_domain_operations() {
+        let directory = tempfile::tempdir().unwrap();
+        let (endpoint, observed, handle) = mock_server(StatusCode::OK, Some("1")).await;
+        let token = directory.path().join("token");
+        private_write(&token, b"test-only-cli-credential-0123456789", false).unwrap();
+        let config = directory.path().join("config.json");
+        private_write(
+            &config,
+            &serde_json::to_vec(&Config {
+                endpoint,
+                workspace: Uuid::new_v4(),
+                token_file: Some(token),
+            })
+            .unwrap(),
+            false,
+        )
+        .unwrap();
+        let evidence = directory.path().join("evidence.json");
+        fs::write(&evidence, r#"[{"source_id":"review","kind":"url","url":"https://example.test/review","observed_at":"2026-10-30T00:00:00Z"}]"#).unwrap();
+        let record = Uuid::new_v4().to_string();
+        let parent = Uuid::new_v4().to_string();
+        let cases: Vec<(Vec<&str>, Value)> = vec![
+            (
+                vec![
+                    "task",
+                    "set-parent",
+                    &record,
+                    "--parent",
+                    &parent,
+                    "--expected-version",
+                    "3",
+                ],
+                json!({"op":"set_parent","id":record,"expected_version":3,"parent_id":parent}),
+            ),
+            (
+                vec![
+                    "task",
+                    "set-parent",
+                    &record,
+                    "--root",
+                    "--expected-version",
+                    "3",
+                ],
+                json!({"op":"set_parent","id":record,"expected_version":3,"parent_id":null}),
+            ),
+            (
+                vec![
+                    "knowledge",
+                    "verify",
+                    &record,
+                    "--expected-version",
+                    "3",
+                    "--evidence-file",
+                    evidence.to_str().unwrap(),
+                    "--reason",
+                    "Review evidence",
+                ],
+                json!({"op":"verify_knowledge","id":record,"expected_version":3,"verification":"verified","evidence":read_json(&evidence).unwrap()}),
+            ),
+            (
+                vec![
+                    "knowledge",
+                    "retire",
+                    &record,
+                    "--expected-version",
+                    "3",
+                    "--reason",
+                    "Replaced procedure",
+                ],
+                json!({"op":"update_node","id":record,"expected_version":3,"patch":{"retired":true,"retirement_reason":"Replaced procedure"}}),
+            ),
+            (
+                vec![
+                    "knowledge",
+                    "restore",
+                    &record,
+                    "--expected-version",
+                    "3",
+                    "--revision",
+                    "1",
+                ],
+                json!({"op":"restore_node","id":record,"expected_version":3,"revision":1}),
+            ),
+            (
+                vec![
+                    "link",
+                    "add",
+                    &record,
+                    &parent,
+                    "--type",
+                    "references",
+                    "--description",
+                    "Evidence connection",
+                ],
+                json!({"op":"add_edge","source":record,"target":parent,"edge_type":"references","source_revision":null,"target_revision":null,"description":"Evidence connection"}),
+            ),
+        ];
+        for (arguments, expected) in cases {
+            let mut argv = vec!["aq-graph", "--config", config.to_str().unwrap()];
+            argv.extend(arguments);
+            run(Cli::try_parse_from(argv).unwrap()).await.unwrap();
+            assert_eq!(
+                observed.lock().unwrap().last().unwrap().1["operations"][0],
+                expected
+            );
+        }
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn tree_and_search_flags_preserve_server_bounds_and_explicit_inclusion() {
+        use axum::{extract::OriginalUri, routing::get};
+        let app = Router::new().fallback(get(|OriginalUri(uri): OriginalUri| async move {
+            (
+                [("x-aq-graph-api-version", "1")],
+                Json(json!({"path":uri.path(),"query":uri.query()})),
+            )
+        }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = format!("http://{}", listener.local_addr().unwrap());
+        let handle = tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+        let directory = tempfile::tempdir().unwrap();
+        let client = test_client(directory.path(), endpoint);
+        let config = directory.path().join("config.json");
+        private_write(
+            &config,
+            &serde_json::to_vec(&Config {
+                endpoint: client.endpoint,
+                workspace: client.workspace,
+                token_file: Some(directory.path().join("token")),
+            })
+            .unwrap(),
+            false,
+        )
+        .unwrap();
+        let id = Uuid::new_v4().to_string();
+        for (arguments, expected) in [
+            (
+                vec![
+                    "task",
+                    "tree",
+                    &id,
+                    "--depth",
+                    "2",
+                    "--limit",
+                    "7",
+                    "--max-bytes",
+                    "8192",
+                ],
+                "depth=2&limit=7&max_bytes=8192",
+            ),
+            (
+                vec![
+                    "search",
+                    "authentication",
+                    "--include-retired",
+                    "--include-disputed",
+                    "--limit",
+                    "7",
+                ],
+                "limit=7&q=authentication&include_retired=true&include_disputed=true",
+            ),
+        ] {
+            let mut argv = vec!["aq-graph", "--config", config.to_str().unwrap()];
+            argv.extend(arguments);
+            let result = run(Cli::try_parse_from(argv).unwrap()).await.unwrap();
+            assert_eq!(result["query"], expected);
+        }
+        handle.abort();
+    }
+
+    #[test]
+    fn known_migration_preflights_are_actionable_without_exposing_driver_details() {
+        for (detail, expected) in [
+            (
+                "postgres://secret migration graph contract migration refused: multiple parents",
+                "migration 0004",
+            ),
+            (
+                "postgres://secret knowledge compatibility preflight failed: legacy verified",
+                "migration 0005",
+            ),
+            (
+                "postgres://secret unexpected driver detail",
+                "schema/release compatibility",
+            ),
+        ] {
+            let error = migration_failure(aq_graph::domain::Error::Internal(detail.into()));
+            assert!(error.message.contains(expected));
+            assert!(!error.message.contains("secret"));
+            assert!(!error.message.contains("postgres://"));
         }
     }
 }

@@ -1,4 +1,6 @@
-# Local performance results
+# Historical schema-3 performance results
+
+These measurements apply to the earlier schema-3 contract and binary recorded below. They predate schema-4/5 parent/readiness, endpoint-matrix and knowledge-authorization changes. They are **not capacity or latency evidence for the current schema-5 implementation**. Raw artifacts remain unchanged historical evidence; current compatibility tests and a small fixture smoke do not replace a full representative load rerun.
 
 Measured 2026-10-30T06:58:51Z through 2026-10-30T07:01:54Z. This is a local development-machine measurement, not a production VPS capacity guarantee.
 

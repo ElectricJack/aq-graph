@@ -1,0 +1,81 @@
+# Knowledge compatibility with Agent Queue v1
+
+This document maps a bounded knowledge-core translation from `/home/jkern/dev/agent-queue2` into `tests/v1_knowledge_parity.rs`. The source checkout is evidence only: these tests do not import its modules, run its suite, read its database, or change its checkout. They call the published aq-graph HTTP router against disposable PostgreSQL. Test setup alone bootstraps an isolated workspace through `Store`; all assertions and mutations use HTTP.
+
+This is a behavior translation, not a claim that the entire v1 knowledge subsystem is complete. The v1 source tests contain AQ scheduling identities, claims, external review records, artifact storage, providers, global sharing, and content generation. Those need an explicit integration contract or separate graph features. Nothing silently grants their semantics to a generic extension metadata field.
+
+## Red-first evidence
+
+Source revision: `9a9b8e8ef992d1ff699755a9383ed3c91e2844ea`. On 2026-10-30, the first nine translated tests ran serially against the unchanged aq-graph API and real disposable PostgreSQL: **1 passed, 8 failed, 0 skipped**. Live capability/revocation receipt replay already passed. Failures identified absent author fields, unrestricted draft application, self-asserted verification, arbitrary provenance acceptance, missing explicit verification, and missing retirement fields. The source-link extension and provenance-update checks were added from the same source guards after that initial run. Final implementation validation is recorded separately; the red result is retained rather than overwritten by a later green run.
+
+## Green implementation evidence
+
+On 2026-10-30, the completed knowledge-core implementation passed **11 translated/extended HTTP tests, 0 failed, 0 ignored/skipped**, against real PostgreSQL in `aq_graph_v1_parity`. The serial targeted run completed in 0.65 seconds. A final targeted retirement test also exercises blank/oversized reasons and reasons attached to active records. The shared helper lint check and schema validation are recorded with the implementation checks. These results establish the selected assertions below; unported assertions in multi-obligation v1 tests remain unclaimed.
+
+The final extensions cover source ownership/protection for link additions and removals, restore-before-link-edit on retired sources, malformed provenance updates, and administrative receipt replay fences after downgrade. No v1 test execution or source checkout mutation was required.
+
+## Source-backed core requirements
+
+Before this compatibility increment, the aq-graph baseline had workspace capabilities and immutable history, but let every workspace writer edit every knowledge node, accepted arbitrary provenance objects, permitted direct verification badges, preserved verification after content edits, and returned retired/disputed knowledge in default search. The translated assertions first demonstrated those gaps, then verified the corrected behavior.
+
+The graph contract exercised by these translations is:
+
+- `created_by` records the authenticated creator and is immutable. A `write` principal can read workspace knowledge and edit its own unverified findings. An `admin` can correct another author's finding. Protected verified or disputed knowledge requires admin edits. AQ session, task claim, and supervisor identities are mapped to these credentials by an external adapter.
+- Ordinary creation produces unverified knowledge. Ordinary patches cannot set `verification` to verified/disputed. `verify_knowledge` takes an expected version, verified/disputed assertion, named evidence, and nonempty mutation reason. Admin performs the assertion, and the server records `last_verified_by` and `last_verified_at`. This is an attributed assertion, not proof that the claim is true.
+- A meaningful protected content edit invalidates verification and clears current verification actor/time, while retaining evidence descriptors and old immutable snapshots. A no-op edit does not invalidate it or create a revision.
+- Provenance descriptors have nonempty unique `source_id`, a supported typed `kind`, correctly typed required fields, and matching field sets. The translation tests portable URL descriptors and Git object IDs. AQ task/review/artifact descriptors require a separate authorized source adapter; unsupported kinds must fail explicitly.
+- Retirement requires admin and a nonempty reason, retains history and identity, and differs from deletion. Reasons contain at most 4096 bytes and belong only to retired state. Ordinary edits and outgoing link changes to retired knowledge fail until restoration. Restore creates a new content revision, restores exact original text, returns knowledge to active/unverified state, and clears retirement and verification attribution. Task lifecycle restore semantics remain separate.
+- Search excludes retired and disputed knowledge by default and supports explicit `include_retired=true` / `include_disputed=true`. Direct authorized reads and history still retain those records.
+- A writer may submit an immutable named draft correcting another author's finding, while only admin applies knowledge proposals. Application rechecks expected versions and authority, commits once, and is idempotent.
+- Credential downgrades and revocation are rechecked before an idempotency receipt is replayed; a receipt is not an authorization bypass.
+
+The JSON mutation is `{"op":"verify_knowledge","id":"UUID","expected_version":1,"verification":"verified","evidence":[...]}` inside the existing mutation envelope. Retirement uses `update_node` with `patch.retired=true`, `patch.retirement_reason`, and the envelope's reason. Names and exact status categories should stay synchronized with `docs/api.md` and the published schema when implemented.
+
+## Exact source-to-test map
+
+All source paths below are relative to the v1 repository; Rust test names are in `tests/v1_knowledge_parity.rs`.
+
+| Source test | Translated Rust test | Assertions retained / boundary |
+| --- | --- | --- |
+| `tests/test_knowledge_authorization.py::test_workers_read_project_knowledge_but_only_edit_own` | `knowledge_author_owns_unverified_edits_and_admin_can_correct` | Read another writer's finding; deny unauthorized correction without new history; permit author/admin correction; preserve authenticated creator and revision actors. Workspace replaces AQ project/session ownership. |
+| `tests/test_knowledge_service.py::test_snapshot_limits_before_sql` (verification case), `tests/test_knowledge_authorization.py::test_protected_mutations_require_supervisor_and_reset_verification` | `ordinary_creation_and_patch_cannot_self_assert_verified_or_disputed` | Reject verified/disputed creation and generic patch escalation; failed create leaves no visible record. |
+| `tests/test_knowledge_authority.py::test_dispute_requires_privilege_and_named_evidence`, `tests/test_record_schema.py::test_valid_verification_retirement_and_sources_at_database_boundary` | `verification_requires_admin_named_evidence_reason_and_server_attribution` | Deny ordinary writer; reject empty evidence/blank reason; successful verification records authenticated actor/time and evidence in a new revision; same-key replay does not duplicate history. This tests HTTP enforcement rather than direct v1 SQL constraints. |
+| `tests/test_knowledge_authority.py::test_guarded_edit_resets_verification_and_revokes_grant`, `tests/test_knowledge_authorization.py::test_protected_mutations_require_supervisor_and_reset_verification` | `protected_content_requires_admin_and_correction_invalidates_verification` | Deny protected author edits; retain verification on no-op; reset it on meaningful admin correction while retaining old snapshots. AQ authority grant/review revocation is not covered. |
+| `tests/test_knowledge_service.py::test_snapshot_limits_before_sql` (source cases), `tests/test_record_schema.py::test_invalid_source_field_types_and_duplicate_link_ids_are_rejected` (source type case) | `provenance_descriptors_are_typed_unique_and_corrected_retry_is_possible` | Reject untyped/malformed/mismatched/duplicate descriptors, partial Git IDs, missing observed time and non-HTTP URL; preserve no-partial-create and corrected-key retry. Duplicate graph link IDs belong in graph relationship tests. |
+| `tests/test_knowledge_service.py::test_exact_history_retire_restore_and_summary_invalidation`, `tests/test_record_schema.py::test_valid_verification_retirement_and_sources_at_database_boundary` | `retirement_requires_admin_reason_and_restore_preserves_exact_original_content` | Privileged reasoned retirement, default search exclusion, explicit inclusion, restore-before-edit, immutable history and exact Unicode/newline restoration. Summary freshness is a separate unsupported feature. |
+| `tests/test_knowledge_authority.py::test_dispute_requires_privilege_and_named_evidence` | `disputed_knowledge_is_hidden_by_default_search_but_explicitly_retrievable` | Explicit privileged dispute, direct read, default search exclusion, opt-in search inclusion. |
+| `tests/test_knowledge_proposals.py::test_worker_proposes_other_record_but_cannot_decide_even_with_grant` | `knowledge_proposal_can_target_another_author_but_only_admin_applies_it` | Writer can propose another author's correction but cannot apply it; admin applies once and replay returns same receipt; original creator remains. AQ proposal decision grants map to graph admin capability. |
+| `tests/test_knowledge_authorization.py::test_replay_rechecks_claim_project_and_grant` | `knowledge_receipt_replay_rechecks_live_capability_and_revocation` | Current capability and revocation gate replay and leave one original revision. AQ-specific claim epochs remain adapter-owned. |
+
+The protected-source link extension `knowledge_source_links_enforce_author_and_protected_revision_rules` also cites `src/records/auth.py::RecordAccess.editable` and `src/records/service.py::RecordService.mutate_links_on`: only the source author/admin may change unverified source links; protected source additions/removals require admin and invalidate verification. Unverified graph links retain independent history. Full outgoing-link sets inside knowledge content snapshots remain an explicit v1 representation gap.
+
+The additional `privileged_knowledge_replays_recheck_admin_after_downgrade` regression applies the same live-authority fence from `tests/test_knowledge_authorization.py::test_replay_rechecks_claim_project_and_grant` to dedicated verification and proposal application. A principal downgraded from admin to write cannot reuse an old privileged receipt, and refused replays leave history unchanged.
+
+## Existing reusable graph coverage
+
+`tests/integration.rs` already exercises selective history/no-op edits, optimistic concurrency, same-key concurrent retries, immutable pin retrieval, stale draft rejection, atomic batch rollback, bounded context, deleted search exclusion, and restart persistence. These support the graph portions of v1 `test_replay_precedes_stale_precondition_and_mismatch_is_atomic`, `test_two_connections_one_cas_winner`, `test_concurrent_same_key_creates_one_record`, `test_noop_missing_precondition_and_corrected_retry`, `test_caller_owned_transaction_rolls_back_all_effects`, `test_edit_before_accept_is_stale_not_merge`, and relationship history assertions. They do not establish the v1-specific database schema, outbox, snapshot hash format, alias format, or proposal decision API.
+
+## Remaining requirements and boundaries
+
+The following are source-backed gaps, not equivalent coverage:
+
+| Source behavior | Status / concrete next requirement |
+| --- | --- |
+| `test_review_must_explicitly_bind_record_revision_hash`, `test_authority_revocation_is_checked_on_reads_and_exact_history`, `test_grant_rechecks_review_under_lock_and_replay_observes_revocation` | Verification never grants authority. If authority annotations are carried into aq-graph, define a signed/external review attestation adapter binding exact graph record, content revision and digest, plus live revocation checks. Do not read AQ review tables from this service. |
+| `test_decision_binds_proposal_hash_and_base`, `test_new_record_proposal_and_rejection_preserve_evidence`, `test_exact_base_acceptance_two_connections_and_replay` | Named immutable graph drafts cover exact-base atomic application. Explicit proposal hash, rejection state/reason, and already-accepted replay under another decision key need a published decision contract before claiming complete proposal parity. |
+| `test_canonical_golden_hash_preserves_unicode_and_newlines`, `test_normalized_retry_and_snapshot_source_order` | Exact text must survive history/restore. v1 SHA-256 snapshot bytes, tag/source ordering, timestamp normalization and identity mapping are migration contracts; current graph integer revisions are a different wire contract. Need explicit canonical content digest and export reconciliation if v1 hashes are to be retained. |
+| `test_search_scope_ranking_cursor_and_read_only` | Workspace isolation and pagination exist. v1 title-weighted ranking, alias lookup, filter-bound cursors, and component-wide write-disable are separate requirements; UUID-ordered graph search does not prove them. |
+| `test_exact_history_retire_restore_and_summary_invalidation`, `test_summary_cannot_name_its_own_revision` | Derived summaries and summary input pins are absent. Add source-revision-bound derived content with invalidation if required; do not preserve a generated summary as unqualified current evidence. |
+| `test_supersedes_removal_cannot_orphan_a_named_successor` | `supersedes` edges exist; a named retirement successor and transactional edge consistency are not currently promised. Add a typed successor reference and enforce successor-owns-supersedes if carrying this feature over. |
+| `test_pool_bearer_resolves_live_task_for_reads_writes_and_task_visibility`, claim/instance/ended-session fences, `test_claim_revoked_during_write_rolls_back_without_task_lock` | AQ adapter responsibility. Graph credentials authenticate an actor/workspace; they do not claim worker/task ownership or import AQ execution tables. |
+| Global sharing/revocation, private task/review/artifact sources, `test_historical_link_and_source_filtering_under_current_access` | Current workspaces are isolated and cross-workspace graph edges fail. Cross-project global publication and per-source revocable visibility need an explicit sharing/source adapter, not copied public metadata. |
+| v1 append-only/direct-SQL trigger tests in `test_record_schema.py` | API history immutability can be translated; v1 table/trigger layout cannot. Define least-privilege service DB role and migration-role boundaries if defending against direct SQL writers; graph API tests alone do not prove database-owner immutability. |
+| Outbox failure injection, export intent privacy, legacy import, redaction/permanent erasure | No asynchronous outbox or erasure policy is introduced by these core translations. Keep explicitly unclaimed pending dedicated implementations. |
+
+Run the new contract file with a disposable database:
+
+```sh
+AQ_GRAPH_TEST_DATABASE_URL=postgres://aqgraph@127.0.0.1:55432/aq_graph_test cargo test --test v1_knowledge_parity
+```
+
+A missing database URL is a hard failure. No test is silently skipped. API assertions that fail because a field, operation or authorization rule is missing remain implementation requirements; they are not converted into assertions that weaker behavior is acceptable.

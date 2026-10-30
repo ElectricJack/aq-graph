@@ -1754,6 +1754,24 @@
               "minLength": 1,
               "maxLength": 1024
             }
+          },
+          {
+            "name": "include_retired",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "include_disputed",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -3367,6 +3385,242 @@
           }
         }
       }
+    },
+    "/v1/workspaces/{workspace}/nodes/{id}/tree": {
+      "get": {
+        "operationId": "get_v1_workspaces_workspace_nodes_id_tree",
+        "description": "Bounded recursive structural children only. Other context direction values do not change child-only traversal.",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            }
+          },
+          {
+            "name": "max_bytes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 1048576,
+              "default": 262144
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tree"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or unsupported API version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid workspace bearer credential",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              },
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Bearer challenge"
+              }
+            }
+          },
+          "403": {
+            "description": "Capability denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "409": {
+            "description": "Stale version, unresolved references, duplicate identity, applied draft, or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "413": {
+            "description": "Request or response exceeds byte limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error; no driver details disclosed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "503": {
+            "description": "Admission, pool, lock, or request deadline exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "const": 1
+                },
+                "description": "Minimum suggested retry delay in seconds"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3465,7 +3719,7 @@
           },
           "body": {
             "type": "string",
-            "maxLength": 65536
+            "maxLength": 262144
           },
           "acceptance_criteria": {
             "type": "string",
@@ -3518,8 +3772,9 @@
             "type": "array",
             "maxItems": 64,
             "items": {
-              "type": "object"
-            }
+              "$ref": "#/components/schemas/Source"
+            },
+            "description": "Unique source_id values, at most 16384 UTF-8 bytes total."
           },
           "retired": {
             "type": "boolean"
@@ -3534,6 +3789,45 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "created_by": {
+            "type": "string",
+            "description": "Immutable authenticated creator. Legacy snapshots may omit this field; legacy default is legacy:unknown.",
+            "readOnly": true
+          },
+          "last_verified_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true
+          },
+          "last_verified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true
+          },
+          "retirement_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4096
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -3577,7 +3871,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 65536
+                "maxLength": 262144
               },
               {
                 "type": "null"
@@ -3643,14 +3937,9 @@
             ]
           },
           "verification": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Verification"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "null",
+            "deprecated": true,
+            "description": "Only null/no-op is accepted; use verify_knowledge for assertions."
           },
           "provenance": {
             "anyOf": [
@@ -3658,8 +3947,9 @@
                 "type": "array",
                 "maxItems": 64,
                 "items": {
-                  "type": "object"
-                }
+                  "$ref": "#/components/schemas/Source"
+                },
+                "description": "Unique source_id values, at most 16384 UTF-8 bytes total."
               },
               {
                 "type": "null"
@@ -3670,6 +3960,17 @@
             "anyOf": [
               {
                 "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retirement_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4096
               },
               {
                 "type": "null"
@@ -3737,6 +4038,17 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4096
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -3780,7 +4092,7 @@
           },
           "body": {
             "type": "string",
-            "maxLength": 65536
+            "maxLength": 262144
           },
           "acceptance_criteria": {
             "type": "string",
@@ -3822,19 +4134,21 @@
           "verification": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/Verification"
+                "const": "unverified"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Creation cannot self-assert verified/disputed status."
           },
           "provenance": {
             "type": "array",
             "maxItems": 64,
             "items": {
-              "type": "object"
-            }
+              "$ref": "#/components/schemas/Source"
+            },
+            "description": "Unique source_id values, at most 16384 UTF-8 bytes total."
           }
         },
         "required": [
@@ -3974,6 +4288,17 @@
                 "type": "null"
               }
             ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4096
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -4026,6 +4351,12 @@
           },
           {
             "$ref": "#/components/schemas/RemoveEdge"
+          },
+          {
+            "$ref": "#/components/schemas/SetParent"
+          },
+          {
+            "$ref": "#/components/schemas/VerifyKnowledge"
           }
         ],
         "discriminator": {
@@ -4036,7 +4367,9 @@
             "delete_node": "#/components/schemas/DeleteNode",
             "restore_node": "#/components/schemas/RestoreNode",
             "add_edge": "#/components/schemas/AddEdge",
-            "remove_edge": "#/components/schemas/RemoveEdge"
+            "remove_edge": "#/components/schemas/RemoveEdge",
+            "set_parent": "#/components/schemas/SetParent",
+            "verify_knowledge": "#/components/schemas/VerifyKnowledge"
           }
         }
       },
@@ -4072,7 +4405,44 @@
           "idempotency_key",
           "operations"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "operations": {
+                  "contains": {
+                    "type": "object",
+                    "properties": {
+                      "op": {
+                        "const": "verify_knowledge"
+                      }
+                    },
+                    "required": [
+                      "op"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "operations"
+              ]
+            },
+            "then": {
+              "required": [
+                "reason"
+              ],
+              "properties": {
+                "reason": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096,
+                  "pattern": "\\S"
+                }
+              }
+            }
+          }
+        ]
       },
       "DraftRequest": {
         "type": "object",
@@ -4112,7 +4482,44 @@
           "idempotency_key",
           "operations"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "operations": {
+                  "contains": {
+                    "type": "object",
+                    "properties": {
+                      "op": {
+                        "const": "verify_knowledge"
+                      }
+                    },
+                    "required": [
+                      "op"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "operations"
+              ]
+            },
+            "then": {
+              "required": [
+                "reason"
+              ],
+              "properties": {
+                "reason": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096,
+                  "pattern": "\\S"
+                }
+              }
+            }
+          }
+        ]
       },
       "ApplyRequest": {
         "type": "object",
@@ -4629,6 +5036,399 @@
         "required": [
           "status",
           "api_version"
+        ],
+        "additionalProperties": false
+      },
+      "TaskSource": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "kind": {
+            "const": "task"
+          },
+          "task_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "attempt_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "source_id",
+          "kind",
+          "task_id"
+        ],
+        "additionalProperties": false
+      },
+      "ReviewSource": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "kind": {
+            "const": "review"
+          },
+          "review_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "source_id",
+          "kind",
+          "review_id",
+          "revision",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "GitSource": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "kind": {
+            "const": "git"
+          },
+          "repository": {
+            "type": "string",
+            "minLength": 1
+          },
+          "commit": {
+            "type": "string",
+            "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "blob_sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "source_id",
+          "kind",
+          "repository",
+          "commit",
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "ArtifactSource": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "kind": {
+            "const": "artifact"
+          },
+          "artifact_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "source_id",
+          "kind",
+          "artifact_id",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "UrlSource": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "kind": {
+            "const": "url"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https?://"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "retained": {
+            "type": "boolean"
+          },
+          "artifact_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "source_id",
+          "kind",
+          "url",
+          "observed_at",
+          "retained"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "retained": {
+                  "const": true
+                }
+              },
+              "required": [
+                "retained"
+              ]
+            },
+            "then": {
+              "required": [
+                "artifact_id"
+              ],
+              "properties": {
+                "artifact_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "LegacySource": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "kind": {
+            "const": "legacy"
+          },
+          "snapshot_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "store": {
+            "type": "string",
+            "minLength": 1
+          },
+          "key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "source_id",
+          "kind",
+          "snapshot_id",
+          "store",
+          "key",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "Source": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/TaskSource"
+          },
+          {
+            "$ref": "#/components/schemas/ReviewSource"
+          },
+          {
+            "$ref": "#/components/schemas/GitSource"
+          },
+          {
+            "$ref": "#/components/schemas/ArtifactSource"
+          },
+          {
+            "$ref": "#/components/schemas/UrlSource"
+          },
+          {
+            "$ref": "#/components/schemas/LegacySource"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "kind"
+        },
+        "description": "Attributed typed source descriptor. This service does not fetch external content or prove retention/access/approval of external task, review, or artifact systems."
+      },
+      "SetParent": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "const": "set_parent"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "op",
+          "id",
+          "expected_version",
+          "parent_id"
+        ],
+        "additionalProperties": false
+      },
+      "VerifyKnowledge": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "const": "verify_knowledge"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "verification": {
+            "enum": [
+              "verified",
+              "disputed"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            },
+            "description": "Unique source_id values, at most 16384 UTF-8 bytes total.",
+            "minItems": 1
+          }
+        },
+        "required": [
+          "op",
+          "id",
+          "expected_version",
+          "verification",
+          "evidence"
+        ],
+        "additionalProperties": false
+      },
+      "Tree": {
+        "type": "object",
+        "properties": {
+          "node": {
+            "$ref": "#/components/schemas/Node"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tree"
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "node",
+          "children",
+          "truncated"
         ],
         "additionalProperties": false
       }

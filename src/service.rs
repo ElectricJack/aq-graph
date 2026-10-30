@@ -44,6 +44,7 @@ pub fn router(store: Store) -> Router {
         .route("/nodes", get(list_nodes))
         .route("/nodes/{id}", get(get_node))
         .route("/nodes/{id}/context", get(context))
+        .route("/nodes/{id}/tree", get(tree))
         .route("/nodes/{id}/history", get(history))
         .route("/nodes/{id}/diff", get(diff))
         .route("/ready", get(ready))
@@ -378,6 +379,16 @@ async fn context(
             .await?,
     ))
 }
+async fn tree(
+    State(s): State<HttpState>,
+    Extension(p): Extension<Principal>,
+    Path(path): Path<NodePath>,
+    q: std::result::Result<Query<ContextQuery>, QueryRejection>,
+) -> Result<Json<Value>> {
+    Ok(Json(
+        s.store.tree(&p, record_id(path)?, parse_query(q)?).await?,
+    ))
+}
 async fn ready(
     State(s): State<HttpState>,
     Extension(p): Extension<Principal>,
@@ -386,10 +397,15 @@ async fn ready(
     Ok(Json(s.store.ready(&p, parse_query(q)?).await?))
 }
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct SearchQuery {
     q: String,
     limit: Option<u32>,
     cursor: Option<String>,
+    #[serde(default)]
+    include_retired: bool,
+    #[serde(default)]
+    include_disputed: bool,
 }
 async fn search(
     State(s): State<HttpState>,
@@ -399,13 +415,15 @@ async fn search(
     let q = parse_query(q)?;
     Ok(Json(
         s.store
-            .search(
+            .search_filtered(
                 &p,
                 &q.q,
                 ListQuery {
                     limit: q.limit.unwrap_or(50),
                     cursor: q.cursor,
                 },
+                q.include_retired,
+                q.include_disputed,
             )
             .await?,
     ))

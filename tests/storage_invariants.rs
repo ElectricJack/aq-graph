@@ -453,7 +453,11 @@ async fn fulltext_search_paginates_matching_live_knowledge_and_preserves_rare_te
     f.apply(
         "search-retirement-and-delete",
         vec![
-            update(knowledge[1], 1, json!({"retired":true})),
+            update(
+                knowledge[1],
+                1,
+                json!({"retired":true,"retirement_reason":"Superseded test finding"}),
+            ),
             json!({"op":"delete_node","id":knowledge[2],"expected_version":1}),
         ],
     )
@@ -470,7 +474,7 @@ async fn fulltext_search_paginates_matching_live_knowledge_and_preserves_rare_te
         assert!(
             page.items
                 .iter()
-                .all(|n| n.kind == NodeKind::Knowledge && !n.deleted)
+                .all(|n| n.kind == NodeKind::Knowledge && !n.deleted && !n.retired)
         );
         actual.extend(page.items.into_iter().map(|n| n.id));
         cursor = page.next_cursor;
@@ -485,7 +489,7 @@ async fn fulltext_search_paginates_matching_live_knowledge_and_preserves_rare_te
     let mut expected: Vec<_> = knowledge
         .iter()
         .copied()
-        .filter(|id| *id != knowledge[2])
+        .filter(|id| *id != knowledge[1] && *id != knowledge[2])
         .collect();
     expected.sort();
     assert_eq!(actual, expected);

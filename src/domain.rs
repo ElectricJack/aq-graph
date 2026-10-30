@@ -95,6 +95,18 @@ pub struct Node {
     pub deleted: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    #[serde(default = "legacy_author")]
+    pub created_by: String,
+    #[serde(default)]
+    pub last_verified_by: Option<String>,
+    #[serde(default)]
+    pub last_verified_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    pub retirement_reason: Option<String>,
+}
+
+fn legacy_author() -> String {
+    "legacy:unknown".into()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -109,6 +121,8 @@ pub struct Edge {
     pub version: i64,
     pub deleted: bool,
     pub created_at: DateTime<Utc>,
+    #[serde(default)]
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -124,6 +138,7 @@ pub struct NodePatch {
     pub verification: Option<Verification>,
     pub retired: Option<bool>,
     pub provenance: Option<Vec<Value>>,
+    pub retirement_reason: Option<String>,
 }
 
 fn empty_object() -> Value {
@@ -179,6 +194,19 @@ pub enum Mutation {
         source_revision: Option<i64>,
         #[serde(default)]
         target_revision: Option<i64>,
+        #[serde(default)]
+        description: Option<String>,
+    },
+    SetParent {
+        id: Uuid,
+        expected_version: i64,
+        parent_id: Option<Uuid>,
+    },
+    VerifyKnowledge {
+        id: Uuid,
+        expected_version: i64,
+        verification: Verification,
+        evidence: Vec<Value>,
     },
     RemoveEdge {
         id: Uuid,
@@ -386,7 +414,7 @@ pub fn validate_operations(ops: &[Mutation]) -> Result<()> {
                 if let Some(title) = &patch.title {
                     validate_title(title)?;
                 }
-                if patch.body.as_ref().is_some_and(|s| s.len() > 65_536)
+                if patch.body.as_ref().is_some_and(|s| s.len() > 262_144)
                     || patch
                         .acceptance_criteria
                         .as_ref()
@@ -400,6 +428,15 @@ pub fn validate_operations(ops: &[Mutation]) -> Result<()> {
                 if let Some(metadata) = &patch.metadata {
                     validate_metadata(metadata)?;
                 }
+                if patch
+                    .retirement_reason
+                    .as_ref()
+                    .is_some_and(|v| v.len() > 4096)
+                {
+                    return Err(Error::Validation(
+                        "retirement reason exceeds 4096 bytes".into(),
+                    ));
+                }
                 if let Some(provenance) = &patch.provenance {
                     validate_provenance(provenance)?;
                 }
@@ -409,7 +446,18 @@ pub fn validate_operations(ops: &[Mutation]) -> Result<()> {
             }
             | Mutation::RemoveEdge {
                 expected_version, ..
+            }
+            | Mutation::SetParent {
+                expected_version, ..
             } => validate_version(*expected_version)?,
+            Mutation::VerifyKnowledge {
+                expected_version,
+                evidence,
+                ..
+            } => {
+                validate_version(*expected_version)?;
+                validate_provenance(evidence)?;
+            }
             Mutation::RestoreNode {
                 expected_version,
                 revision,
@@ -424,8 +472,14 @@ pub fn validate_operations(ops: &[Mutation]) -> Result<()> {
                 source_revision,
                 target_revision,
                 edge_type,
+                description,
                 ..
             } => {
+                if description.as_ref().is_some_and(|v| v.len() > 4096) {
+                    return Err(Error::Validation(
+                        "edge description exceeds 4096 bytes".into(),
+                    ));
+                }
                 if source == target {
                     return Err(Error::Validation("self links are not allowed".into()));
                 }
@@ -494,7 +548,7 @@ fn validate_provenance(provenance: &[Value]) -> Result<()> {
             "provenance must have at most 64 objects and 16384 bytes".into(),
         ));
     }
-    Ok(())
+    crate::knowledge_rules::validate_sources(provenance)
 }
 pub fn validate_content(
     title: &str,
@@ -505,7 +559,7 @@ pub fn validate_content(
     provenance: &[Value],
 ) -> Result<()> {
     validate_title(title)?;
-    if body.len() > 65_536 || acceptance.len() > 16_384 {
+    if body.len() > 262_144 || acceptance.len() > 16_384 {
         return Err(Error::Validation("content exceeds maximum size".into()));
     }
     validate_labels(labels)?;
