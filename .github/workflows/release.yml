@@ -1,0 +1,88 @@
+name: Release
+on:
+  push:
+    tags: ['v[0-9]*']
+permissions:
+  contents: read
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+  binaries:
+    needs: checks
+    strategy:
+      matrix:
+        include:
+          - {os: ubuntu-22.04, target: x86_64-unknown-linux-gnu, artifact: linux-x86_64}
+          - {os: macos-14, target: aarch64-apple-darwin, artifact: macos-aarch64}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release version
+        run: |
+          python3 - <<'PY'
+          import os, tomllib
+          with open('Cargo.toml', 'rb') as source:
+              version = tomllib.load(source)['package']['version']
+          assert os.environ['GITHUB_REF_NAME'] == 'v' + version, 'Release tag must match Cargo package version'
+          PY
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.96.1
+          targets: ${{ matrix.target }}
+      - run: cargo build --locked --release --target ${{ matrix.target }}
+      - name: Package
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          mkdir dist
+          cp target/${{ matrix.target }}/release/aq-graph dist/
+          cp README.md dist/
+          mkdir dist/docs
+          cp docs/api.md docs/openapi.json docs/operations.md dist/docs/
+          python3 - <<'PY'
+          import json, os
+          with open('dist/COMPATIBILITY.json', 'w') as output:
+              json.dump({'release':os.environ['RELEASE_TAG'],'api_version':1,'schema_version':3}, output, indent=2)
+          PY
+          archive="aq-graph-${RELEASE_TAG}-${{ matrix.artifact }}.tar.gz"
+          tar -C dist -czf "$archive" .
+          shasum -a 256 "$archive" > "${archive}.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aq-graph-${{ matrix.artifact }}
+          path: aq-graph-*.tar.gz*
+  publish:
+    needs: binaries
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {path: artifacts, merge-multiple: true}
+      - name: Release CLI archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" artifacts/* --verify-tag --generate-notes
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image name
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: AQ_GRAPH_VERSION=${{ github.ref_name }}
+          tags: ${{ steps.image.outputs.name }}:${{ github.ref_name }}
+          labels: |
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            io.aq-graph.api-version=1
+            io.aq-graph.schema-version=3

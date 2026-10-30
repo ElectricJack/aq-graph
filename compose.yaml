@@ -1,0 +1,69 @@
+name: aq-graph
+services:
+  postgres:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: aq_graph
+      POSTGRES_USER: aq_graph
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [database]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U aq_graph -d aq_graph']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+  graph:
+    build: .
+    image: ${AQ_GRAPH_IMAGE:-aq-graph:local}
+    user: "${AQ_GRAPH_UID:-10001}:${AQ_GRAPH_GID:-10001}"
+    # The entrypoint reads the database password without putting it in Compose config.
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - 'export DATABASE_URL="postgres://aq_graph:$$(cat /run/secrets/postgres_password)@postgres:5432/aq_graph"; exec aq-graph serve'
+    environment:
+      AQ_GRAPH_BIND: 0.0.0.0:8741
+      AQ_GRAPH_POOL_SIZE: ${AQ_GRAPH_POOL_SIZE:-20}
+      AQ_GRAPH_BOOTSTRAP_WORKSPACE: ${AQ_GRAPH_BOOTSTRAP_WORKSPACE:-00000000-0000-4000-8000-000000000001}
+      AQ_GRAPH_BOOTSTRAP_ACTOR: local-admin
+      AQ_GRAPH_BOOTSTRAP_TOKEN_FILE: /run/secrets/bootstrap_token
+    secrets:
+      - postgres_password
+      - bootstrap_token
+    ports:
+      - '127.0.0.1:${AQ_GRAPH_PORT:-8741}:8741'
+    networks: [database]
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, aq-graph, --endpoint, 'http://127.0.0.1:8741', health]
+      interval: 10s
+      timeout: 6s
+      retries: 5
+      start_period: 30s
+    init: true
+    stop_grace_period: 40s
+    restart: unless-stopped
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+networks:
+  database:
+    internal: true
+volumes:
+  postgres_data:
+secrets:
+  postgres_password:
+    file: ./.local/postgres-password
+  bootstrap_token:
+    file: ./.local/token

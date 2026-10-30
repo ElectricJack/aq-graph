@@ -1,0 +1,35 @@
+{
+  "postgres_configuration": {
+    "postgres_version": "PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit",
+    "fsync": "on",
+    "synchronous_commit": "on",
+    "full_page_writes": "on",
+    "track_io_timing": "off",
+    "max_connections": "100"
+  },
+  "format_version": 1,
+  "seed": 42,
+  "workspace": "00000000-0000-4000-8000-000000000002",
+  "nodes": 100000,
+  "edges_requested": 500000,
+  "counts": {
+    "nodes": 100000,
+    "edges": 500000,
+    "revisions": 200000,
+    "history_entries": 700000,
+    "database_bytes": 1370643479,
+    "table_bytes": {
+      "_sqlx_migrations": 32768,
+      "workspaces": 24576,
+      "credentials": 49152,
+      "nodes": 161783808,
+      "change_sets": 49152,
+      "node_revisions": 283893760,
+      "edges": 276086784,
+      "history_entries": 640614400,
+      "idempotency_receipts": 16384
+    }
+  },
+  "fixture_method": "offline SQL, synthetic snapshots and relationship history; not ingestion throughput",
+  "elapsed_seconds": 42.58089927400033
+}

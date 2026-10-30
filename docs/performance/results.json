@@ -1,0 +1,1630 @@
+{
+  "format_version": 1,
+  "started_utc": "2026-10-30T06:58:51Z",
+  "fixture": {
+    "postgres_configuration": {
+      "postgres_version": "PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit",
+      "fsync": "on",
+      "synchronous_commit": "on",
+      "full_page_writes": "on",
+      "track_io_timing": "off",
+      "max_connections": "100"
+    },
+    "format_version": 1,
+    "seed": 42,
+    "workspace": "00000000-0000-4000-8000-000000000002",
+    "nodes": 100000,
+    "edges_requested": 500000,
+    "counts": {
+      "nodes": 100000,
+      "edges": 500000,
+      "revisions": 200000,
+      "history_entries": 700000,
+      "database_bytes": 1370643479,
+      "table_bytes": {
+        "_sqlx_migrations": 32768,
+        "workspaces": 24576,
+        "credentials": 49152,
+        "nodes": 161783808,
+        "change_sets": 49152,
+        "node_revisions": 283893760,
+        "edges": 276086784,
+        "history_entries": 640614400,
+        "idempotency_receipts": 16384
+      }
+    },
+    "fixture_method": "offline SQL, synthetic snapshots and relationship history; not ingestion throughput",
+    "elapsed_seconds": 42.58089927400033
+  },
+  "machine": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "cpu_count": 24,
+    "python": "3.12.3",
+    "cpu_model": "AMD Ryzen 9 5900X 12-Core Processor",
+    "host_memory_total": "32863916 kB"
+  },
+  "method": {
+    "seed": 42,
+    "duration_seconds": 30.0,
+    "concurrency": [
+      50,
+      100,
+      200
+    ],
+    "arrival_rate": 200.0,
+    "burst_multiplier": 5,
+    "burst_seconds": 10.0,
+    "open_workers": 200,
+    "timeout_seconds": 12,
+    "read_write_ratio": "80/20 base selection in expectation; measured version_refresh reads add recovery traffic",
+    "latency": "client-observed HTTP, persistent per-thread connections; all-response and success-only distributions",
+    "cold_phase": "first application requests; OS/PostgreSQL caches are not forcibly cleared",
+    "writes": "independent updates, hot conflict, identical-payload same-key retries and competing dependency insertions; expected validation/conflict errors remain reported",
+    "service_latency": "not instrumented by this harness; do not infer service acceptance latency from HTTP client times"
+  },
+  "phases": [
+    {
+      "name": "first_touch",
+      "concurrency": 50,
+      "elapsed_seconds": 5.014785414000471,
+      "offered": 11531,
+      "completed": 11531,
+      "client_queue_dropped": 0,
+      "requests_per_second": 2299.400482383017,
+      "success_per_second": 2158.6167914141147,
+      "errors": 706,
+      "failed_offers": 706,
+      "timeouts": 0,
+      "statuses": {
+        "200": 10825,
+        "409": 512,
+        "400": 194
+      },
+      "error_codes": {
+        "conflict": 512,
+        "validation": 194
+      },
+      "all_request_latency": {
+        "p50_ms": 20.867769000687986,
+        "p95_ms": 40.56234800009406,
+        "p99_ms": 50.57020500044018
+      },
+      "successful_request_latency": {
+        "p50_ms": 20.951887999217433,
+        "p95_ms": 40.95726299965463,
+        "p99_ms": 50.81472399979248
+      },
+      "response_bytes": 235424219,
+      "operations": {
+        "independent_write": {
+          "count": 1130,
+          "errors": 0,
+          "statuses": {
+            "200": 1130
+          },
+          "successful_latency": {
+            "p50_ms": 21.86825599983422,
+            "p95_ms": 37.21642500022426,
+            "p99_ms": 49.44103999969229
+          },
+          "p50_ms": 21.86825599983422,
+          "p95_ms": 37.21642500022426,
+          "p99_ms": 49.44103999969229
+        },
+        "get": {
+          "count": 2807,
+          "errors": 0,
+          "statuses": {
+            "200": 2807
+          },
+          "successful_latency": {
+            "p50_ms": 9.517659000266576,
+            "p95_ms": 22.0763920005993,
+            "p99_ms": 29.760997999801475
+          },
+          "p50_ms": 9.517659000266576,
+          "p95_ms": 22.0763920005993,
+          "p99_ms": 29.760997999801475
+        },
+        "ready": {
+          "count": 1688,
+          "errors": 0,
+          "statuses": {
+            "200": 1688
+          },
+          "successful_latency": {
+            "p50_ms": 23.581179999382584,
+            "p95_ms": 40.674930999557546,
+            "p99_ms": 48.887124999964726
+          },
+          "p50_ms": 23.581179999382584,
+          "p95_ms": 40.674930999557546,
+          "p99_ms": 48.887124999964726
+        },
+        "same_key_retry": {
+          "count": 318,
+          "errors": 0,
+          "statuses": {
+            "200": 318
+          },
+          "successful_latency": {
+            "p50_ms": 18.544266000390053,
+            "p95_ms": 35.98210400014068,
+            "p99_ms": 45.802718000231835
+          },
+          "p50_ms": 18.544266000390053,
+          "p95_ms": 35.98210400014068,
+          "p99_ms": 45.802718000231835
+        },
+        "search": {
+          "count": 1689,
+          "errors": 0,
+          "statuses": {
+            "200": 1689
+          },
+          "successful_latency": {
+            "p50_ms": 31.118525999772828,
+            "p95_ms": 49.61365899998782,
+            "p99_ms": 62.9646050001611
+          },
+          "p50_ms": 31.118525999772828,
+          "p95_ms": 49.61365899998782,
+          "p99_ms": 62.9646050001611
+        },
+        "history": {
+          "count": 1094,
+          "errors": 0,
+          "statuses": {
+            "200": 1094
+          },
+          "successful_latency": {
+            "p50_ms": 23.96949299964035,
+            "p95_ms": 40.638176999891584,
+            "p99_ms": 49.127065999527986
+          },
+          "p50_ms": 23.96949299964035,
+          "p95_ms": 40.638176999891584,
+          "p99_ms": 49.127065999527986
+        },
+        "dependency_write": {
+          "count": 369,
+          "errors": 368,
+          "statuses": {
+            "409": 174,
+            "400": 194,
+            "200": 1
+          },
+          "successful_latency": {
+            "p50_ms": 36.178479000227526,
+            "p95_ms": 36.178479000227526,
+            "p99_ms": 36.178479000227526
+          },
+          "p50_ms": 20.344380000096862,
+          "p95_ms": 33.807110999987344,
+          "p99_ms": 44.78696099977242
+        },
+        "context": {
+          "count": 1719,
+          "errors": 0,
+          "statuses": {
+            "200": 1719
+          },
+          "successful_latency": {
+            "p50_ms": 23.832670000047074,
+            "p95_ms": 41.37537499991595,
+            "p99_ms": 48.70603600011236
+          },
+          "p50_ms": 23.832670000047074,
+          "p95_ms": 41.37537499991595,
+          "p99_ms": 48.70603600011236
+        },
+        "hot_write": {
+          "count": 382,
+          "errors": 338,
+          "statuses": {
+            "409": 338,
+            "200": 44
+          },
+          "successful_latency": {
+            "p50_ms": 21.951827000521007,
+            "p95_ms": 33.640143999946304,
+            "p99_ms": 38.11740099990857
+          },
+          "p50_ms": 18.876332999752776,
+          "p95_ms": 33.649152999714715,
+          "p99_ms": 42.64461200000369
+        },
+        "version_refresh": {
+          "count": 335,
+          "errors": 0,
+          "statuses": {
+            "200": 335
+          },
+          "successful_latency": {
+            "p50_ms": 9.520715999315144,
+            "p95_ms": 22.996755000349367,
+            "p99_ms": 33.41920599996229
+          },
+          "p50_ms": 9.520715999315144,
+          "p95_ms": 22.996755000349367,
+          "p99_ms": 33.41920599996229
+        }
+      },
+      "setup_requests": {
+        "count": 100,
+        "statuses": {
+          "200": 100
+        },
+        "latency": {
+          "p95_ms": 40.558845000305155
+        },
+        "timing": "before measured interval; explicit version reads"
+      }
+    },
+    {
+      "name": "warmup",
+      "concurrency": 50,
+      "elapsed_seconds": 10.011275831000603,
+      "offered": 22281,
+      "completed": 22281,
+      "client_queue_dropped": 0,
+      "requests_per_second": 2225.59046180761,
+      "success_per_second": 2090.642626705861,
+      "errors": 1351,
+      "failed_offers": 1351,
+      "timeouts": 0,
+      "statuses": {
+        "200": 20930,
+        "409": 1019,
+        "400": 332
+      },
+      "error_codes": {
+        "conflict": 1019,
+        "validation": 332
+      },
+      "all_request_latency": {
+        "p50_ms": 21.53610499954084,
+        "p95_ms": 42.04734599989024,
+        "p99_ms": 52.67255600028875
+      },
+      "successful_request_latency": {
+        "p50_ms": 21.709161000217136,
+        "p95_ms": 42.34952600018005,
+        "p99_ms": 52.92959999951563
+      },
+      "response_bytes": 449515072,
+      "operations": {
+        "independent_write": {
+          "count": 2199,
+          "errors": 0,
+          "statuses": {
+            "200": 2199
+          },
+          "successful_latency": {
+            "p50_ms": 23.053411000546475,
+            "p95_ms": 39.06364600061352,
+            "p99_ms": 47.68666499967367
+          },
+          "p50_ms": 23.053411000546475,
+          "p95_ms": 39.06364600061352,
+          "p99_ms": 47.68666499967367
+        },
+        "get": {
+          "count": 5388,
+          "errors": 0,
+          "statuses": {
+            "200": 5388
+          },
+          "successful_latency": {
+            "p50_ms": 9.825074000218592,
+            "p95_ms": 23.557688999972015,
+            "p99_ms": 31.30361300009099
+          },
+          "p50_ms": 9.825074000218592,
+          "p95_ms": 23.557688999972015,
+          "p99_ms": 31.30361300009099
+        },
+        "ready": {
+          "count": 3273,
+          "errors": 0,
+          "statuses": {
+            "200": 3273
+          },
+          "successful_latency": {
+            "p50_ms": 24.382212000091386,
+            "p95_ms": 42.57544399933977,
+            "p99_ms": 53.35930100045516
+          },
+          "p50_ms": 24.382212000091386,
+          "p95_ms": 42.57544399933977,
+          "p99_ms": 53.35930100045516
+        },
+        "same_key_retry": {
+          "count": 623,
+          "errors": 0,
+          "statuses": {
+            "200": 623
+          },
+          "successful_latency": {
+            "p50_ms": 19.675227000334417,
+            "p95_ms": 34.89042799992603,
+            "p99_ms": 45.17104000024119
+          },
+          "p50_ms": 19.675227000334417,
+          "p95_ms": 34.89042799992603,
+          "p99_ms": 45.17104000024119
+        },
+        "search": {
+          "count": 3235,
+          "errors": 0,
+          "statuses": {
+            "200": 3235
+          },
+          "successful_latency": {
+            "p50_ms": 32.39084899996669,
+            "p95_ms": 50.82873700030177,
+            "p99_ms": 60.12024900064716
+          },
+          "p50_ms": 32.39084899996669,
+          "p95_ms": 50.82873700030177,
+          "p99_ms": 60.12024900064716
+        },
+        "history": {
+          "count": 2060,
+          "errors": 0,
+          "statuses": {
+            "200": 2060
+          },
+          "successful_latency": {
+            "p50_ms": 24.235638999925868,
+            "p95_ms": 41.865393000080076,
+            "p99_ms": 50.22328199993353
+          },
+          "p50_ms": 24.235638999925868,
+          "p95_ms": 41.865393000080076,
+          "p99_ms": 50.22328199993353
+        },
+        "dependency_write": {
+          "count": 663,
+          "errors": 663,
+          "statuses": {
+            "409": 331,
+            "400": 332
+          },
+          "successful_latency": {
+            "p50_ms": null,
+            "p95_ms": null,
+            "p99_ms": null
+          },
+          "p50_ms": 19.418146000134584,
+          "p95_ms": 35.82748000007996,
+          "p99_ms": 44.72848600016732
+        },
+        "context": {
+          "count": 3374,
+          "errors": 0,
+          "statuses": {
+            "200": 3374
+          },
+          "successful_latency": {
+            "p50_ms": 24.279851000756025,
+            "p95_ms": 42.50411399971199,
+            "p99_ms": 52.907887999936065
+          },
+          "p50_ms": 24.279851000756025,
+          "p95_ms": 42.50411399971199,
+          "p99_ms": 52.907887999936065
+        },
+        "hot_write": {
+          "count": 780,
+          "errors": 688,
+          "statuses": {
+            "409": 688,
+            "200": 92
+          },
+          "successful_latency": {
+            "p50_ms": 21.67637000002287,
+            "p95_ms": 41.14529899925401,
+            "p99_ms": 52.67255600028875
+          },
+          "p50_ms": 20.350601999780338,
+          "p95_ms": 35.56430500066199,
+          "p99_ms": 42.82947200044873
+        },
+        "version_refresh": {
+          "count": 686,
+          "errors": 0,
+          "statuses": {
+            "200": 686
+          },
+          "successful_latency": {
+            "p50_ms": 9.62399899981392,
+            "p95_ms": 23.418357999617,
+            "p99_ms": 28.921774000082223
+          },
+          "p50_ms": 9.62399899981392,
+          "p95_ms": 23.418357999617,
+          "p99_ms": 28.921774000082223
+        }
+      },
+      "setup_requests": {
+        "count": 100,
+        "statuses": {
+          "200": 100
+        },
+        "latency": {
+          "p95_ms": 5.5915310003911145
+        },
+        "timing": "before measured interval; explicit version reads"
+      }
+    },
+    {
+      "name": "warm_50",
+      "concurrency": 50,
+      "elapsed_seconds": 30.025893613000335,
+      "offered": 67281,
+      "completed": 67281,
+      "client_queue_dropped": 0,
+      "requests_per_second": 2240.7659491229692,
+      "success_per_second": 2099.8875441529162,
+      "errors": 4230,
+      "failed_offers": 4230,
+      "timeouts": 0,
+      "statuses": {
+        "200": 63051,
+        "409": 3245,
+        "400": 985
+      },
+      "error_codes": {
+        "conflict": 3245,
+        "validation": 985
+      },
+      "all_request_latency": {
+        "p50_ms": 21.251047999612638,
+        "p95_ms": 41.65115799969499,
+        "p99_ms": 51.65164099980757
+      },
+      "successful_request_latency": {
+        "p50_ms": 21.52172500063898,
+        "p95_ms": 41.977771000347275,
+        "p99_ms": 51.931305999460164
+      },
+      "response_bytes": 1365148962,
+      "operations": {
+        "independent_write": {
+          "count": 6621,
+          "errors": 0,
+          "statuses": {
+            "200": 6621
+          },
+          "successful_latency": {
+            "p50_ms": 22.5551200001064,
+            "p95_ms": 38.820433000182675,
+            "p99_ms": 46.786076999524084
+          },
+          "p50_ms": 22.5551200001064,
+          "p95_ms": 38.820433000182675,
+          "p99_ms": 46.786076999524084
+        },
+        "get": {
+          "count": 16062,
+          "errors": 0,
+          "statuses": {
+            "200": 16062
+          },
+          "successful_latency": {
+            "p50_ms": 10.013382999204623,
+            "p95_ms": 23.173395999947388,
+            "p99_ms": 31.68991299935442
+          },
+          "p50_ms": 10.013382999204623,
+          "p95_ms": 23.173395999947388,
+          "p99_ms": 31.68991299935442
+        },
+        "ready": {
+          "count": 9723,
+          "errors": 0,
+          "statuses": {
+            "200": 9723
+          },
+          "successful_latency": {
+            "p50_ms": 24.599119999948016,
+            "p95_ms": 42.65586200017424,
+            "p99_ms": 51.39753500043298
+          },
+          "p50_ms": 24.599119999948016,
+          "p95_ms": 42.65586200017424,
+          "p99_ms": 51.39753500043298
+        },
+        "same_key_retry": {
+          "count": 1953,
+          "errors": 0,
+          "statuses": {
+            "200": 1953
+          },
+          "successful_latency": {
+            "p50_ms": 19.43133399981889,
+            "p95_ms": 35.1624750001065,
+            "p99_ms": 47.06338200048776
+          },
+          "p50_ms": 19.43133399981889,
+          "p95_ms": 35.1624750001065,
+          "p99_ms": 47.06338200048776
+        },
+        "search": {
+          "count": 9809,
+          "errors": 0,
+          "statuses": {
+            "200": 9809
+          },
+          "successful_latency": {
+            "p50_ms": 31.68634200028464,
+            "p95_ms": 49.71572800059221,
+            "p99_ms": 59.013860000050045
+          },
+          "p50_ms": 31.68634200028464,
+          "p95_ms": 49.71572800059221,
+          "p99_ms": 59.013860000050045
+        },
+        "history": {
+          "count": 6453,
+          "errors": 0,
+          "statuses": {
+            "200": 6453
+          },
+          "successful_latency": {
+            "p50_ms": 23.876226000538736,
+            "p95_ms": 41.54852800002118,
+            "p99_ms": 50.758659999701194
+          },
+          "p50_ms": 23.876226000538736,
+          "p95_ms": 41.54852800002118,
+          "p99_ms": 50.758659999701194
+        },
+        "dependency_write": {
+          "count": 1988,
+          "errors": 1988,
+          "statuses": {
+            "409": 1003,
+            "400": 985
+          },
+          "successful_latency": {
+            "p50_ms": null,
+            "p95_ms": null,
+            "p99_ms": null
+          },
+          "p50_ms": 19.932356999561307,
+          "p95_ms": 36.791692999941006,
+          "p99_ms": 45.170715000494965
+        },
+        "context": {
+          "count": 9907,
+          "errors": 0,
+          "statuses": {
+            "200": 9907
+          },
+          "successful_latency": {
+            "p50_ms": 24.421580999842263,
+            "p95_ms": 42.63224500027718,
+            "p99_ms": 51.56057099975442
+          },
+          "p50_ms": 24.421580999842263,
+          "p95_ms": 42.63224500027718,
+          "p99_ms": 51.56057099975442
+        },
+        "hot_write": {
+          "count": 2524,
+          "errors": 2242,
+          "statuses": {
+            "409": 2242,
+            "200": 282
+          },
+          "successful_latency": {
+            "p50_ms": 22.41094900000462,
+            "p95_ms": 35.05528799996682,
+            "p99_ms": 40.27520999989065
+          },
+          "p50_ms": 19.943389000218303,
+          "p95_ms": 35.30658299951028,
+          "p99_ms": 44.19901999972353
+        },
+        "version_refresh": {
+          "count": 2241,
+          "errors": 0,
+          "statuses": {
+            "200": 2241
+          },
+          "successful_latency": {
+            "p50_ms": 10.004794999986188,
+            "p95_ms": 23.09317000072042,
+            "p99_ms": 32.11922699938441
+          },
+          "p50_ms": 10.004794999986188,
+          "p95_ms": 23.09317000072042,
+          "p99_ms": 32.11922699938441
+        }
+      },
+      "setup_requests": {
+        "count": 100,
+        "statuses": {
+          "200": 100
+        },
+        "latency": {
+          "p95_ms": 5.880552999769861
+        },
+        "timing": "before measured interval; explicit version reads"
+      }
+    },
+    {
+      "name": "warm_100",
+      "concurrency": 100,
+      "elapsed_seconds": 30.040131753000423,
+      "offered": 68681,
+      "completed": 68681,
+      "client_queue_dropped": 0,
+      "requests_per_second": 2286.3082147813852,
+      "success_per_second": 2142.067835423954,
+      "errors": 4333,
+      "failed_offers": 4333,
+      "timeouts": 0,
+      "statuses": {
+        "200": 64348,
+        "409": 3337,
+        "400": 996
+      },
+      "error_codes": {
+        "conflict": 3337,
+        "validation": 996
+      },
+      "all_request_latency": {
+        "p50_ms": 40.49116300029709,
+        "p95_ms": 85.93747800023266,
+        "p99_ms": 111.52364000008674
+      },
+      "successful_request_latency": {
+        "p50_ms": 40.52665499966679,
+        "p95_ms": 86.07811500041862,
+        "p99_ms": 111.68937299953541
+      },
+      "response_bytes": 1394026147,
+      "operations": {
+        "independent_write": {
+          "count": 6716,
+          "errors": 0,
+          "statuses": {
+            "200": 6716
+          },
+          "successful_latency": {
+            "p50_ms": 40.668793000804726,
+            "p95_ms": 80.82547199956025,
+            "p99_ms": 106.17111699957604
+          },
+          "p50_ms": 40.668793000804726,
+          "p95_ms": 80.82547199956025,
+          "p99_ms": 106.17111699957604
+        },
+        "get": {
+          "count": 16681,
+          "errors": 0,
+          "statuses": {
+            "200": 16681
+          },
+          "successful_latency": {
+            "p50_ms": 20.421704000000318,
+            "p95_ms": 51.156874999833235,
+            "p99_ms": 71.11963199986349
+          },
+          "p50_ms": 20.421704000000318,
+          "p95_ms": 51.156874999833235,
+          "p99_ms": 71.11963199986349
+        },
+        "ready": {
+          "count": 9980,
+          "errors": 0,
+          "statuses": {
+            "200": 9980
+          },
+          "successful_latency": {
+            "p50_ms": 49.95960999985982,
+            "p95_ms": 90.89740800027357,
+            "p99_ms": 115.62437799966574
+          },
+          "p50_ms": 49.95960999985982,
+          "p95_ms": 90.89740800027357,
+          "p99_ms": 115.62437799966574
+        },
+        "same_key_retry": {
+          "count": 1880,
+          "errors": 0,
+          "statuses": {
+            "200": 1880
+          },
+          "successful_latency": {
+            "p50_ms": 39.86773499946139,
+            "p95_ms": 76.76147799975297,
+            "p99_ms": 100.68863000014971
+          },
+          "p50_ms": 39.86773499946139,
+          "p95_ms": 76.76147799975297,
+          "p99_ms": 100.68863000014971
+        },
+        "search": {
+          "count": 9894,
+          "errors": 0,
+          "statuses": {
+            "200": 9894
+          },
+          "successful_latency": {
+            "p50_ms": 55.71104200043919,
+            "p95_ms": 99.96675799993682,
+            "p99_ms": 126.59309099944949
+          },
+          "p50_ms": 55.71104200043919,
+          "p95_ms": 99.96675799993682,
+          "p99_ms": 126.59309099944949
+        },
+        "history": {
+          "count": 6591,
+          "errors": 0,
+          "statuses": {
+            "200": 6591
+          },
+          "successful_latency": {
+            "p50_ms": 50.167711000540294,
+            "p95_ms": 91.61690300061309,
+            "p99_ms": 116.0895539997
+          },
+          "p50_ms": 50.167711000540294,
+          "p95_ms": 91.61690300061309,
+          "p99_ms": 116.0895539997
+        },
+        "dependency_write": {
+          "count": 1972,
+          "errors": 1972,
+          "statuses": {
+            "409": 976,
+            "400": 996
+          },
+          "successful_latency": {
+            "p50_ms": null,
+            "p95_ms": null,
+            "p99_ms": null
+          },
+          "p50_ms": 40.10608600037813,
+          "p95_ms": 80.6388880000668,
+          "p99_ms": 105.33612200015341
+        },
+        "context": {
+          "count": 10049,
+          "errors": 0,
+          "statuses": {
+            "200": 10049
+          },
+          "successful_latency": {
+            "p50_ms": 48.43947499921342,
+            "p95_ms": 91.07015000063257,
+            "p99_ms": 116.2349769992943
+          },
+          "p50_ms": 48.43947499921342,
+          "p95_ms": 91.07015000063257,
+          "p99_ms": 116.2349769992943
+        },
+        "hot_write": {
+          "count": 2562,
+          "errors": 2361,
+          "statuses": {
+            "409": 2361,
+            "200": 201
+          },
+          "successful_latency": {
+            "p50_ms": 40.6913059996441,
+            "p95_ms": 76.40515200000664,
+            "p99_ms": 90.29832200030796
+          },
+          "p50_ms": 40.10228399965854,
+          "p95_ms": 78.04380499965191,
+          "p99_ms": 100.78093499942042
+        },
+        "version_refresh": {
+          "count": 2356,
+          "errors": 0,
+          "statuses": {
+            "200": 2356
+          },
+          "successful_latency": {
+            "p50_ms": 20.328612999946927,
+            "p95_ms": 50.62633000034111,
+            "p99_ms": 75.23410199974023
+          },
+          "p50_ms": 20.328612999946927,
+          "p95_ms": 50.62633000034111,
+          "p99_ms": 75.23410199974023
+        }
+      },
+      "setup_requests": {
+        "count": 200,
+        "statuses": {
+          "200": 200
+        },
+        "latency": {
+          "p95_ms": 6.185520999679284
+        },
+        "timing": "before measured interval; explicit version reads"
+      }
+    },
+    {
+      "name": "warm_200",
+      "concurrency": 200,
+      "elapsed_seconds": 30.16074066100009,
+      "offered": 68025,
+      "completed": 68025,
+      "client_queue_dropped": 0,
+      "requests_per_second": 2255.4154344081144,
+      "success_per_second": 2108.568907998801,
+      "errors": 4429,
+      "failed_offers": 4429,
+      "timeouts": 0,
+      "statuses": {
+        "200": 63596,
+        "409": 3416,
+        "400": 1013
+      },
+      "error_codes": {
+        "conflict": 3416,
+        "validation": 1013
+      },
+      "all_request_latency": {
+        "p50_ms": 71.48073299958924,
+        "p95_ms": 218.48770299948228,
+        "p99_ms": 316.02071999986947
+      },
+      "successful_request_latency": {
+        "p50_ms": 71.49625599959109,
+        "p95_ms": 219.05035700001463,
+        "p99_ms": 316.53420200018445
+      },
+      "response_bytes": 1374869378,
+      "operations": {
+        "independent_write": {
+          "count": 6492,
+          "errors": 0,
+          "statuses": {
+            "200": 6492
+          },
+          "successful_latency": {
+            "p50_ms": 72.02899000003526,
+            "p95_ms": 199.91173800008255,
+            "p99_ms": 286.3026719996924
+          },
+          "p50_ms": 72.02899000003526,
+          "p95_ms": 199.91173800008255,
+          "p99_ms": 286.3026719996924
+        },
+        "get": {
+          "count": 16577,
+          "errors": 0,
+          "statuses": {
+            "200": 16577
+          },
+          "successful_latency": {
+            "p50_ms": 37.063021999529155,
+            "p95_ms": 143.05962700018426,
+            "p99_ms": 219.88055800011352
+          },
+          "p50_ms": 37.063021999529155,
+          "p95_ms": 143.05962700018426,
+          "p99_ms": 219.88055800011352
+        },
+        "ready": {
+          "count": 10005,
+          "errors": 0,
+          "statuses": {
+            "200": 10005
+          },
+          "successful_latency": {
+            "p50_ms": 86.5314570000919,
+            "p95_ms": 240.60468599964224,
+            "p99_ms": 341.75106400016375
+          },
+          "p50_ms": 86.5314570000919,
+          "p95_ms": 240.60468599964224,
+          "p99_ms": 341.75106400016375
+        },
+        "same_key_retry": {
+          "count": 1853,
+          "errors": 0,
+          "statuses": {
+            "200": 1853
+          },
+          "successful_latency": {
+            "p50_ms": 71.56808499985345,
+            "p95_ms": 206.68935400044575,
+            "p99_ms": 289.75347399955353
+          },
+          "p50_ms": 71.56808499985345,
+          "p95_ms": 206.68935400044575,
+          "p99_ms": 289.75347399955353
+        },
+        "search": {
+          "count": 9861,
+          "errors": 0,
+          "statuses": {
+            "200": 9861
+          },
+          "successful_latency": {
+            "p50_ms": 97.33595300076558,
+            "p95_ms": 255.27229399995122,
+            "p99_ms": 358.6205969995717
+          },
+          "p50_ms": 97.33595300076558,
+          "p95_ms": 255.27229399995122,
+          "p99_ms": 358.6205969995717
+        },
+        "history": {
+          "count": 6415,
+          "errors": 0,
+          "statuses": {
+            "200": 6415
+          },
+          "successful_latency": {
+            "p50_ms": 87.07427099943743,
+            "p95_ms": 235.2779399998326,
+            "p99_ms": 342.41081300024234
+          },
+          "p50_ms": 87.07427099943743,
+          "p95_ms": 235.2779399998326,
+          "p99_ms": 342.41081300024234
+        },
+        "dependency_write": {
+          "count": 2062,
+          "errors": 2062,
+          "statuses": {
+            "409": 1049,
+            "400": 1013
+          },
+          "successful_latency": {
+            "p50_ms": null,
+            "p95_ms": null,
+            "p99_ms": null
+          },
+          "p50_ms": 71.31458699950599,
+          "p95_ms": 194.6900259999893,
+          "p99_ms": 281.5175850000742
+        },
+        "context": {
+          "count": 9889,
+          "errors": 0,
+          "statuses": {
+            "200": 9889
+          },
+          "successful_latency": {
+            "p50_ms": 83.45815399934509,
+            "p95_ms": 238.8374889997067,
+            "p99_ms": 337.0740830005161
+          },
+          "p50_ms": 83.45815399934509,
+          "p95_ms": 238.8374889997067,
+          "p99_ms": 337.0740830005161
+        },
+        "hot_write": {
+          "count": 2511,
+          "errors": 2367,
+          "statuses": {
+            "409": 2367,
+            "200": 144
+          },
+          "successful_latency": {
+            "p50_ms": 67.02583300011611,
+            "p95_ms": 145.25500600029773,
+            "p99_ms": 304.04204899969045
+          },
+          "p50_ms": 71.26661600068473,
+          "p95_ms": 201.8573049999759,
+          "p99_ms": 306.04211800073244
+        },
+        "version_refresh": {
+          "count": 2360,
+          "errors": 0,
+          "statuses": {
+            "200": 2360
+          },
+          "successful_latency": {
+            "p50_ms": 36.102692999520514,
+            "p95_ms": 136.09265800005232,
+            "p99_ms": 224.700976999884
+          },
+          "p50_ms": 36.102692999520514,
+          "p95_ms": 136.09265800005232,
+          "p99_ms": 224.700976999884
+        }
+      },
+      "setup_requests": {
+        "count": 400,
+        "statuses": {
+          "200": 400
+        },
+        "latency": {
+          "p95_ms": 57.827738000014506
+        },
+        "timing": "before measured interval; explicit version reads"
+      }
+    }
+  ],
+  "open_loop": {
+    "setup_requests": {
+      "count": 400,
+      "statuses": {
+        "200": 400
+      },
+      "timing": "before scheduled arrivals"
+    },
+    "phases": [
+      {
+        "name": "sustained",
+        "arrival_duration_seconds": 30.0,
+        "tail_seconds": 0.0,
+        "elapsed_seconds": 30.0,
+        "offered": 6000,
+        "completed": 6000,
+        "client_queue_dropped": 0,
+        "requests_per_second": 200.0,
+        "success_per_second": 190.53333333333333,
+        "errors": 284,
+        "failed_offers": 284,
+        "timeouts": 0,
+        "statuses": {
+          "200": 5716,
+          "409": 230,
+          "400": 54
+        },
+        "error_codes": {
+          "conflict": 230,
+          "validation": 54
+        },
+        "all_request_latency": {
+          "p50_ms": 2.2431990000768565,
+          "p95_ms": 8.912667000913643,
+          "p99_ms": 9.700677001092117
+        },
+        "successful_request_latency": {
+          "p50_ms": 2.2406050002246047,
+          "p95_ms": 8.946580999690923,
+          "p99_ms": 9.741417000441288
+        },
+        "response_bytes": 122438252,
+        "operations": {
+          "independent_write": {
+            "count": 598,
+            "errors": 0,
+            "statuses": {
+              "200": 598
+            },
+            "successful_latency": {
+              "p50_ms": 4.152573999817832,
+              "p95_ms": 5.1063669998256955,
+              "p99_ms": 7.4401239999133395
+            },
+            "p50_ms": 4.152573999817832,
+            "p95_ms": 5.1063669998256955,
+            "p99_ms": 7.4401239999133395
+          },
+          "get": {
+            "count": 1485,
+            "errors": 0,
+            "statuses": {
+              "200": 1485
+            },
+            "successful_latency": {
+              "p50_ms": 0.933882000936137,
+              "p95_ms": 1.10595300066052,
+              "p99_ms": 1.4022850009496324
+            },
+            "p50_ms": 0.933882000936137,
+            "p95_ms": 1.10595300066052,
+            "p99_ms": 1.4022850009496324
+          },
+          "ready": {
+            "count": 894,
+            "errors": 0,
+            "statuses": {
+              "200": 894
+            },
+            "successful_latency": {
+              "p50_ms": 2.0455180001590634,
+              "p95_ms": 2.411022001069796,
+              "p99_ms": 2.8079080002498813
+            },
+            "p50_ms": 2.0455180001590634,
+            "p95_ms": 2.411022001069796,
+            "p99_ms": 2.8079080002498813
+          },
+          "same_key_retry": {
+            "count": 165,
+            "errors": 0,
+            "statuses": {
+              "200": 165
+            },
+            "successful_latency": {
+              "p50_ms": 1.4962280001782347,
+              "p95_ms": 1.7250170003535459,
+              "p99_ms": 1.7744670003594365
+            },
+            "p50_ms": 1.4962280001782347,
+            "p95_ms": 1.7250170003535459,
+            "p99_ms": 1.7744670003594365
+          },
+          "search": {
+            "count": 878,
+            "errors": 0,
+            "statuses": {
+              "200": 878
+            },
+            "successful_latency": {
+              "p50_ms": 8.626534000541142,
+              "p95_ms": 9.941374999471009,
+              "p99_ms": 10.98260799972195
+            },
+            "p50_ms": 8.626534000541142,
+            "p95_ms": 9.941374999471009,
+            "p99_ms": 10.98260799972195
+          },
+          "history": {
+            "count": 562,
+            "errors": 0,
+            "statuses": {
+              "200": 562
+            },
+            "successful_latency": {
+              "p50_ms": 2.770364000753034,
+              "p95_ms": 3.285859000243363,
+              "p99_ms": 3.6729809999087593
+            },
+            "p50_ms": 2.770364000753034,
+            "p95_ms": 3.285859000243363,
+            "p99_ms": 3.6729809999087593
+          },
+          "context": {
+            "count": 909,
+            "errors": 0,
+            "statuses": {
+              "200": 909
+            },
+            "successful_latency": {
+              "p50_ms": 2.3286380001081852,
+              "p95_ms": 2.732406000177434,
+              "p99_ms": 3.275261000453611
+            },
+            "p50_ms": 2.3286380001081852,
+            "p95_ms": 2.732406000177434,
+            "p99_ms": 3.275261000453611
+          },
+          "dependency_write": {
+            "count": 171,
+            "errors": 171,
+            "statuses": {
+              "409": 117,
+              "400": 54
+            },
+            "successful_latency": {
+              "p50_ms": null,
+              "p95_ms": null,
+              "p99_ms": null
+            },
+            "p50_ms": 2.420628000436409,
+            "p95_ms": 2.871888999834482,
+            "p99_ms": 3.4326840004723636
+          },
+          "hot_write": {
+            "count": 225,
+            "errors": 113,
+            "statuses": {
+              "200": 112,
+              "409": 113
+            },
+            "successful_latency": {
+              "p50_ms": 4.172199000095134,
+              "p95_ms": 4.709322000053362,
+              "p99_ms": 7.273447999978089
+            },
+            "p50_ms": 3.5800890000246,
+            "p95_ms": 4.5381939999060705,
+            "p99_ms": 7.119396000234701
+          },
+          "version_refresh": {
+            "count": 113,
+            "errors": 0,
+            "statuses": {
+              "200": 113
+            },
+            "successful_latency": {
+              "p50_ms": 0.9261630002583843,
+              "p95_ms": 1.0846759996638866,
+              "p99_ms": 1.1204960001123254
+            },
+            "p50_ms": 0.9261630002583843,
+            "p95_ms": 1.0846759996638866,
+            "p99_ms": 1.1204960001123254
+          }
+        }
+      },
+      {
+        "name": "burst",
+        "arrival_duration_seconds": 10.0,
+        "tail_seconds": 0.0029231210000943975,
+        "elapsed_seconds": 10.002923121000094,
+        "offered": 10000,
+        "completed": 10000,
+        "client_queue_dropped": 0,
+        "requests_per_second": 999.7077733213847,
+        "success_per_second": 928.6285506382342,
+        "errors": 711,
+        "failed_offers": 711,
+        "timeouts": 0,
+        "statuses": {
+          "200": 9289,
+          "409": 525,
+          "400": 186
+        },
+        "error_codes": {
+          "conflict": 525,
+          "validation": 186
+        },
+        "all_request_latency": {
+          "p50_ms": 2.4374680006076233,
+          "p95_ms": 8.701567000571231,
+          "p99_ms": 10.25414400100999
+        },
+        "successful_request_latency": {
+          "p50_ms": 2.4207879996538395,
+          "p95_ms": 8.74986200051353,
+          "p99_ms": 10.401528000329563
+        },
+        "response_bytes": 200065415,
+        "operations": {
+          "get": {
+            "count": 2438,
+            "errors": 0,
+            "statuses": {
+              "200": 2438
+            },
+            "successful_latency": {
+              "p50_ms": 0.9236760006388067,
+              "p95_ms": 1.4182129998516757,
+              "p99_ms": 1.9019549999939045
+            },
+            "p50_ms": 0.9236760006388067,
+            "p95_ms": 1.4182129998516757,
+            "p99_ms": 1.9019549999939045
+          },
+          "history": {
+            "count": 965,
+            "errors": 0,
+            "statuses": {
+              "200": 965
+            },
+            "successful_latency": {
+              "p50_ms": 2.80241800010117,
+              "p95_ms": 3.6754610009666067,
+              "p99_ms": 4.695819000517076
+            },
+            "p50_ms": 2.80241800010117,
+            "p95_ms": 3.6754610009666067,
+            "p99_ms": 4.695819000517076
+          },
+          "ready": {
+            "count": 1411,
+            "errors": 0,
+            "statuses": {
+              "200": 1411
+            },
+            "successful_latency": {
+              "p50_ms": 1.996485999370634,
+              "p95_ms": 2.6870299998336122,
+              "p99_ms": 3.566297999896051
+            },
+            "p50_ms": 1.996485999370634,
+            "p95_ms": 2.6870299998336122,
+            "p99_ms": 3.566297999896051
+          },
+          "context": {
+            "count": 1509,
+            "errors": 0,
+            "statuses": {
+              "200": 1509
+            },
+            "successful_latency": {
+              "p50_ms": 2.5192869998136302,
+              "p95_ms": 3.0859640000926447,
+              "p99_ms": 4.466129999855184
+            },
+            "p50_ms": 2.5192869998136302,
+            "p95_ms": 3.0859640000926447,
+            "p99_ms": 4.466129999855184
+          },
+          "search": {
+            "count": 1416,
+            "errors": 0,
+            "statuses": {
+              "200": 1416
+            },
+            "successful_latency": {
+              "p50_ms": 8.283430000119552,
+              "p95_ms": 10.178508000535658,
+              "p99_ms": 12.68350800000917
+            },
+            "p50_ms": 8.283430000119552,
+            "p95_ms": 10.178508000535658,
+            "p99_ms": 12.68350800000917
+          },
+          "independent_write": {
+            "count": 977,
+            "errors": 0,
+            "statuses": {
+              "200": 977
+            },
+            "successful_latency": {
+              "p50_ms": 4.682736000177101,
+              "p95_ms": 6.103775999690697,
+              "p99_ms": 8.607009000115795
+            },
+            "p50_ms": 4.682736000177101,
+            "p95_ms": 6.103775999690697,
+            "p99_ms": 8.607009000115795
+          },
+          "dependency_write": {
+            "count": 381,
+            "errors": 381,
+            "statuses": {
+              "409": 195,
+              "400": 186
+            },
+            "successful_latency": {
+              "p50_ms": null,
+              "p95_ms": null,
+              "p99_ms": null
+            },
+            "p50_ms": 2.834523000274203,
+            "p95_ms": 3.594199999497505,
+            "p99_ms": 4.504401999838592
+          },
+          "same_key_retry": {
+            "count": 218,
+            "errors": 0,
+            "statuses": {
+              "200": 218
+            },
+            "successful_latency": {
+              "p50_ms": 1.6453879998152843,
+              "p95_ms": 2.337003000320692,
+              "p99_ms": 2.991889999975683
+            },
+            "p50_ms": 1.6453879998152843,
+            "p95_ms": 2.337003000320692,
+            "p99_ms": 2.991889999975683
+          },
+          "hot_write": {
+            "count": 359,
+            "errors": 330,
+            "statuses": {
+              "200": 29,
+              "409": 330
+            },
+            "successful_latency": {
+              "p50_ms": 4.700309000327252,
+              "p95_ms": 6.012992000250961,
+              "p99_ms": 7.683759999963513
+            },
+            "p50_ms": 2.340279000236478,
+            "p95_ms": 4.741687000205275,
+            "p99_ms": 6.452859000091848
+          },
+          "version_refresh": {
+            "count": 326,
+            "errors": 0,
+            "statuses": {
+              "200": 326
+            },
+            "successful_latency": {
+              "p50_ms": 0.9067660002983757,
+              "p95_ms": 1.2772430000040913,
+              "p99_ms": 1.935477000188257
+            },
+            "p50_ms": 0.9067660002983757,
+            "p95_ms": 1.2772430000040913,
+            "p99_ms": 1.935477000188257
+          }
+        }
+      },
+      {
+        "name": "recovery",
+        "arrival_duration_seconds": 30.0,
+        "tail_seconds": 0.0,
+        "elapsed_seconds": 30.0,
+        "offered": 6000,
+        "completed": 6000,
+        "client_queue_dropped": 0,
+        "requests_per_second": 200.0,
+        "success_per_second": 186.23333333333332,
+        "errors": 413,
+        "failed_offers": 413,
+        "timeouts": 0,
+        "statuses": {
+          "200": 5587,
+          "409": 314,
+          "400": 99
+        },
+        "error_codes": {
+          "conflict": 314,
+          "validation": 99
+        },
+        "all_request_latency": {
+          "p50_ms": 2.235140000266256,
+          "p95_ms": 9.035686000061105,
+          "p99_ms": 10.042861999863817
+        },
+        "successful_request_latency": {
+          "p50_ms": 2.239207999991777,
+          "p95_ms": 9.077107000848628,
+          "p99_ms": 10.134742999980517
+        },
+        "response_bytes": 119374925,
+        "operations": {
+          "history": {
+            "count": 541,
+            "errors": 0,
+            "statuses": {
+              "200": 541
+            },
+            "successful_latency": {
+              "p50_ms": 2.8515140002127737,
+              "p95_ms": 3.5295859997859225,
+              "p99_ms": 4.02763900001446
+            },
+            "p50_ms": 2.8515140002127737,
+            "p95_ms": 3.5295859997859225,
+            "p99_ms": 4.02763900001446
+          },
+          "ready": {
+            "count": 875,
+            "errors": 0,
+            "statuses": {
+              "200": 875
+            },
+            "successful_latency": {
+              "p50_ms": 2.0873779994872166,
+              "p95_ms": 2.473493000252347,
+              "p99_ms": 2.9108770004313556
+            },
+            "p50_ms": 2.0873779994872166,
+            "p95_ms": 2.473493000252347,
+            "p99_ms": 2.9108770004313556
+          },
+          "get": {
+            "count": 1453,
+            "errors": 0,
+            "statuses": {
+              "200": 1453
+            },
+            "successful_latency": {
+              "p50_ms": 0.9559039999658125,
+              "p95_ms": 1.1484140004540677,
+              "p99_ms": 1.4317429995571729
+            },
+            "p50_ms": 0.9559039999658125,
+            "p95_ms": 1.1484140004540677,
+            "p99_ms": 1.4317429995571729
+          },
+          "context": {
+            "count": 855,
+            "errors": 0,
+            "statuses": {
+              "200": 855
+            },
+            "successful_latency": {
+              "p50_ms": 2.359609000450291,
+              "p95_ms": 2.820142000018677,
+              "p99_ms": 3.4419980001985095
+            },
+            "p50_ms": 2.359609000450291,
+            "p95_ms": 2.820142000018677,
+            "p99_ms": 3.4419980001985095
+          },
+          "search": {
+            "count": 902,
+            "errors": 0,
+            "statuses": {
+              "200": 902
+            },
+            "successful_latency": {
+              "p50_ms": 8.651285999803804,
+              "p95_ms": 10.140170999875409,
+              "p99_ms": 11.955888000557024
+            },
+            "p50_ms": 8.651285999803804,
+            "p95_ms": 10.140170999875409,
+            "p99_ms": 11.955888000557024
+          },
+          "same_key_retry": {
+            "count": 167,
+            "errors": 0,
+            "statuses": {
+              "200": 167
+            },
+            "successful_latency": {
+              "p50_ms": 1.5084390006450121,
+              "p95_ms": 1.8115639995812671,
+              "p99_ms": 2.319072000318556
+            },
+            "p50_ms": 1.5084390006450121,
+            "p95_ms": 1.8115639995812671,
+            "p99_ms": 2.319072000318556
+          },
+          "independent_write": {
+            "count": 567,
+            "errors": 0,
+            "statuses": {
+              "200": 567
+            },
+            "successful_latency": {
+              "p50_ms": 4.196097000203736,
+              "p95_ms": 4.8898469995037885,
+              "p99_ms": 6.021899000188569
+            },
+            "p50_ms": 4.196097000203736,
+            "p95_ms": 4.8898469995037885,
+            "p99_ms": 6.021899000188569
+          },
+          "hot_write": {
+            "count": 229,
+            "errors": 220,
+            "statuses": {
+              "409": 220,
+              "200": 9
+            },
+            "successful_latency": {
+              "p50_ms": 4.12484200023755,
+              "p95_ms": 4.957039999681001,
+              "p99_ms": 4.957039999681001
+            },
+            "p50_ms": 2.0096329999432783,
+            "p95_ms": 2.6082240001414903,
+            "p99_ms": 4.560082999887527
+          },
+          "dependency_write": {
+            "count": 193,
+            "errors": 193,
+            "statuses": {
+              "400": 99,
+              "409": 94
+            },
+            "successful_latency": {
+              "p50_ms": null,
+              "p95_ms": null,
+              "p99_ms": null
+            },
+            "p50_ms": 2.4635380004838225,
+            "p95_ms": 2.9280939997988753,
+            "p99_ms": 3.644325000095705
+          },
+          "version_refresh": {
+            "count": 218,
+            "errors": 0,
+            "statuses": {
+              "200": 218
+            },
+            "successful_latency": {
+              "p50_ms": 0.9380009996675653,
+              "p95_ms": 1.108309000301233,
+              "p99_ms": 1.345853999737301
+            },
+            "p50_ms": 0.9380009996675653,
+            "p95_ms": 1.108309000301233,
+            "p99_ms": 1.345853999737301
+          }
+        }
+      }
+    ]
+  },
+  "open_loop_wall_seconds": 70.24285965400031,
+  "finished_utc": "2026-10-30T07:01:54Z"
+}

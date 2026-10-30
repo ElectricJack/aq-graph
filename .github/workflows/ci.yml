@@ -1,0 +1,49 @@
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_USER: aq_graph
+          POSTGRES_PASSWORD: test-only-ci-password
+          POSTGRES_DB: aq_graph_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd 'pg_isready -U aq_graph -d aq_graph_test'
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgres://aq_graph:test-only-ci-password@127.0.0.1:5432/aq_graph_test
+      AQ_GRAPH_TEST_DATABASE_URL: postgres://aq_graph:test-only-ci-password@127.0.0.1:5432/aq_graph_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.96.1
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked --all-targets
+      - run: cargo build --locked --release
+      - run: python3 -m py_compile scripts/benchmark.py
+      - run: for script in scripts/*.sh; do bash -n "$script"; done
+      - run: scripts/local-init.sh
+      - run: docker compose config --quiet
+      - run: docker build -t aq-graph:ci .
+      - name: Compose smoke and restore
+        run: |
+          docker compose up -d --wait --wait-timeout 120
+          target/release/aq-graph --config .local/config.json task create --title "CI smoke" --state active --idempotency-key ci-smoke
+          target/release/aq-graph --config .local/config.json task ready
+          scripts/backup.sh .local/ci.dump
+          scripts/restore.sh .local/ci.dump aq_graph_restore_ci
+      - if: always()
+        run: docker compose down --volumes

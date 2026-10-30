@@ -1,0 +1,7 @@
+.git
+target
+.local
+.env*
+*.dump
+benchmark-results
+__pycache__
