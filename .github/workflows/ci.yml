@@ -17,7 +17,7 @@ jobs:
           POSTGRES_DB: aq_graph_test
         ports: ['5432:5432']
         options: >-
-          --health-cmd 'pg_isready -U aq_graph -d aq_graph_test'
+          --health-cmd "pg_isready -U aq_graph -d aq_graph_test"
           --health-interval 5s --health-timeout 3s --health-retries 20
     env:
       DATABASE_URL: postgres://aq_graph:test-only-ci-password@127.0.0.1:5432/aq_graph_test
