@@ -131,17 +131,6 @@ impl Selector {
             Self::Task { member_id, .. } | Self::Dependency { member_id, .. } => member_id,
         }
     }
-    pub(crate) fn ids(&self) -> Vec<Uuid> {
-        match self {
-            Self::Task { task_id, .. } => vec![*task_id],
-            Self::Dependency {
-                edge_id,
-                prerequisite_id,
-                dependent_id,
-                ..
-            } => vec![*edge_id, *prerequisite_id, *dependent_id],
-        }
-    }
 }
 /// Unpinned identities: this read establishes actual revisions and cursor together.
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]

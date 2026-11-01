@@ -504,14 +504,30 @@ impl Store {
             out.through = cursor;
         }
         let through_sequence = decimal(&out.through.committed_sequence, false)?;
-        let ids: Vec<Uuid> = out
-            .receipt
-            .content
-            .selectors
-            .iter()
-            .flat_map(Selector::ids)
-            .collect();
-        let batches=sqlx::query("SELECT b.sequence,b.group_id FROM graph_observation_batches b WHERE b.workspace_id=$1 AND b.generation=$2 AND b.sequence>$3 AND b.sequence<=$4 AND (b.kind='gap' OR EXISTS(SELECT 1 FROM graph_observation_facts f WHERE f.workspace_id=b.workspace_id AND f.generation=b.generation AND f.sequence=b.sequence AND f.object_id=ANY($5))) ORDER BY b.sequence LIMIT $6").bind(p.workspace_id).bind(decimal(&h.scope.generation,true)?).bind(sequence).bind(through_sequence).bind(&ids).bind((limit+1)as i64).fetch_all(&mut *tx).await?;
+        let mut node_ids = std::collections::BTreeSet::new();
+        let mut edge_ids = std::collections::BTreeSet::new();
+        for selector in &out.receipt.content.selectors {
+            match selector {
+                Selector::Task { task_id, .. } => {
+                    node_ids.insert(*task_id);
+                }
+                Selector::Dependency {
+                    edge_id,
+                    prerequisite_id,
+                    dependent_id,
+                    ..
+                } => {
+                    edge_ids.insert(*edge_id);
+                    node_ids.insert(*prerequisite_id);
+                    node_ids.insert(*dependent_id);
+                }
+            }
+        }
+        let node_ids: Vec<_> = node_ids.into_iter().collect();
+        let edge_ids: Vec<_> = edge_ids.into_iter().collect();
+        let batches=sqlx::query("SELECT b.sequence,b.group_id FROM graph_observation_batches b WHERE b.workspace_id=$1 AND b.generation=$2 AND b.sequence>$3 AND b.sequence<=$4 AND (b.kind='gap' OR EXISTS(SELECT 1 FROM graph_observation_facts f WHERE f.workspace_id=b.workspace_id AND f.generation=b.generation AND f.sequence=b.sequence AND ((f.object_kind='node' AND f.object_id=ANY($5)) OR (f.object_kind='edge' AND f.object_id=ANY($6))))) ORDER BY b.sequence LIMIT $7").bind(p.workspace_id).bind(decimal(&h.scope.generation,true)?).bind(sequence).bind(through_sequence).bind(&node_ids).bind(&edge_ids).bind((limit+1)as i64).fetch_all(&mut *tx).await?;
+        // Reserve complete continuation metadata before measuring any candidate group.
+        out.next_cursor = Some(out.through.clone());
         let mut cut = false;
         for batch in &batches {
             if out.groups.len() == limit {
@@ -520,7 +536,7 @@ impl Store {
             }
             let seq: i64 = batch.get("sequence");
             let group_id: Uuid = batch.get("group_id");
-            let rows=sqlx::query("SELECT object_kind,object_id,before_fact,after_fact,mutation_count,transition_class FROM graph_observation_facts WHERE workspace_id=$1 AND generation=$2 AND sequence=$3 AND object_id=ANY($4) ORDER BY object_kind,object_id").bind(p.workspace_id).bind(decimal(&h.scope.generation,true)?).bind(seq).bind(&ids).fetch_all(&mut *tx).await?;
+            let rows=sqlx::query("SELECT object_kind,object_id,before_fact,after_fact,mutation_count,transition_class FROM graph_observation_facts WHERE workspace_id=$1 AND generation=$2 AND sequence=$3 AND ((object_kind='node' AND object_id=ANY($4)) OR (object_kind='edge' AND object_id=ANY($5))) ORDER BY object_kind,object_id").bind(p.workspace_id).bind(decimal(&h.scope.generation,true)?).bind(seq).bind(&node_ids).bind(&edge_ids).fetch_all(&mut *tx).await?;
             let mut facts = vec![];
             for r in rows {
                 let kind: String = r.get("object_kind");

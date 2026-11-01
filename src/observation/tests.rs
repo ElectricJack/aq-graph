@@ -893,3 +893,28 @@ async fn committed_observation_transaction_fact_limit_has_reserved_gap_and_bound
         Status::Gap
     );
 }
+
+#[tokio::test]
+async fn committed_observation_selector_kind_is_part_of_object_identity() {
+    let f = Fixture::new().await;
+    let task = f.node().await;
+    let other = f.node().await;
+    // Node and edge primary keys have independent UUID namespaces. A deliberately
+    // equal UUID must not turn an edge-only update into a selected Task event.
+    f.apply(vec![
+        json!({"op":"add_edge","id":task,"source":task,"target":other,"edge_type":"references"}),
+    ])
+    .await;
+    let snap = f.capture(task).await;
+    let (_, receipt) = f
+        .register(snap.content.captured_cursor.clone(), task, 100)
+        .await;
+    sqlx::query("UPDATE edges SET deleted=true,version=version+1 WHERE id=$1")
+        .bind(task)
+        .execute(&f.store.pool)
+        .await
+        .unwrap();
+    let page = f.pull(&receipt, &snap.content.captured_cursor, 16).await;
+    assert!(page.groups.is_empty());
+    assert_eq!(page.next_cursor.as_ref(), Some(&page.through));
+}
