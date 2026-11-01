@@ -918,3 +918,89 @@ async fn committed_observation_selector_kind_is_part_of_object_identity() {
     assert!(page.groups.is_empty());
     assert_eq!(page.next_cursor.as_ref(), Some(&page.through));
 }
+
+#[tokio::test]
+async fn committed_observation_receipts_are_actor_scoped_and_current_readers_can_subscribe() {
+    let f = Fixture::new().await;
+    let task = f.node().await;
+    let snap = f.capture(task).await;
+    let (_, receipt) = f
+        .register(snap.content.captured_cursor.clone(), task, 100)
+        .await;
+    let token = format!("observation-reader-{}", Uuid::new_v4());
+    f.store
+        .grant(&f.p, "reader", &token, crate::domain::Capability::Read)
+        .await
+        .unwrap();
+    let reader = f
+        .store
+        .authenticate(&token, f.p.workspace_id)
+        .await
+        .unwrap();
+    let current = identity(&token);
+    let q = PullQuery {
+        request_digest: Some(receipt.content.request_digest.clone()),
+        ..Default::default()
+    };
+    assert!(matches!(
+        f.store
+            .observation_pull(&reader, &current, receipt.content.subscriber_id, &q, 101)
+            .await,
+        Err(Error::NotFound)
+    ));
+    let req = request(snap.content.captured_cursor.clone(), task, 100);
+    let mine = f
+        .store
+        .observation_register(&reader, &current, &req, 100)
+        .await
+        .unwrap();
+    assert_eq!(mine.status, Status::Available);
+    assert_eq!(mine.receipt.unwrap().content.actor_id, "reader");
+    let g = Fixture::new().await;
+    assert!(matches!(
+        f.store
+            .observation_pull(&g.p, &g.c, receipt.content.subscriber_id, &q, 101)
+            .await,
+        Err(Error::NotFound)
+    ));
+}
+#[tokio::test]
+async fn committed_observation_without_starting_boundary_never_rebinds_stale_pin() {
+    let f = Fixture::new().await;
+    let task = f.node().await;
+    let starting = f.capture(task).await;
+    f.state(task, 1, "completed").await;
+    f.state(task, 2, "active").await;
+    let mut req = request(starting.content.captured_cursor, task, 100);
+    req.from_cursor = None;
+    let response = f
+        .store
+        .observation_register(&f.p, &f.c, &req, 100)
+        .await
+        .unwrap();
+    let receipt = response.receipt.unwrap();
+    let Selector::Task {
+        starting_logical_revision,
+        ..
+    } = &receipt.content.selectors[0]
+    else {
+        unreachable!()
+    };
+    assert_eq!(starting_logical_revision, "1");
+    let ObservedObject::Node {
+        value: Some(actual),
+        ..
+    } = &receipt.content.snapshot.content.objects[0]
+    else {
+        unreachable!()
+    };
+    assert_eq!(actual.logical_revision, "3");
+    assert_eq!(
+        receipt.content.initial_cursor,
+        receipt.content.snapshot.content.captured_cursor
+    );
+    let page = f.pull(&receipt, &receipt.content.initial_cursor, 16).await;
+    assert!(page.groups.is_empty());
+    // This is a changed pin, not evidence that no completion happened. The adapter
+    // MUST refuse/reconcile; Graph does not replace selector1 with snapshot3.
+}
