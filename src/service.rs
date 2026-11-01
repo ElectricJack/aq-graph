@@ -1,4 +1,5 @@
 //! Versioned HTTP transport. Authority is always obtained from the credential store.
+mod observations;
 use crate::{domain::*, store::Store};
 use axum::{
     Json, Router,
@@ -42,6 +43,20 @@ pub fn router(store: Store) -> Router {
         admission: Arc::new(Semaphore::new(MAX_IN_FLIGHT)),
     };
     let authenticated = Router::new()
+        .route(
+            "/observations/capabilities",
+            get(observations::capabilities),
+        )
+        .route("/observations/snapshot", post(observations::snapshot))
+        .route("/observations/subscriptions", post(observations::register))
+        .route(
+            "/observations/subscriptions/{id}/changes",
+            get(observations::changes),
+        )
+        .route(
+            "/observations/subscriptions/{id}",
+            delete(observations::release),
+        )
         .route("/nodes", get(list_nodes))
         .route("/nodes/{id}", get(get_node))
         .route("/nodes/{id}/context", get(context))
@@ -278,9 +293,11 @@ async fn authenticate(
     let Some(token) = token else {
         return Error::Unauthorized.into_response();
     };
+    let observation_identity = crate::observation::identity(token);
     match state.store.authenticate(token, workspace).await {
         Ok(principal) => {
             request.extensions_mut().insert(principal);
+            request.extensions_mut().insert(observation_identity);
             next.run(request).await
         }
         Err(error) => error.into_response(),

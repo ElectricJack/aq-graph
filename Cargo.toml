@@ -1,6 +1,6 @@
 [package]
 name = "aq-graph"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Standalone task and knowledge graph service"
 
@@ -8,6 +8,8 @@ description = "Standalone task and knowledge graph service"
 members = ["."]
 
 [dependencies]
+base64 = "0.22"
+schemars = { version = "1", features = ["uuid1"] }
 anyhow = "1"
 axum = "0.8"
 chrono = { version = "0.4", features = ["serde"] }

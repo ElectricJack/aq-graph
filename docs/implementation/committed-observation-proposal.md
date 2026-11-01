@@ -1,6 +1,9 @@
 # Committed Graph observations for AQ waits and policy events
 
-Status: source-audited proposal, not an implemented or published capability.
+Status: approved source-audited proposal. The isolated, still-unqualified implementation
+candidate and exact frozen handshake/limits are in
+[committed-observation-candidate.md](committed-observation-candidate.md).
+This proposal commit itself did not implement or publish a capability.
 Base: aq-graph `225329cd6acf5a775fd2a0b016dd1c45fb16c79b`. No code, dependency,
 DDL, canonical service, schema or graph data change is included. The repository
 has no root AGENTS.md. Changes here are isolated from the existing uncommitted
