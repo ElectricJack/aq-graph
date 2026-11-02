@@ -11,8 +11,10 @@ allocated or used. Existing Graph node/edge/history formats and routes are intac
 Independent review subsequently found an expiry-clock freshness blocker in the
 historical5e3595f qualification. The [source correction](committed-observation-expiry-review.md)
 refreshes trusted owner time after locks/retries and at the final postcommit response
-decision. Its new lock-crossing regressions are prepared but not yet compiled/run;
-old passing evidence does not qualify that correction or authorize source admission.
+decision. The [separate correction qualification](evidence/committed-observation-expiry/README.md)
+passes25 source tests including three new expiry regressions, with strict checks.
+Old passing evidence remains historical; neither checkpoint authorizes production
+source admission.
 
 ## Exact starting boundary and registration handshake
 

@@ -1,9 +1,10 @@
 # Observation expiry review correction
 
-Status: source correction prepared after independent review of product5e3595f.
-Compilation and actual PostgreSQL execution of this followup await a coordinated
-SERVER target lease. Historical qualification remains immutable under
-`evidence/committed-observation/`; its passing tests did not cover this race.
+Status: independently reviewed source correction433d728, now component-qualified
+in [separate correction evidence](evidence/committed-observation-expiry/README.md).
+The coordinated offline compile,25-case actual/pure regression group and strict
+checks passed. Historical qualification remains immutable under
+`evidence/committed-observation/`; its original passing tests did not cover this race.
 No canonical4195/service/schema/data change or source advertisement is included.
 
 The reviewer identified that HTTP sampled UTC once before registration/pull. The
@@ -30,7 +31,7 @@ before its deadline. AQ must independently honor its original wait deadline; nei
 network delay nor a retained receipt extends it. Source-changed/gap/released/error
 statuses remain unavailable and never become completion evidence.
 
-Three actual-PostgreSQL tests are prepared, not yet run for this correction:
+Three new actual-PostgreSQL tests passed in the correction's25-case observation group:
 
 - A real backend blocks registration on a held head while the original lease is live;
   the actual owner UTC deadline passes before release. The response must be Expired

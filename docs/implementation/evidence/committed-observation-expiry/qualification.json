@@ -1,0 +1,127 @@
+{
+  "component": "aq-graph",
+  "version": "0.1.1",
+  "migration": 9,
+  "profile": "graph-committed-observation-1",
+  "reviewed_source_commit": "433d7282eb524edb63a6f4da266ebed816ecbc68",
+  "independent_source_review": "accepted by Decisions owner before compilation",
+  "preceding_historical_qualification": "../committed-observation/qualification.json",
+  "preceding_source_commit": "5e3595fe33ff823ab667576146de34a5520484cc",
+  "correction": "fresh trusted owner clock after locks/retries, before fresh control insertion, and at final postcommit availability decision",
+  "status": "isolated_component_correction_qualified_not_deployed",
+  "source_sha256": {
+    "Cargo.toml": "8422cb62680db475f33fb1278e34cf8f900f6a4cac87cb296c10c2cc0ef26c5b",
+    "Cargo.lock": "1b6fffd60412397dc54c1c0209b86f21fac66cb47092ffcbf7dbc149d89e316a",
+    "src/observation/mod.rs": "d0976c5bdf315715f584ee37a2e0eb73d06d937471faec8c08b2a2ad9ed718b6",
+    "src/observation/store.rs": "9aad41dd0d5e5a80f80915c35e0a2fe6648b599016480d65673bc1fc2238c296",
+    "src/observation/tests.rs": "1adbfd5fbfa5fbfe0026813a689f9c930b51f19f39584a82270bdffca9fb0263",
+    "src/service/observations.rs": "0f873dfbda54fd45630d4e6b18c6b4d0607d34d685fdda26b831b9513721c377",
+    "migrations/0009_committed_observation.sql": "d2f571fc1d057d44feae0772e6ea8c40b99b10937f1f9f616dbb73cd1ddd2ee2",
+    "examples/qualify_observation.rs": "295103a76e670dc3aecbf4c2bae43322c4dd0253dd6b414f26585fd2346dd54c",
+    "examples/support/observation_test_db.rs": "e46bfede7a29c152938d1d537af4e1a4a637294bfaa8658bc85cec6a53e9bbd9"
+  },
+  "test_binary": {
+    "path": "/tmp/aq-native-union-target/debug/deps/aq_graph-8eed71d9fe09af12",
+    "sha256": "39829bc7704400a6b8b1d9c9354cb776ce14c5db94b44804a3cdf50d32a4d853"
+  },
+  "guard_binary_sha256": "9cdebf716511df3d0d00732d811648cd87b1b988e8046a0ee082b0dc636715d3",
+  "protocol_sha256": {
+    "register-request.json": "85cb08f51b2cf861aa91ba1301670b5ba0ed10c2d00a2b65cb399d696456008c",
+    "schema.json": "c77a4b72eec1f404f4a2a9b433f447ad3fca2192c434787180bc6d0459a3f138",
+    "snapshot-request.json": "85aa9c06d2fcc31371e92de5891cfa22c8656474677a59a93205ecccd44922cb",
+    "snapshot-response.json": "e9aa6ab134d71192f539c10363a93a861a1fa36aa606f2b2509df58586e79cc4"
+  },
+  "dto_schema_and_examples_unchanged_from_preceding_checkpoint": true,
+  "runs": {
+    "compile": {
+      "passed": true,
+      "seconds": 10.47
+    },
+    "source_regression_group": {
+      "passed": 25,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_old_lib_tests": 14,
+      "seconds": 5.3,
+      "threads": 2,
+      "composition": "22 preceding source tests +3 new actual PostgreSQL expiry tests; 4 pure+21 actual PostgreSQL total"
+    },
+    "clippy_all_targets": {
+      "passed": true,
+      "seconds": 6.6,
+      "warnings_denied": true
+    }
+  },
+  "new_actual_tests": [
+    {
+      "name": "committed_observation_head_wait_and_rr_retry_refresh_original_expiry_clock",
+      "cases": [
+        "unchanged head lock crossing actual UTC deadline",
+        "physical head row update requiring whole RR retry after actual UTC deadline"
+      ],
+      "barrier": "actual blocked backend identified by pg_blocking_pids before deadline",
+      "assertions": [
+        "Expired",
+        "no fresh control",
+        "original deadline unchanged"
+      ]
+    },
+    {
+      "name": "committed_observation_credential_wait_cannot_replay_after_original_expiry",
+      "clock": "actual SystemClock UTC",
+      "barrier": "actual credential FOR SHARE waiter blocked by owned FOR UPDATE transaction",
+      "assertions": [
+        "Expired",
+        "zero groups",
+        "no next cursor",
+        "exact original receipt and expiry"
+      ]
+    },
+    {
+      "name": "committed_observation_final_owner_decision_clears_expired_page_and_keeps_original_receipt",
+      "clock": "deterministic advancing test-only owner clock, not a wall-clock measurement",
+      "assertions": [
+        "prepared replay proof discarded after final fence",
+        "commit crossing original deadline returns Expired",
+        "exact receipt original expiry104 and retention104+3600000 preserved"
+      ]
+    }
+  ],
+  "environment": {
+    "cargo_offline_locked": true,
+    "jobs": 2,
+    "debug": 0,
+    "incremental": 0,
+    "target": "existing coordinated SERVER /tmp/aq-native-union-target",
+    "database": "fresh Graph-only owned UUID database on existing test55432",
+    "owned_database": "aq_test_1f25947d63ac434e9a9761ec6dc57420",
+    "canonical_graph_4195_changed": false,
+    "main_checkout_changed": false,
+    "new_service_or_container": false
+  },
+  "cleanup_readonly_verification": {
+    "container": "agent-q-test-db",
+    "server_version": "17.11 (Debian 17.11-1.pgdg12+2)",
+    "system_identifier": "7702509189573074990",
+    "remaining_exact_owned_database": 0
+  },
+  "new_failures_or_skips": false,
+  "latency_smoke": {
+    "n": 24,
+    "write_p50_us": 9825,
+    "write_p95_us": 12106,
+    "snapshot_p50_us": 3747,
+    "snapshot_p95_us": 4271,
+    "production_capacity_claim": false
+  },
+  "scope_limits": [
+    "final owner response decision after commit, not network delivery before expiry",
+    "original wait deadline independently required at AQ; receipts do not extend it",
+    "full147 old regression checkpoint historical before clock correction; no claim it was rerun here",
+    "savepoint runtime vector deferred",
+    "maximum sparse journal/control-byte performance deferred",
+    "real process/restart/restore deployment deferred",
+    "AQ25 production adapter/admission/execution authority absent",
+    "current4195 remains unsupported for this profile"
+  ]
+}

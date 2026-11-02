@@ -1,0 +1,3 @@
+   Compiling aq-graph v0.1.1 (/tmp/aq-graph-committed-observation-v2)
+    Finished `test` profile [unoptimized] target(s) in 10.47s
+  Executable unittests src/lib.rs (/tmp/aq-native-union-target/debug/deps/aq_graph-8eed71d9fe09af12)
