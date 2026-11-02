@@ -8,6 +8,12 @@ records the concrete first implementation and handshake refinements. The existin
 4195 service remains unsupported for this new source protocol. AQ SQL38 is not
 allocated or used. Existing Graph node/edge/history formats and routes are intact.
 
+Independent review subsequently found an expiry-clock freshness blocker in the
+historical5e3595f qualification. The [source correction](committed-observation-expiry-review.md)
+refreshes trusted owner time after locks/retries and at the final postcommit response
+decision. Its new lock-crossing regressions are prepared but not yet compiled/run;
+old passing evidence does not qualify that correction or authorize source admission.
+
 ## Exact starting boundary and registration handshake
 
 New authenticated workspace-relative routes:

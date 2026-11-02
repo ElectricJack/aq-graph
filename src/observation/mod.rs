@@ -575,6 +575,26 @@ impl PullQuery {
         Ok((n, b))
     }
 }
+/// The owner, never a request timestamp, supplies lease time. Sample after waits
+/// and again at the final response decision; the original absolute expiry stays fixed.
+pub(crate) trait OwnerClock: Send + Sync {
+    fn now_ms(&self) -> i64;
+}
+#[derive(Clone, Copy)]
+pub(crate) struct SystemClock;
+impl OwnerClock for SystemClock {
+    fn now_ms(&self) -> i64 {
+        chrono::Utc::now().timestamp_millis()
+    }
+}
+// Fixed clocks exist only in the component test build, preserving deterministic
+// original-expiry vectors. Production HTTP always uses SystemClock.
+#[cfg(test)]
+impl OwnerClock for i64 {
+    fn now_ms(&self) -> i64 {
+        *self
+    }
+}
 #[derive(Clone)]
 pub(crate) struct CredentialIdentity(pub String);
 pub(crate) fn identity(token: &str) -> CredentialIdentity {

@@ -1227,3 +1227,208 @@ async fn committed_observation_scope_deletion_is_unavailable_and_recreation_chan
         "old source scope must not install a fresh subscription"
     );
 }
+
+async fn observation_lock_waiter(pool: &sqlx::PgPool, owner: i32) -> i32 {
+    let until = Instant::now() + Duration::from_secs(1);
+    loop {
+        let waiter:Option<i32>=sqlx::query_scalar("SELECT pid FROM pg_stat_activity WHERE datname=current_database() AND state='active' AND $1=ANY(pg_blocking_pids(pid)) ORDER BY pid LIMIT 1").bind(owner).fetch_optional(pool).await.unwrap();
+        if let Some(waiter) = waiter {
+            return waiter;
+        }
+        assert!(
+            Instant::now() < until,
+            "actual observation owner never reached held database lock"
+        );
+        tokio::time::sleep(Duration::from_millis(2)).await;
+    }
+}
+async fn observation_cross_deadline(expires: i64) {
+    let until = Instant::now() + Duration::from_secs(2);
+    while SystemClock.now_ms() < expires {
+        assert!(
+            Instant::now() < until,
+            "owner wall clock failed to cross bounded test deadline"
+        );
+        tokio::time::sleep(Duration::from_millis(2)).await;
+    }
+}
+#[tokio::test]
+async fn committed_observation_head_wait_and_rr_retry_refresh_original_expiry_clock() {
+    // One case waits on an unchanged head; the other commits a physical head
+    // update so RR must retry its entire snapshot. Neither may reuse arrival time.
+    for force_retry in [false, true] {
+        let f = Fixture::new().await;
+        let task = f.node().await;
+        let snap = f.capture(task).await;
+        let now = SystemClock.now_ms();
+        let mut req = request(snap.content.captured_cursor, task, now);
+        req.original_expires_at_ms = (now + 500).to_string();
+        let expires = now + 500;
+        let mut held = f.store.pool.begin().await.unwrap();
+        if force_retry {
+            sqlx::query("UPDATE graph_observation_heads SET control_bytes=control_bytes WHERE workspace_id=$1").bind(f.p.workspace_id).execute(&mut *held).await.unwrap();
+        } else {
+            sqlx::query(
+                "SELECT workspace_id FROM graph_observation_heads WHERE workspace_id=$1 FOR UPDATE",
+            )
+            .bind(f.p.workspace_id)
+            .fetch_one(&mut *held)
+            .await
+            .unwrap();
+        }
+        let owner: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+            .fetch_one(&mut *held)
+            .await
+            .unwrap();
+        let store = f.store.clone();
+        let principal = f.p.clone();
+        let credential = f.c.clone();
+        let original = req.clone();
+        let pending = tokio::spawn(async move {
+            store
+                .observation_register(&principal, &credential, &original, SystemClock)
+                .await
+        });
+        let waiter = observation_lock_waiter(&f.store.pool, owner).await;
+        assert_ne!(waiter, owner);
+        assert!(
+            SystemClock.now_ms() < expires,
+            "request must actually wait while original lease is live"
+        );
+        assert!(!pending.is_finished());
+        observation_cross_deadline(expires).await;
+        held.commit().await.unwrap();
+        let out = pending.await.unwrap().unwrap();
+        assert_eq!(out.status, Status::Expired);
+        assert!(out.receipt.is_none());
+        let count: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM graph_observation_subscriptions WHERE workspace_id=$1",
+        )
+        .bind(f.p.workspace_id)
+        .fetch_one(&f.store.pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            count, 0,
+            "no fresh control after held-lock expiry, including RR retry"
+        );
+        assert_eq!(req.original_expires_at_ms, expires.to_string());
+    }
+}
+#[tokio::test]
+async fn committed_observation_credential_wait_cannot_replay_after_original_expiry() {
+    let f = Fixture::new().await;
+    let task = f.node().await;
+    let snap = f.capture(task).await;
+    let now = SystemClock.now_ms();
+    let mut req = request(snap.content.captured_cursor.clone(), task, now);
+    req.original_expires_at_ms = (now + 500).to_string();
+    let receipt = f
+        .store
+        .observation_register(&f.p, &f.c, &req, SystemClock)
+        .await
+        .unwrap()
+        .receipt
+        .unwrap();
+    f.state(task, 1, "completed").await;
+    let mut held = f.store.pool.begin().await.unwrap();
+    sqlx::query(
+        "SELECT actor_id FROM credentials WHERE workspace_id=$1 AND actor_id=$2 FOR UPDATE",
+    )
+    .bind(f.p.workspace_id)
+    .bind(&f.p.actor_id)
+    .fetch_one(&mut *held)
+    .await
+    .unwrap();
+    let owner: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+        .fetch_one(&mut *held)
+        .await
+        .unwrap();
+    let q = PullQuery {
+        after: Some(snap.content.captured_cursor.encode().unwrap()),
+        receipt_digest: Some(receipt.reference.digest.clone()),
+        ..Default::default()
+    };
+    let store = f.store.clone();
+    let principal = f.p.clone();
+    let credential = f.c.clone();
+    let id = req.subscriber_id;
+    let pending = tokio::spawn(async move {
+        store
+            .observation_pull(&principal, &credential, id, &q, SystemClock)
+            .await
+    });
+    observation_lock_waiter(&f.store.pool, owner).await;
+    let expires = decimal(&req.original_expires_at_ms, true).unwrap();
+    assert!(SystemClock.now_ms() < expires);
+    assert!(!pending.is_finished());
+    observation_cross_deadline(expires).await;
+    held.commit().await.unwrap();
+    let out = pending.await.unwrap().unwrap();
+    assert_eq!(out.status, Status::Expired);
+    assert!(out.groups.is_empty());
+    assert!(out.next_cursor.is_none());
+    assert_eq!(out.receipt.reference.digest, receipt.reference.digest);
+    assert_eq!(
+        out.receipt.content.original_expires_at_ms,
+        req.original_expires_at_ms
+    );
+}
+struct AdvancingOwnerClock(std::sync::atomic::AtomicI64);
+impl OwnerClock for AdvancingOwnerClock {
+    fn now_ms(&self) -> i64 {
+        self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+    }
+}
+#[tokio::test]
+async fn committed_observation_final_owner_decision_clears_expired_page_and_keeps_original_receipt()
+{
+    let f = Fixture::new().await;
+    let task = f.node().await;
+    let snap = f.capture(task).await;
+    let (_, receipt) = f
+        .register(snap.content.captured_cursor.clone(), task, 100)
+        .await;
+    f.state(task, 1, "completed").await;
+    // Deterministic owner-clock fixture: live at initial eligibility read, expired
+    // at the final postcommit response decision. No wall-clock authority is forged.
+    let page = f
+        .store
+        .observation_pull(
+            &f.p,
+            &f.c,
+            receipt.content.subscriber_id,
+            &PullQuery {
+                after: Some(snap.content.captured_cursor.encode().unwrap()),
+                receipt_digest: Some(receipt.reference.digest.clone()),
+                ..Default::default()
+            },
+            AdvancingOwnerClock(std::sync::atomic::AtomicI64::new(1099)),
+        )
+        .await
+        .unwrap();
+    assert_eq!(page.status, Status::Expired);
+    assert!(page.groups.is_empty());
+    assert!(page.next_cursor.is_none());
+    assert_eq!(page.receipt.reference.digest, receipt.reference.digest);
+    assert_eq!(page.receipt.content.original_expires_at_ms, "1100");
+    let mut req = request(snap.content.captured_cursor, task, 100);
+    req.original_expires_at_ms = "104".into();
+    // Calls100/101/102/103 pass initial/locked/preinsert checks; final104 cannot
+    // call the durably committed original receipt Available or extend its expiry.
+    let out = f
+        .store
+        .observation_register(
+            &f.p,
+            &f.c,
+            &req,
+            AdvancingOwnerClock(std::sync::atomic::AtomicI64::new(100)),
+        )
+        .await
+        .unwrap();
+    assert_eq!(out.status, Status::Expired);
+    let original = out.receipt.unwrap();
+    assert_eq!(original.content.original_expires_at_ms, "104");
+    let stored:(i64,i64)=sqlx::query_as("SELECT original_expires_at_ms,retain_until_ms FROM graph_observation_subscriptions WHERE workspace_id=$1 AND actor_id=$2 AND subscriber_id=$3").bind(f.p.workspace_id).bind(&f.p.actor_id).bind(req.subscriber_id).fetch_one(&f.store.pool).await.unwrap();
+    assert_eq!(stored, (104, 104 + RETRY_RETENTION_MS));
+}

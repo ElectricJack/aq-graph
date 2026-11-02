@@ -178,6 +178,32 @@ async fn snapshot(tx: &mut Tx<'_>, h: &Head, selectors: &[SnapshotTarget]) -> Re
         content,
     })
 }
+fn expire_registration(out: &mut Registration, expires: i64, clock: &dyn OwnerClock) {
+    if out.status == Status::Available && clock.now_ms() >= expires {
+        out.status = Status::Expired;
+    }
+}
+fn expire_pull(out: &mut Pull, expires: i64, clock: &dyn OwnerClock) {
+    if out.status == Status::Available && clock.now_ms() >= expires {
+        out.status = Status::Expired;
+        out.groups.clear();
+        out.next_cursor = None;
+    }
+}
+async fn finish_pull(
+    tx: Tx<'_>,
+    mut out: Pull,
+    max: usize,
+    expires: i64,
+    clock: &dyn OwnerClock,
+) -> Result<Pull> {
+    bounded(&out, max)?;
+    tx.commit().await?;
+    // Commit or a prior read may itself cross the original deadline. There are
+    // no further awaits after this owner decision, and no expired event proof.
+    expire_pull(&mut out, expires, clock);
+    Ok(out)
+}
 fn registration(h: &Head, status: Status, receipt: Option<Receipt>) -> Registration {
     Registration {
         contract: Contract::V1,
@@ -277,11 +303,11 @@ impl Store {
         p: &Principal,
         c: &CredentialIdentity,
         req: &RegisterRequest,
-        now: i64,
+        clock: impl OwnerClock,
     ) -> Result<Registration> {
-        req.validate(p.workspace_id, now)?;
+        req.validate(p.workspace_id, clock.now_ms())?;
         for attempt in 0..8 {
-            match self.observation_register_once(p, c, req, now).await {
+            match self.observation_register_once(p, c, req, &clock).await {
                 Err(e) if retryable(&e) && attempt < 7 => {
                     tokio::time::sleep(std::time::Duration::from_millis(16 << attempt.min(4))).await
                 }
@@ -296,10 +322,14 @@ impl Store {
         p: &Principal,
         c: &CredentialIdentity,
         req: &RegisterRequest,
-        now: i64,
+        clock: &dyn OwnerClock,
     ) -> Result<Registration> {
         let mut tx = begin(self, p, c).await?;
         let mut h = head(&mut tx, p.workspace_id, true).await?;
+        // Both credential and head waits have ended. Every RR retry obtains its
+        // own fresh owner time instead of carrying the HTTP-arrival timestamp.
+        let now = clock.now_ms();
+        req.validate(p.workspace_id, now)?;
         if req.expected_scope != h.scope {
             return Ok(registration(&h, Status::SourceChanged, None));
         }
@@ -325,9 +355,10 @@ impl Store {
             }
             bounded(&out, MAX_RESPONSE)?;
             tx.commit().await?;
+            expire_registration(&mut out, row.get("original_expires_at_ms"), clock);
             return Ok(out);
         }
-        if decimal(&req.original_expires_at_ms, true)? <= now {
+        if decimal(&req.original_expires_at_ms, true)? <= clock.now_ms() {
             return Ok(registration(&h, Status::Expired, None));
         }
         if h.coverage != "complete" {
@@ -408,11 +439,20 @@ impl Store {
         let retain_until = expires
             .checked_add(RETRY_RETENTION_MS)
             .ok_or_else(|| bad("observation retention time"))?;
+        // Snapshot queries/cleanup may have waited since the first clock read.
+        // Do not install a fresh control once its ORIGINAL deadline has passed.
+        if clock.now_ms() >= expires {
+            tx.rollback().await?;
+            return Ok(registration(&h, Status::Expired, None));
+        }
         sqlx::query("INSERT INTO graph_observation_subscriptions(workspace_id,actor_id,subscriber_id,request_digest,receipt_digest,request,receipt,original_expires_at_ms,retain_until_ms,retained_bytes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)").bind(p.workspace_id).bind(&p.actor_id).bind(req.subscriber_id).bind(raw_digest(&request_digest)?).bind(raw_digest(&receipt_digest)?).bind(serde_json::to_value(req).map_err(|_|bad("observation request encoding"))?).bind(serde_json::to_value(&receipt).map_err(|_|bad("observation receipt encoding"))?).bind(expires).bind(retain_until).bind(retained as i64).execute(&mut *tx).await?;
         sqlx::query("UPDATE graph_observation_heads SET control_count=control_count+1,control_bytes=control_bytes+$2 WHERE workspace_id=$1").bind(p.workspace_id).bind(retained as i64).execute(&mut *tx).await?;
-        let out = registration(&h, Status::Available, Some(receipt));
+        let mut out = registration(&h, Status::Available, Some(receipt));
         bounded(&out, MAX_RESPONSE)?;
         tx.commit().await?;
+        // A durable commit can cross the deadline after the pre-insert check.
+        // Retain its exact expired receipt, never extend it or call it available.
+        expire_registration(&mut out, expires, clock);
         Ok(out)
     }
     pub(crate) async fn observation_pull(
@@ -421,7 +461,7 @@ impl Store {
         c: &CredentialIdentity,
         id: Uuid,
         q: &PullQuery,
-        now: i64,
+        clock: impl OwnerClock,
     ) -> Result<Pull> {
         let (limit, max_bytes) = q.limits()?;
         let mut tx = begin(self, p, c).await?;
@@ -439,6 +479,7 @@ impl Store {
                 "observation receipt reference mismatch",
             )?;
         }
+        let expires: i64 = row.get("original_expires_at_ms");
         let receipt: Receipt = decode(row.get("receipt"))?;
         let after = if let Some(cursor) = &q.after {
             check(
@@ -464,19 +505,15 @@ impl Store {
         };
         if after.scope != h.scope || out.receipt.content.scope != h.scope {
             out.status = Status::SourceChanged;
-            bounded(&out, max_bytes)?;
-            tx.commit().await?;
-            return Ok(out);
+            return finish_pull(tx, out, max_bytes, expires, &clock).await;
         }
         if row.get::<bool, _>("released") {
             out.status = Status::Released;
-        } else if now >= row.get::<i64, _>("original_expires_at_ms") {
+        } else if clock.now_ms() >= expires {
             out.status = Status::Expired;
         }
         if out.status != Status::Available {
-            bounded(&out, max_bytes)?;
-            tx.commit().await?;
-            return Ok(out);
+            return finish_pull(tx, out, max_bytes, expires, &clock).await;
         }
         let sequence = decimal(&after.committed_sequence, false)?;
         check(
@@ -491,9 +528,7 @@ impl Store {
         if sequence < h.floor || h.coverage != "complete" {
             out.status = Status::Gap;
             out.gap = Some(h.gap(Some(after), h.gap_reason.as_deref().unwrap_or("retention")));
-            bounded(&out, max_bytes)?;
-            tx.commit().await?;
-            return Ok(out);
+            return finish_pull(tx, out, max_bytes, expires, &clock).await;
         }
         if sequence > 0 {
             let anchor:Option<Uuid>=sqlx::query_scalar("SELECT group_id FROM graph_observation_batches WHERE workspace_id=$1 AND generation=$2 AND sequence=$3").bind(p.workspace_id).bind(decimal(&h.scope.generation,true)?).bind(sequence).fetch_optional(&mut *tx).await?;
@@ -509,9 +544,7 @@ impl Store {
                 "observation exact request required for receipt lookup",
             )?;
             out.through = out.receipt.content.initial_cursor.clone();
-            bounded(&out, max_bytes)?;
-            tx.commit().await?;
-            return Ok(out);
+            return finish_pull(tx, out, max_bytes, expires, &clock).await;
         }
         if let Some(through) = &q.through {
             let cursor = Cursor::decode(through)?;
@@ -612,9 +645,7 @@ impl Store {
         } else {
             out.through.clone()
         });
-        bounded(&out, max_bytes)?;
-        tx.commit().await?;
-        Ok(out)
+        finish_pull(tx, out, max_bytes, expires, &clock).await
     }
     pub(crate) async fn observation_release(
         &self,

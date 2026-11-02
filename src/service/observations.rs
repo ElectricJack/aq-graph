@@ -1,5 +1,7 @@
 use super::*;
-use crate::observation::{CredentialIdentity, PullQuery, RegisterRequest, SnapshotRequest};
+use crate::observation::{
+    CredentialIdentity, PullQuery, RegisterRequest, SnapshotRequest, SystemClock,
+};
 use axum::body::Bytes;
 fn failure(error: Error) -> Response {
     match error {
@@ -13,9 +15,6 @@ fn failure(error: Error) -> Response {
         }
         other => other.into_response(),
     }
-}
-fn now_ms() -> i64 {
-    Utc::now().timestamp_millis()
 }
 pub(super) async fn capabilities(
     State(s): State<HttpState>,
@@ -54,7 +53,7 @@ pub(super) async fn register(
     };
     match s
         .store
-        .observation_register(&p, &c, &request, now_ms())
+        .observation_register(&p, &c, &request, SystemClock)
         .await
     {
         Ok(v) => Json(v).into_response(),
@@ -83,7 +82,7 @@ pub(super) async fn changes(
     };
     match s
         .store
-        .observation_pull(&p, &c, path.id, &q, now_ms())
+        .observation_pull(&p, &c, path.id, &q, SystemClock)
         .await
     {
         Ok(v) => Json(v).into_response(),
