@@ -1,0 +1,44 @@
+   Compiling aq-graph v0.1.1 (/tmp/aq-graph-committed-observation-v2)
+error[E0308]: mismatched types
+  --> examples/qualify_observation.rs:16:37
+   |
+16 |     assert_eq!(opts.get_database(), "postgres");
+   |                                     ^^^^^^^^^^ expected `Option<&str>`, found `&str`
+   |
+   = note:   expected enum `Option<&str>`
+           found reference `&str`
+help: try wrapping the expression in `Some`
+   |
+16 |     assert_eq!(opts.get_database(), Some("postgres"));
+   |                                     +++++          +
+
+error[E0599]: no method named `strip_prefix` found for enum `Option<T>` in the current scope
+  --> examples/qualify_observation.rs:21:10
+   |
+20 |       let suffix = database
+   |  __________________-
+21 | |         .strip_prefix("aq_test_")
+   | |         -^^^^^^^^^^^^ method not found in `Option<&str>`
+   | |_________|
+   |
+   |
+note: the method `strip_prefix` exists on the type `&str`
+  --> /rustc/31fca3adb283cc9dfd56b49cdee9a96eb9c96ffd/library/core/src/str/mod.rs:2439:4
+help: consider using `Option::expect` to unwrap the `&str` value, panicking if the value is an `Option::None`
+   |
+20 |     let suffix = database.expect("REASON")
+   |                          +++++++++++++++++
+
+error[E0277]: `Option<&str>` doesn't implement `std::fmt::Display`
+  --> examples/qualify_observation.rs:26:45
+   |
+26 |         "Graph qualification owned_database={database} cluster=existing-test-55432 (no canonical database)"
+   |                                             ^^^^^^^^^^ `Option<&str>` cannot be formatted with the default formatter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `Option<&str>`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+Some errors have detailed explanations: E0277, E0308, E0599.
+For more information about an error, try `rustc --explain E0277`.
+error: could not compile `aq-graph` (example "qualify_observation") due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...

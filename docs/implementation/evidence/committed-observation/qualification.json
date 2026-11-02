@@ -1,0 +1,151 @@
+{
+  "component": "aq-graph",
+  "version": "0.1.1",
+  "source_commit": "5e3595fe33ff823ab667576146de34a5520484cc",
+  "base_commit": "225329cd6acf5a775fd2a0b016dd1c45fb16c79b",
+  "status": "isolated_component_qualified_not_deployed",
+  "migration": 9,
+  "profile": "graph-committed-observation-1",
+  "source_sha256": {
+    "Cargo.toml": "8422cb62680db475f33fb1278e34cf8f900f6a4cac87cb296c10c2cc0ef26c5b",
+    "Cargo.lock": "1b6fffd60412397dc54c1c0209b86f21fac66cb47092ffcbf7dbc149d89e316a",
+    "migrations/0009_committed_observation.sql": "d2f571fc1d057d44feae0772e6ea8c40b99b10937f1f9f616dbb73cd1ddd2ee2",
+    "src/observation/mod.rs": "b3790283203357fec21fa11f837eab3b728bdb04d793faa123d10143b29be898",
+    "src/observation/store.rs": "9cbc7277f02355df46bafb3a29429d1dc3691ad7b3917e25cd6661672e20dc0e",
+    "src/observation/tests.rs": "260ba22d58148956c4323a4f1395e78b98fa2e8bf0f0fa1d3844cb4bd80475c3",
+    "src/service/observations.rs": "9d6afabae574feececa504e0c1d2e1488ce0bfc3d1d3e4f050a4dd9caf8c00f0",
+    "src/service.rs": "04acc05da4d55f2d12d5457de4b64621ae8ba6023383f40d75df6f31f1f11def",
+    "tests/committed_observation_migration.rs": "405b3d99f82db976dfc3ce621e07fea03540eebd92948d3edaf109d823f58a5c",
+    "examples/qualify_observation.rs": "295103a76e670dc3aecbf4c2bae43322c4dd0253dd6b414f26585fd2346dd54c",
+    "examples/support/observation_test_db.rs": "e46bfede7a29c152938d1d537af4e1a4a637294bfaa8658bc85cec6a53e9bbd9",
+    "examples/observation_contract.rs": "ab4cc2208aa38d911531235b55ab43824892ffb8e0f16beae66857beb15f5a67"
+  },
+  "protocol_sha256": {
+    "register-request.json": "85cb08f51b2cf861aa91ba1301670b5ba0ed10c2d00a2b65cb399d696456008c",
+    "schema.json": "c77a4b72eec1f404f4a2a9b433f447ad3fca2192c434787180bc6d0459a3f138",
+    "snapshot-request.json": "85aa9c06d2fcc31371e92de5891cfa22c8656474677a59a93205ecccd44922cb",
+    "snapshot-response.json": "e9aa6ab134d71192f539c10363a93a861a1fa36aa606f2b2509df58586e79cc4"
+  },
+  "binary_sha256": {
+    "observation_tests": "bc043be6697769963d5f0db3b7600adc9873611ee606284998e1175b4cfbe173",
+    "guard": "9cdebf716511df3d0d00732d811648cd87b1b988e8046a0ee082b0dc636715d3",
+    "contract_generator": "8fce12955d062b5d971fee849967585dfbfaadbbd8a5a691ae1fc66f31443b0b"
+  },
+  "environment": {
+    "cluster": "existing-test-postgres-127.0.0.1:55432",
+    "administrative_database": "postgres",
+    "test_databases": "actual fresh aq_test_<UUIDsimple> only; exact UUID-owned deletion verified",
+    "canonical_graph_4195_changed": false,
+    "canonical_schema_changed": false,
+    "new_service_or_container": false,
+    "cargo_offline": true,
+    "cargo_jobs": 2,
+    "debug": 0,
+    "incremental": 0,
+    "test_threads": 2
+  },
+  "test_db_guard": {
+    "source": "agent-q/crates/aq-server/src/test_support.rs",
+    "original_file_sha256": "ea65691f25d130fd922a2d714fc13fb5649f03471b6cd5a1d7469e326a976ffb",
+    "create_and_drop_verbatim_verified": true,
+    "copied_blocks_sha256": "c60d5fb3e43768d348d681a94a2b7a9ad25d97f616929437d17bfe5d6a35d7db",
+    "excluded": "AQ Store-specific methods only",
+    "wrapper_guards": "127.0.0.1,port55432,adminpostgres database+user; exact UUID name; positive removal check"
+  },
+  "runs": {
+    "compile_first": {
+      "passed": true,
+      "seconds": 38.15
+    },
+    "initial_group": {
+      "passed": 20,
+      "failed": 1,
+      "ignored": 0,
+      "seconds": 3.68,
+      "failure": "closed HTTP path omitted inherited workspace param; refused400 before missing receipt410"
+    },
+    "corrected_http_group": {
+      "passed": 21,
+      "failed": 0,
+      "ignored": 0,
+      "seconds": 3.87
+    },
+    "strict_first": {
+      "passed": false,
+      "failures": [
+        "collapsible_if",
+        "manual_range_contains",
+        "large_enum_variant"
+      ]
+    },
+    "all_targets_first": {
+      "passed": false,
+      "failure": "new head FK blocked legacy emptied workspace deletion; fixed new private source FK cascades"
+    },
+    "all_targets_fixed": {
+      "passed": 147,
+      "failed": 0,
+      "ignored": 0,
+      "nonzero_test_binaries": 18,
+      "zero_test_example_binaries": 2,
+      "sum_test_seconds": 40.25,
+      "compile_seconds": 11.02,
+      "note": "before one additional test-only scope deletion/recreation case; product source unchanged by that test"
+    },
+    "final_observation_group": {
+      "passed": 22,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_old_library_tests": 14,
+      "seconds": 4.24,
+      "note": "includes scope deletion/recreation; 4 pure+18 actual PostgreSQL source tests"
+    },
+    "new_migration_upgrade": {
+      "passed": 1,
+      "seconds": 0.09,
+      "in": "all_targets_fixed"
+    },
+    "strict_final": {
+      "passed": true,
+      "all_targets": true,
+      "seconds": 6.43
+    }
+  },
+  "latency_smoke": {
+    "samples": 24,
+    "write_p50_us": 8898,
+    "write_p95_us": 10238,
+    "snapshot_p50_us": 3246,
+    "snapshot_p95_us": 3733,
+    "source": "all-targets-fixed.log",
+    "conditions": "actual Store operations, atomic starting snapshot; parallel2 fixture load",
+    "production_capacity_claim": false
+  },
+  "concurrency_barriers": [
+    "second actual SQL backend observed active wait_event_type=Lock while first transaction holds head; second cannot overtake first commit",
+    "held node row lock does not block head->plain MVCC starting snapshot within1s",
+    "same SQL transaction complete/reopen coalesces; separate commits retain terminal transition"
+  ],
+  "not_qualified": [
+    "canonical service/API source eligibility",
+    "AQ25 production adapter or wait admission",
+    "hundreds of agents/maximum sparse retained journal performance",
+    "every multi-workspace deadlock and serializable interleaving",
+    "real process restart or physical restore cutover",
+    "continuous compaction/automatic retention recovery",
+    "full proof signatures or execution authority"
+  ],
+  "database_cleanup_readonly_verification": {
+    "container": "agent-q-test-db",
+    "only_names_from_retained_child_logs": [
+      "aq_test_02dd0798020f46599ff0476393d813b0",
+      "aq_test_43dc1ef24061412b89588d1e520f81ff",
+      "aq_test_4abc28ae0c0b470c83cfe8fd7701768f",
+      "aq_test_6a389a7ae81247cb8d6d15e097db04cf",
+      "aq_test_ea6cb6cb9f5c4d32b9b83493352f5140"
+    ],
+    "server_version": "17.11 (Debian 17.11-1.pgdg12+2)",
+    "system_identifier": "7702509189573074990",
+    "remaining_exact_owned_databases": 0
+  }
+}

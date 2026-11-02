@@ -1,0 +1,30 @@
+Graph qualification owned_database=aq_test_02dd0798020f46599ff0476393d813b0 cluster=existing-test-55432 (no canonical database)
+
+running 22 tests
+test observation::tests::additive_schema_is_generated_closed_and_bounds_pages ... ok
+observation isolated smoke n=24 write_p50_us=9319 write_p95_us=10710 snapshot_p50_us=3463 snapshot_p95_us=4015 (not a production capacity claim)
+test observation::tests::committed_observation_bounded_latency_smoke_records_real_owner_operations ... ok
+test observation::tests::committed_observation_group_paging_uses_fixed_through_and_no_partial_groups ... ok
+test observation::tests::committed_observation_head_serializes_commit_and_snapshot_without_row_lock_inversion ... ok
+test observation::tests::committed_observation_http_is_actual_authenticated_closed_and_receipt_owned ... ok
+test observation::tests::committed_observation_invalid_writer_fails_source_closed_but_preserves_domain_commit ... ok
+test observation::tests::committed_observation_journal_quota_retains_explicit_gap_without_stopping_graph_writes ... ok
+test observation::tests::committed_observation_normal_completion_automatic_invalidations_are_lifecycle ... ok
+test observation::tests::committed_observation_original_lease_release_reset_and_revocation_are_fenced ... ok
+test observation::tests::committed_observation_raw_dml_coverage_edges_identity_and_truncate_guard ... ok
+test observation::tests::committed_observation_receipts_are_actor_scoped_and_current_readers_can_subscribe ... ok
+test observation::tests::committed_observation_registration_recovers_separate_commit_completion_then_reopen ... ok
+test observation::tests::committed_observation_rollback_noop_preview_and_other_workspace_do_not_advance ... ok
+test observation::tests::committed_observation_same_transaction_transient_never_qualifies ... ok
+test observation::tests::committed_observation_control_capacity_counts_released_and_cleans_bounded_expired ... ok
+test observation::tests::committed_observation_scope_deletion_is_unavailable_and_recreation_changes_stream ... ok
+test observation::tests::committed_observation_selector_kind_is_part_of_object_identity ... ok
+test observation::tests::committed_observation_without_starting_boundary_never_rebinds_stale_pin ... ok
+test observation::tests::cursor_and_revision_encoding_is_canonical_closed_and_bounded ... ok
+test observation::tests::requests_reject_foreign_scope_duplicates_unknown_fields_and_unbounded_lease ... ok
+test observation::tests::terminal_proof_never_accepts_intermediate_or_changed_basis ... ok
+test observation::tests::committed_observation_transaction_fact_limit_has_reserved_gap_and_bounded_facts ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 4.24s
+
+Graph qualification exact_owned_database_removed=true

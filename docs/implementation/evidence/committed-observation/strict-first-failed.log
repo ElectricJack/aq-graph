@@ -1,0 +1,129 @@
+    Checking serde v1.0.229
+    Checking zerofrom v0.1.8
+    Checking yoke v0.8.4
+    Checking zerovec v0.11.9
+    Checking smallvec v1.16.4
+    Checking parking_lot_core v0.9.12
+    Checking errno v0.3.14
+    Checking parking_lot v0.12.5
+    Checking signal-hook-registry v1.4.8
+    Checking tinystr v0.8.5
+    Checking tokio v1.54.1
+    Checking getrandom v0.2.17
+    Checking icu_locale_core v2.4.0
+    Checking tracing v0.1.44
+    Checking potential_utf v0.1.6
+    Checking zerotrie v0.2.5
+    Checking icu_provider v2.4.0
+    Checking icu_collections v2.4.0
+    Checking ring v0.17.14
+    Checking icu_properties v2.4.0
+    Checking icu_normalizer v2.4.0
+    Checking digest v0.10.7
+    Checking rustls-webpki v0.103.16
+    Checking idna_adapter v1.2.2
+    Checking idna v1.1.0
+    Checking getrandom v0.4.3
+    Checking rustls v0.23.46
+    Checking url v2.5.8
+    Checking num-traits v0.2.19
+    Checking hyper v1.12.0
+    Checking uuid v1.29.0
+    Checking tokio-util v0.7.20
+    Checking rand_core v0.6.4
+    Checking chrono v0.4.45
+    Checking sha2 v0.10.9
+    Checking hyper-util v0.1.21
+    Checking rand_chacha v0.3.1
+    Checking tower v0.5.3
+    Checking hmac v0.12.1
+    Checking tokio-stream v0.1.19
+    Checking thiserror v2.0.21
+    Checking futures-intrusive v0.5.0
+    Checking either v1.19.0
+    Checking regex-syntax v0.8.11
+    Checking sqlx-core v0.8.6
+    Checking regex-automata v0.4.18
+    Checking serde_urlencoded v0.7.1
+    Checking hkdf v0.12.4
+    Checking rand v0.8.8
+    Checking tokio-rustls v0.26.6
+    Checking atoi v2.0.0
+    Checking md-5 v0.10.6
+    Checking byteorder v1.5.0
+    Checking axum-core v0.5.6
+    Checking sqlx-postgres v0.8.6
+    Checking ref-cast v1.0.27
+    Checking hyper-rustls v0.27.10
+    Checking matchers v0.2.0
+    Checking tower-http v0.6.11
+    Checking tracing-serde v0.2.0
+    Checking schemars v1.2.3
+    Checking tracing-subscriber v0.3.23
+    Checking sqlx v0.8.6
+    Checking axum v0.8.9
+    Checking clap v4.6.7
+    Checking reqwest v0.12.28
+    Checking tempfile v3.27.0
+    Checking aq-graph v0.1.1 (/tmp/aq-graph-committed-observation-v2)
+error: this `if` statement can be collapsed
+   --> src/observation/store.rs:353:9
+    |
+353 | /         if let Some(cursor) = &req.from_cursor {
+354 | |             if decimal(&cursor.committed_sequence, false)? < h.floor {
+355 | |                 let mut out = registration(&h, Status::Gap, None);
+356 | |                 out.gap = Some(h.gap(Some(cursor.clone()), "retention"));
+...   |
+359 | |         }
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#collapsible_if
+    = note: `-D clippy::collapsible-if` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+    |
+353 ~         if let Some(cursor) = &req.from_cursor
+354 ~             && decimal(&cursor.committed_sequence, false)? < h.floor {
+355 |                 let mut out = registration(&h, Status::Gap, None);
+356 |                 out.gap = Some(h.gap(Some(cursor.clone()), "retention"));
+357 |                 return Ok(out);
+358 ~             }
+    |
+
+error: manual `RangeInclusive::contains` implementation
+   --> src/observation/mod.rs:572:41
+    |
+572 |             n > 0 && n <= MAX_GROUPS && b >= MAX_RECEIPT_BYTES && b <= MAX_RESPONSE,
+    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `(MAX_RECEIPT_BYTES..=MAX_RESPONSE).contains(&b)`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#manual_range_contains
+    = note: `-D clippy::manual-range-contains` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::manual_range_contains)]`
+
+error: large size difference between variants
+   --> src/observation/mod.rs:591:1
+    |
+591 | / pub enum Document {
+592 | |     SnapshotRequest(SnapshotRequest),
+593 | |     SnapshotRead(SnapshotRead),
+    | |     -------------------------- the second-largest variant contains at least 560 bytes
+594 | |     Request(RegisterRequest),
+595 | |     Registration(Registration),
+    | |     -------------------------- the largest variant contains at least 880 bytes
+596 | |     Pull(Box<Pull>),
+597 | |     Capabilities(Capabilities),
+598 | | }
+    | |_^ the entire enum is at least 880 bytes
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#large_enum_variant
+    = note: `-D clippy::large-enum-variant` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+    |
+595 -     Registration(Registration),
+595 +     Registration(Box<Registration>),
+    |
+
+error: could not compile `aq-graph` (lib) due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `aq-graph` (lib test) due to 3 previous errors

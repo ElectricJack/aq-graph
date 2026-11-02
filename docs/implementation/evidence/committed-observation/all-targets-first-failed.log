@@ -1,0 +1,151 @@
+Graph qualification owned_database=aq_test_ea6cb6cb9f5c4d32b9b83493352f5140 cluster=existing-test-55432 (no canonical database)
+   Compiling aq-graph v0.1.1 (/tmp/aq-graph-committed-observation-v2)
+    Finished `test` profile [unoptimized] target(s) in 13.09s
+     Running unittests src/lib.rs (/tmp/aq-native-union-target/debug/deps/aq_graph-8eed71d9fe09af12)
+
+running 35 tests
+test domain::shared_field_tests::tri_state_patches_preserve_missing_null_and_values ... ok
+test domain::shared_field_tests::content_type_aliases_preserve_normalized_legacy_receipts ... ok
+test domain::tests::default_restore_preserves_pre_upgrade_receipt_payload_shape ... ok
+test domain::shared_field_tests::validity_is_strict_after_microsecond_normalization_and_tasks_accept_common_fields ... ok
+test domain::tests::enforce_graph_limits_and_namespaces ... ok
+test domain::tests::reject_unknown_fields_and_invalid_batches ... ok
+test knowledge_rules::shared_policy_tests::shared_task_writers_do_not_bypass_verification_or_retirement_protection ... ok
+test knowledge_rules::shared_policy_tests::verification_and_summary_rules_apply_identically_to_both_kinds ... ok
+test observation::tests::additive_schema_is_generated_closed_and_bounds_pages ... ok
+observation isolated smoke n=24 write_p50_us=9488 write_p95_us=13766 snapshot_p50_us=3584 snapshot_p95_us=5044 (not a production capacity claim)
+test observation::tests::committed_observation_bounded_latency_smoke_records_real_owner_operations ... ok
+test observation::tests::committed_observation_group_paging_uses_fixed_through_and_no_partial_groups ... ok
+test observation::tests::committed_observation_head_serializes_commit_and_snapshot_without_row_lock_inversion ... ok
+test observation::tests::committed_observation_http_is_actual_authenticated_closed_and_receipt_owned ... ok
+test observation::tests::committed_observation_invalid_writer_fails_source_closed_but_preserves_domain_commit ... ok
+test observation::tests::committed_observation_journal_quota_retains_explicit_gap_without_stopping_graph_writes ... ok
+test observation::tests::committed_observation_normal_completion_automatic_invalidations_are_lifecycle ... ok
+test observation::tests::committed_observation_original_lease_release_reset_and_revocation_are_fenced ... ok
+test observation::tests::committed_observation_raw_dml_coverage_edges_identity_and_truncate_guard ... ok
+test observation::tests::committed_observation_receipts_are_actor_scoped_and_current_readers_can_subscribe ... ok
+test observation::tests::committed_observation_registration_recovers_separate_commit_completion_then_reopen ... ok
+test observation::tests::committed_observation_rollback_noop_preview_and_other_workspace_do_not_advance ... ok
+test observation::tests::committed_observation_same_transaction_transient_never_qualifies ... ok
+test observation::tests::committed_observation_control_capacity_counts_released_and_cleans_bounded_expired ... ok
+test observation::tests::committed_observation_selector_kind_is_part_of_object_identity ... ok
+test observation::tests::committed_observation_without_starting_boundary_never_rebinds_stale_pin ... ok
+test observation::tests::cursor_and_revision_encoding_is_canonical_closed_and_bounded ... ok
+test observation::tests::requests_reject_foreign_scope_duplicates_unknown_fields_and_unbounded_lease ... ok
+test observation::tests::terminal_proof_never_accepts_intermediate_or_changed_basis ... ok
+test observation::tests::committed_observation_transaction_fact_limit_has_reserved_gap_and_bounded_facts ... ok
+test service::tests::driver_details_are_hidden_and_capacity_errors_are_retriable ... ok
+test service::tests::overload_is_immediate_structured_and_retriable ... ok
+test service::tests::response_cap_returns_json_error ... ok
+test service::tests::unsupported_api_version_is_structured ... ok
+test store::revision_links::tests::exact_links_reuse_unchanged_sets_and_keep_prior_versions_after_live_edits ... ok
+test service::tests::deadline_cancels_slow_handler_and_releases_admission ... ok
+
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.74s
+
+     Running unittests src/main.rs (/tmp/aq-native-union-target/debug/deps/aq_graph-c0c35375253b6e68)
+
+running 9 tests
+test tests::client_rejects_incompatible_success_and_keeps_explicit_retry_key ... ok
+test tests::client_authenticates_negotiates_version_and_preserves_generated_retry_key ... ok
+test tests::friendly_parent_verification_retirement_and_description_send_domain_operations ... ok
+test tests::common_fields_verification_successors_and_summary_use_one_wire_contract ... ok
+test tests::known_migration_preflights_are_actionable_without_exposing_driver_details ... ok
+test tests::init_preserves_credentials_and_refuses_config_overwrite ... ok
+test tests::shared_field_args_reject_invalid_dates_conflicting_clears_and_task_only_knowledge_fields ... ok
+test tests::tree_and_search_flags_preserve_server_bounds_and_explicit_inclusion ... ok
+test tests::service_statuses_map_to_stable_exit_categories ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/cli.rs (/tmp/aq-native-union-target/debug/deps/cli-a9f503ae187c32a3)
+
+running 2 tests
+test invalid_arguments_are_json_with_validation_exit ... ok
+test unavailable_service_keeps_generated_mutation_key_in_json ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/committed_observation_migration.rs (/tmp/aq-native-union-target/debug/deps/committed_observation_migration-db2d4282cc29af73)
+
+running 1 test
+test observation_upgrade_preserves_old_domain_and_history_and_starts_new_baseline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/integration.rs (/tmp/aq-native-union-target/debug/deps/integration-4df0faa5ff8d77bd)
+
+running 6 tests
+test authentication_workspace_capability_and_protocol_errors ... ok
+test concurrent_idempotency_and_same_record_edit_conflict ... ok
+test draft_validation_rollback_atomic_apply_stale_and_restart ... ok
+test pinned_revisions_deletion_search_and_bounded_context ... ok
+test selective_history_version_conflicts_noops_and_content_restore ... ok
+test competing_cycle_insertions_and_readiness_semantics ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.43s
+
+     Running tests/migration_contracts.rs (/tmp/aq-native-union-target/debug/deps/migration_contracts-d15ff62cecd00f3f)
+
+running 10 tests
+test graph_upgrade_refuses_a_cycle_spanning_individually_acyclic_families ... ok
+test graph_upgrade_accepts_a_valid_forest_and_adds_description_without_history_rewrite ... ok
+test graph_upgrade_refuses_fourth_level_without_dropping_membership ... ok
+test graph_upgrade_refuses_invalid_endpoint_kinds_without_reinterpreting_relationships ... ok
+test graph_upgrade_refuses_multiple_parents_without_choosing_one ... ok
+test graph_upgrade_refuses_a_three_hundred_hop_mixed_cycle ... ok
+test knowledge_upgrade_recovers_only_evidenced_creation_authors_and_preserves_all_history ... ok
+test knowledge_upgrade_refuses_unattributed_verified_and_disputed_assertions_atomically ... ok
+test graph_upgrade_walks_a_valid_three_hundred_hop_blocking_chain ... ok
+test knowledge_upgrade_refuses_unexplained_legacy_retirement_without_losing_content ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+
+     Running tests/migration_shared.rs (/tmp/aq-native-union-target/debug/deps/migration_shared-d17ee1bc8738c61f)
+
+running 4 tests
+test shared_task_verification_requires_real_attribution_and_common_evidence ... ok
+test shared_constraints_enforce_validity_summary_sources_and_successor_scope ... ok
+test shared_upgrade_refuses_to_fabricate_a_missing_current_link_snapshot ... ok
+test task_defaults_receive_new_baselines_without_rewriting_history_or_owned_links ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests/migration_unified.rs (/tmp/aq-native-union-target/debug/deps/migration_unified-e9e9826067e351e6)
+
+running 4 tests
+test migration_keeps_legacy_link_availability_null_instead_of_fabricating_old_membership ... ok
+test migration_appends_attributed_baselines_for_both_kinds_and_preserves_legacy_history ... ok
+test migration_schema_enforces_workspace_and_record_ownership_of_snapshots ... ok
+test migration_snapshots_outgoing_and_incoming_structural_edges_at_exact_versions ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests/read_query_contracts.rs (/tmp/aq-native-union-target/debug/deps/read_query_contracts-52fa5d5eae219605)
+
+running 2 tests
+test history_cursor_pages_preserve_all_incident_events_without_cross_workspace_entries ... ok
+test ready_pages_preserve_leaf_lifecycle_prerequisite_and_scope_rules_for_both_plan_modes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.05s
+
+     Running tests/ready_projection.rs (/tmp/aq-native-union-target/debug/deps/ready_projection-9a70b599705fd6bc)
+
+running 3 tests
+test administrative_check_and_rebuild_repair_missing_and_corrupt_rows ... ok
+
+thread 'concurrent_child_lifecycle_and_edges_serialize_without_lost_counts' (931982) panicked at tests/ready_projection.rs:182:10:
+called `Result::unwrap()` on an `Err` value: Database(PgDatabaseError { severity: Error, code: "23503", message: "update or delete on table \"workspaces\" violates foreign key constraint \"graph_observation_heads_workspace_id_fkey\" on table \"graph_observation_heads\"", detail: Some("Key (id)=(2ee5612e-2479-46bf-a861-038be03042a3) is still referenced from table \"graph_observation_heads\"."), hint: None, position: None, where: None, schema: Some("public"), table: Some("graph_observation_heads"), column: None, data_type: None, constraint: Some("graph_observation_heads_workspace_id_fkey"), file: Some("ri_triggers.c"), line: Some(2612), routine: Some("ri_ReportViolation") })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test concurrent_child_lifecycle_and_edges_serialize_without_lost_counts ... FAILED
+test projection_backfill_and_mutations_match_source_without_changing_history ... ok
+
+failures:
+
+failures:
+    concurrent_child_lifecycle_and_edges_serialize_without_lost_counts
+
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+error: test failed, to rerun pass `--test ready_projection`
+Graph qualification exact_owned_database_removed=true
