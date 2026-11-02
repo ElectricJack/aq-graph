@@ -1,0 +1,17 @@
+
+running 1 test
+test upgrade_from_previous_schema_preserves_data ... FAILED
+
+failures:
+
+---- upgrade_from_previous_schema_preserves_data stdout ----
+
+thread 'upgrade_from_previous_schema_preserves_data' (8) panicked at tests/migration_upgrade.rs:134:6:
+called `Result::unwrap()` on an `Err` value: Database(PgDatabaseError { severity: Error, code: "42P01", message: "relation \"node_ready_projection\" does not exist", detail: None, hint: None, position: Some(Original(72)), where: None, schema: None, table: None, column: None, data_type: None, constraint: None, file: Some("parse_relation.c"), line: Some(1449), routine: Some("parserOpenTable") })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    upgrade_from_previous_schema_preserves_data
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.67s

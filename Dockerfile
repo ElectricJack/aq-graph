@@ -1,4 +1,4 @@
-FROM rust:1.96.1-bookworm AS dependencies
+FROM rust:1.96.1-bookworm@sha256:a339861ae23e9abb272cea45dfafde21760d2ce6577a70f8a926153677902663 AS dependencies
 WORKDIR /build
 COPY Cargo.toml Cargo.lock ./
 # Cache locked dependencies separately from application source and migrations.
@@ -14,7 +14,7 @@ COPY src ./src
 COPY migrations ./migrations
 RUN cargo build --locked --release --bin aq-graph
 
-FROM debian:bookworm-slim
+FROM debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3
 ARG AQ_GRAPH_VERSION=0.1.0
 LABEL org.opencontainers.image.title="aq-graph" \
       org.opencontainers.image.description="Standalone task and knowledge graph service and CLI" \

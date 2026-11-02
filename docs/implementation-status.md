@@ -1,6 +1,6 @@
 # Implementation status
 
-The standalone aq-graph baseline is implemented in Rust with PostgreSQL. Agent Q is not required to run it. The current release is 0.1.0, HTTP API v1, and schema migration 0008.
+The standalone aq-graph baseline is implemented in Rust with PostgreSQL. Agent Q is not required to run it. The package version is 0.1.0, HTTP API v1, and schema migration 0008. The first public release (`v0.1.0`) and its GHCR digest are **pending owner authorization**; no published image digest is claimed. [E2 evidence](implementation/E2.md) records the prepared workflow, verification and publication handoff.
 
 ## Available behavior
 
@@ -18,7 +18,7 @@ Record edits acquire row locks before checking expected versions. Graph mutation
 
 ## Verification
 
-The current schema-8 aggregate suite passed **125 tests, 0 failed/ignored**, including **101 against real PostgreSQL 17**. New coverage checks readiness-projection backfill without history changes, direct SQL lifecycle/edge mutation invariants, proven overlapping concurrent writes, and administrative repair of corrupted/missing projection rows. Search performs 1,296 comparisons against the full reference query across custom/generic plans, filters, term types and UUID cursor boundaries. Existing graph, shared-field, revision, transport, CLI and concurrency tests remain included. Nine Python benchmark-accounting/observation tests pass.
+The historical schema-8 aggregate suite passed **125 tests, 0 failed/ignored**, including **101 against real PostgreSQL 17**. New coverage checks readiness-projection backfill without history changes, direct SQL lifecycle/edge mutation invariants, proven overlapping concurrent writes, and administrative repair of corrupted/missing projection rows. Search performs 1,296 comparisons against the full reference query across custom/generic plans, filters, term types and UUID cursor boundaries. Existing graph, shared-field, revision, transport, CLI and concurrency tests remain included. Nine Python benchmark-accounting/observation tests pass.
 
 Formatting and strict Clippy pass for schema 8. Python compilation, shell syntax, local documentation links and OpenAPI references were checked in the preceding validation. The schema-7 CLI and service were exercised over real HTTP, including summaries, nullable dates, shared verification and successor retirement. The current schema was also backed up and restored through the actual PostgreSQL 17 Compose stack, with exact table/API comparisons and post-restore writes. This local drill does not replace a VPS/ingress and off-host recovery rehearsal.
 
@@ -26,7 +26,7 @@ Performance methodology is in [benchmarking](benchmark.md), with [local results 
 
 ## Deployment and migration limits
 
-The actual Dockerfile and isolated Compose stack have now been exercised with PostgreSQL 17.11. The parent independently verified startup, nonroot/read-only operation, restart, same-schema image recreation, exact backup/restoration of records and history, retry receipts and new writes after restoration. An internal-only networking configuration that prevented host ingress was fixed. CI now uses the same reproducible [deployment/recovery drill](deployment-validation.md); remote GitHub workflows, cross-schema upgrades, hosting purchase and public production deployment remain unperformed.
+Historical deployment evidence exercised the then-current Dockerfile and isolated Compose stack with PostgreSQL 17.11. That run independently verified startup, nonroot/read-only operation, restart, same-schema image recreation, exact backup/restoration of records and history, retry receipts and new writes after restoration. An internal-only networking configuration that prevented host ingress was fixed. CI now uses the same reproducible [deployment/recovery drill](deployment-validation.md); the E2 schema 7→8 regression test covers data-preserving migration in a rollback-only private PostgreSQL schema. Remote release execution, cross-schema upgrades through the deployed stack, hosting purchase and public production deployment remain unperformed.
 
 Production ingress must enforce connection and slow-client write/idle limits in addition to application request limits. Configure off-host backup storage and test recovery on the deployment target. The recorded reference host is a shared 24-thread Ryzen desktop with service, database and generator colocated. A production VPS reference, agreed p99 budget, controlled cold-cache behavior and larger growth scenarios remain unvalidated. The current performance acceptance targets are not all met.
 

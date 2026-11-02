@@ -1,0 +1,26 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.02s
+     Running tests/migration_shared.rs (target/debug/deps/migration_shared-ef925d0debd620d0)
+
+running 4 tests
+test shared_task_verification_requires_real_attribution_and_common_evidence ... ok
+test shared_constraints_enforce_validity_summary_sources_and_successor_scope ... ok
+test task_defaults_receive_new_baselines_without_rewriting_history_or_owned_links ... ok
+test shared_upgrade_refuses_to_fabricate_a_missing_current_link_snapshot ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
+
+     Running tests/migration_upgrade.rs (target/debug/deps/migration_upgrade-fafa0649bbae74ae)
+
+running 1 test
+test upgrade_from_previous_schema_preserves_data ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+     Running tests/ready_projection.rs (target/debug/deps/ready_projection-c5f14570c11ccf0b)
+
+running 3 tests
+test administrative_check_and_rebuild_repair_missing_and_corrupt_rows ... ok
+test projection_backfill_and_mutations_match_source_without_changing_history ... ok
+test concurrent_child_lifecycle_and_edges_serialize_without_lost_counts ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.61s

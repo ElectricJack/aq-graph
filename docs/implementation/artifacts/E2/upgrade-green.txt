@@ -1,0 +1,111 @@
+    Blocking waiting for file lock on package cache
+   Compiling aq-graph v0.1.0 (/home/jkern/dev/aq-platform-agents/projects/aq-graph/.aq/worktrees/slot-0)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 58s
+     Running unittests src/lib.rs (target/debug/deps/aq_graph-eadec293070cae4f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/aq_graph-dc9ae8b48bc06ea5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (target/debug/deps/cli-58bed38e179c24f2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/integration.rs (target/debug/deps/integration-e1a01fd9e930960b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/migration_contracts.rs (target/debug/deps/migration_contracts-74f73ba1c017ba5c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.00s
+
+     Running tests/migration_shared.rs (target/debug/deps/migration_shared-ef925d0debd620d0)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+     Running tests/migration_unified.rs (target/debug/deps/migration_unified-bee979513a3433a2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+     Running tests/migration_upgrade.rs (target/debug/deps/migration_upgrade-fafa0649bbae74ae)
+
+running 1 test
+test upgrade_from_previous_schema_preserves_data ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+
+     Running tests/read_query_contracts.rs (target/debug/deps/read_query_contracts-ed5cb24cc9d3265d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/ready_projection.rs (target/debug/deps/ready_projection-c5f14570c11ccf0b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/search_fastpath.rs (target/debug/deps/search_fastpath-be18338aad5be41e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/shared_authority.rs (target/debug/deps/shared_authority-4c97bc7eec8373b5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/shared_nodes.rs (target/debug/deps/shared_nodes-7cd7d3f207196ca7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+
+     Running tests/storage_invariants.rs (target/debug/deps/storage_invariants-0b0f7a8941a563fa)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/unified_preview.rs (target/debug/deps/unified_preview-6ca80aa0f4ad3d52)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/unified_versions.rs (target/debug/deps/unified_versions-44f55ce25066f18c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/v1_graph_parity.rs (target/debug/deps/v1_graph_parity-269a4830b6f06a26)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.00s
+
+     Running tests/v1_knowledge_parity.rs (target/debug/deps/v1_knowledge_parity-e7b52a7d5e662eb5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
