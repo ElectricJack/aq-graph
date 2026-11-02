@@ -1,8 +1,9 @@
 # Committed observation candidate: Graph 0.1.1 / migration 0009
 
-Status: isolated source candidate. No compilation, PostgreSQL execution, service
-upgrade, canonical capability, capacity claim or AQ wait admission is qualified by
-this document. The approved proposal is `committed-observation-proposal.md`; this
+Status: isolated candidate with first component qualification recorded in
+[evidence/committed-observation/README.md](evidence/committed-observation/README.md).
+No service upgrade, canonical capability, production capacity or AQ wait admission
+is qualified by this document. The approved proposal is `committed-observation-proposal.md`; this
 records the concrete first implementation and handshake refinements. The existing
 4195 service remains unsupported for this new source protocol. AQ SQL38 is not
 allocated or used. Existing Graph node/edge/history formats and routes are intact.
@@ -27,7 +28,7 @@ New authenticated workspace-relative routes:
    Independently reading a node followed by a later cursor is insufficient. No
    inferred content-only revision or CAS-only reinterpretation is allowed.
 3. `POST observations/subscriptions` uses stable subscriber UUID, condition digest,
-   original absolute expiry, exact selectors/pins, expected stream/generation, and
+   original absolute expiry, exact selectors/pins (member_id is the frozen AQ member UUID), expected stream/generation, and
    optional `from_cursor=C`. Its immutable receipt includes original request digest,
    selectors, initial replay cursorC and a second snapshot at installation headH.
    A retained exact retry returns the original receipt; changing bytes for the same
@@ -93,6 +94,17 @@ all source support until that step completes. `graph_observation_reset(workspace
 expected_generation)` is an operator-only SQL function, revoked from PUBLIC, with
 no HTTP route. It atomically clears journal and changes generation. It preserves
 bounded original receipt rows so old callers see source_changed, not replacement.
+Authoritative workspace deletion is an explicit exception to original receipt
+retention: the new private head/journal/control tables cascade with a workspace
+that is legally deleted after its existing domain/credential constraints permit it.
+Node/edge deletion triggers finish while the head still exists; they never recreate
+a deleted head. Access loss is unauthorized/unavailable, never completion evidence.
+If the same workspace UUID is recreated, its new head receives a NEW stream UUID.
+Old expected scope registration returns source_changed without a new subscription;
+an erased old receipt remains410/unavailable, never successful empty replay. There
+is no global tombstone store and no promise to retain evidence beyond scope deletion.
+Clients cannot use recreation to resurrect the old source/idempotency identity.
+
 A restored/cloned source with ambiguous lineage must rotate stream UUID as well via
 reviewed maintenance; there is no automatic safe cutover in this candidate.
 
@@ -139,7 +151,7 @@ transaction after deadlock/serialization failure; there is no invisible partial 
 Multiple-workspace transactions may deadlock if writers acquire heads in opposite
 orders; that is bounded/refused, never solved by remote work under a head lock.
 
-## Source tests prepared; actual qualification still required
+## Component tests and remaining qualification
 
 The candidate has pure closed-wire/cursor/digest/terminal-helper tests and actual
 PostgreSQL tests for atomic snapshot/registration replay, complete→reopen in one vs
@@ -148,13 +160,14 @@ rollback/no-op/preview, commit-head serialization, snapshot/node lock inversion,
 edge/ordinary-SQL coverage, identity/TRUNCATE refusal, explicit capacity gap with
 continued writes, invalid-writer gap, reset/original expiry/release/current-token
 revocation, retained actor quota/32-row expiry cleanup, actual HTTP auth/410, and a
-small measured write/snapshot latency smoke. Generated schema/examples are produced
-only from the typed candidate via `examples/observation_contract.rs`; their golden
-bytes/hashes will be frozen after compilation. Existing tests/goldens must remain
-unchanged. Additional raw interleavings and quota checks may refine tests before
-qualification. No test result is claimed here yet.
+small measured write/snapshot latency smoke. Generated raw-HTTP schema/examples are
+frozen only from the typed candidate via `examples/observation_contract.rs`; existing
+Graph goldens remain unchanged. The first actual PostgreSQL component qualification
+includes the additive8→9 baseline and real scope deletion/recreation, with retained
+failure logs and exact run boundaries in the linked evidence. Those results do not
+qualify hundred-agent capacity, every adversarial interleaving, process/restore
+cutover or a continuously compacting retention owner.
 
-Request a bounded2-target offline build/test lease and disposable Graph-only
-PostgreSQL database before execution. Record exact source/schema/binary/DB lineage,
-counts, timings and remaining limits. No canonical service/schema/data update or AQ
+Any further build/performance work needs a coordinated target lease and disposable
+Graph-only PostgreSQL database. No canonical service/schema/data update or AQ
 production source eligibility is authorized by this source candidate.

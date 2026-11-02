@@ -1,0 +1,28 @@
+{
+  "contract": "graph-committed-observation-1",
+  "subscriber_id": "00000000-0000-0000-0000-000000000004",
+  "condition_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "expected_scope": {
+    "workspace_id": "00000000-0000-0000-0000-000000000001",
+    "stream_id": "00000000-0000-0000-0000-000000000002",
+    "generation": "1"
+  },
+  "from_cursor": {
+    "scope": {
+      "workspace_id": "00000000-0000-0000-0000-000000000001",
+      "stream_id": "00000000-0000-0000-0000-000000000002",
+      "generation": "1"
+    },
+    "committed_sequence": "0",
+    "group_id": null
+  },
+  "original_expires_at_ms": "2000000000000",
+  "selectors": [
+    {
+      "kind": "task",
+      "member_id": "00000000-0000-0000-0000-000000000005",
+      "task_id": "00000000-0000-0000-0000-000000000003",
+      "starting_logical_revision": "1"
+    }
+  ]
+}

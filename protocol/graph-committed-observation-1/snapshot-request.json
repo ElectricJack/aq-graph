@@ -1,0 +1,9 @@
+{
+  "contract": "graph-committed-observation-1",
+  "targets": [
+    {
+      "kind": "task",
+      "task_id": "00000000-0000-0000-0000-000000000003"
+    }
+  ]
+}

@@ -72,7 +72,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             from_cursor: Some(cursor),
             original_expires_at_ms: "2000000000000".into(),
             selectors: vec![Selector::Task {
-                member_id: "dependency-0".into(),
+                member_id: Uuid::from_u128(5),
                 task_id: node,
                 starting_logical_revision: "1".into(),
             }],

@@ -2,7 +2,7 @@
 -- Exclude all ordinary DML throughout baseline/head installation.
 LOCK TABLE workspaces, nodes, edges IN SHARE ROW EXCLUSIVE MODE;
 CREATE TABLE graph_observation_heads (
- workspace_id uuid PRIMARY KEY REFERENCES workspaces(id),
+ workspace_id uuid PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
  stream_id uuid NOT NULL DEFAULT gen_random_uuid(),
  generation bigint NOT NULL DEFAULT 1 CHECK(generation>0),
  sequence bigint NOT NULL DEFAULT 0 CHECK(sequence>=0),
@@ -22,7 +22,7 @@ CREATE TABLE graph_observation_heads (
 );
 INSERT INTO graph_observation_heads(workspace_id) SELECT id FROM workspaces;
 CREATE TABLE graph_observation_batches (
- workspace_id uuid NOT NULL REFERENCES graph_observation_heads(workspace_id),
+ workspace_id uuid NOT NULL REFERENCES graph_observation_heads(workspace_id) ON DELETE CASCADE,
  generation bigint NOT NULL CHECK(generation>0),
  sequence bigint NOT NULL CHECK(sequence>0),
  group_id uuid NOT NULL,
@@ -47,7 +47,7 @@ CREATE TABLE graph_observation_facts (
 );
 CREATE INDEX graph_observation_object ON graph_observation_facts(workspace_id,generation,object_id,sequence);
 CREATE TABLE graph_observation_subscriptions (
- workspace_id uuid NOT NULL REFERENCES graph_observation_heads(workspace_id),
+ workspace_id uuid NOT NULL REFERENCES graph_observation_heads(workspace_id) ON DELETE CASCADE,
  actor_id text NOT NULL CHECK(octet_length(actor_id) BETWEEN 1 AND 200),
  subscriber_id uuid NOT NULL,
  request_digest text NOT NULL CHECK(request_digest ~ '^[0-9a-f]{64}$'),

@@ -1,0 +1,1061 @@
+{
+  "$defs": {
+    "Authority": {
+      "enum": [
+        "none"
+      ],
+      "type": "string"
+    },
+    "Capabilities": {
+      "additionalProperties": false,
+      "properties": {
+        "authority": {
+          "$ref": "#/$defs/Authority"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "contract": {
+          "$ref": "#/$defs/Contract"
+        },
+        "coverage": {
+          "$ref": "#/$defs/Status"
+        },
+        "head": {
+          "$ref": "#/$defs/Cursor"
+        },
+        "limits": {
+          "$ref": "#/$defs/Limits"
+        },
+        "retained_floor": {
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        }
+      },
+      "required": [
+        "contract",
+        "scope",
+        "available",
+        "coverage",
+        "head",
+        "retained_floor",
+        "limits",
+        "authority"
+      ],
+      "type": "object"
+    },
+    "CommitGroup": {
+      "additionalProperties": false,
+      "properties": {
+        "committed_sequence": {
+          "type": "string"
+        },
+        "facts": {
+          "items": {
+            "$ref": "#/$defs/Fact"
+          },
+          "type": "array"
+        },
+        "group_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        }
+      },
+      "required": [
+        "scope",
+        "committed_sequence",
+        "group_id",
+        "facts"
+      ],
+      "type": "object"
+    },
+    "Contract": {
+      "enum": [
+        "graph-committed-observation-1"
+      ],
+      "type": "string"
+    },
+    "Cursor": {
+      "additionalProperties": false,
+      "properties": {
+        "committed_sequence": {
+          "type": "string"
+        },
+        "group_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        }
+      },
+      "required": [
+        "scope",
+        "committed_sequence"
+      ],
+      "type": "object"
+    },
+    "EdgeProjection": {
+      "additionalProperties": false,
+      "properties": {
+        "deleted": {
+          "type": "boolean"
+        },
+        "edge_type": {
+          "$ref": "#/$defs/Relation"
+        },
+        "id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "source": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "source_revision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "target_revision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "edge_type",
+        "source",
+        "target",
+        "version",
+        "deleted"
+      ],
+      "type": "object"
+    },
+    "Fact": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "after": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NodeProjection"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "before": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NodeProjection"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "mutation_count": {
+              "type": "string"
+            },
+            "object_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "object_kind": {
+              "const": "node",
+              "type": "string"
+            },
+            "transition_class": {
+              "$ref": "#/$defs/TransitionClass"
+            }
+          },
+          "required": [
+            "object_kind",
+            "object_id",
+            "mutation_count",
+            "transition_class"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "after": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/EdgeProjection"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "before": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/EdgeProjection"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "mutation_count": {
+              "type": "string"
+            },
+            "object_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "object_kind": {
+              "const": "edge",
+              "type": "string"
+            },
+            "transition_class": {
+              "$ref": "#/$defs/TransitionClass"
+            }
+          },
+          "required": [
+            "object_kind",
+            "object_id",
+            "mutation_count",
+            "transition_class"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Gap": {
+      "additionalProperties": false,
+      "properties": {
+        "lost_from_sequence": {
+          "type": "string"
+        },
+        "reason": {
+          "$ref": "#/$defs/GapReason"
+        },
+        "requested_after": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retained_floor": {
+          "type": "string"
+        },
+        "through": {
+          "$ref": "#/$defs/Cursor"
+        }
+      },
+      "required": [
+        "reason",
+        "lost_from_sequence",
+        "retained_floor",
+        "through"
+      ],
+      "type": "object"
+    },
+    "GapReason": {
+      "enum": [
+        "journal_capacity",
+        "transaction_fact_limit",
+        "domain_invariant",
+        "retention",
+        "coverage_gap"
+      ],
+      "type": "string"
+    },
+    "Limits": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_retained_controls": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "control_bytes": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "facts_per_commit": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "groups": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "journal_batches": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "journal_bytes": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "journal_facts": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "max_lease_ms": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "request_bytes": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "response_bytes": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "retained_controls": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "retry_retention_ms": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "selectors": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "selectors",
+        "groups",
+        "request_bytes",
+        "response_bytes",
+        "journal_bytes",
+        "journal_batches",
+        "journal_facts",
+        "facts_per_commit",
+        "retained_controls",
+        "actor_retained_controls",
+        "control_bytes",
+        "max_lease_ms",
+        "retry_retention_ms"
+      ],
+      "type": "object"
+    },
+    "NodeKind": {
+      "enum": [
+        "task",
+        "knowledge"
+      ],
+      "type": "string"
+    },
+    "NodeProjection": {
+      "additionalProperties": false,
+      "properties": {
+        "deleted": {
+          "type": "boolean"
+        },
+        "id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/NodeKind"
+        },
+        "logical_revision": {
+          "type": "string"
+        },
+        "retired": {
+          "type": "boolean"
+        },
+        "task_state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TaskState"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "version",
+        "logical_revision",
+        "deleted",
+        "retired"
+      ],
+      "type": "object"
+    },
+    "ObservedObject": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "kind": {
+              "const": "node",
+              "type": "string"
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NodeProjection"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "kind": {
+              "const": "edge",
+              "type": "string"
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/EdgeProjection"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "id"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Pull": {
+      "additionalProperties": false,
+      "properties": {
+        "after": {
+          "$ref": "#/$defs/Cursor"
+        },
+        "contract": {
+          "$ref": "#/$defs/Contract"
+        },
+        "gap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gap"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "groups": {
+          "items": {
+            "$ref": "#/$defs/CommitGroup"
+          },
+          "type": "array"
+        },
+        "lookup_only": {
+          "type": "boolean"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "receipt": {
+          "$ref": "#/$defs/Receipt"
+        },
+        "retained_floor": {
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "status": {
+          "$ref": "#/$defs/Status"
+        },
+        "through": {
+          "$ref": "#/$defs/Cursor"
+        }
+      },
+      "required": [
+        "contract",
+        "lookup_only",
+        "status",
+        "receipt",
+        "scope",
+        "after",
+        "through",
+        "groups",
+        "retained_floor"
+      ],
+      "type": "object"
+    },
+    "Receipt": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/ReceiptContent"
+        },
+        "reference": {
+          "$ref": "#/$defs/Reference"
+        }
+      },
+      "required": [
+        "content",
+        "reference"
+      ],
+      "type": "object"
+    },
+    "ReceiptContent": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "type": "string"
+        },
+        "condition_digest": {
+          "type": "string"
+        },
+        "contract": {
+          "$ref": "#/$defs/Contract"
+        },
+        "initial_cursor": {
+          "$ref": "#/$defs/Cursor"
+        },
+        "original_expires_at_ms": {
+          "type": "string"
+        },
+        "request_digest": {
+          "type": "string"
+        },
+        "revision_kind": {
+          "$ref": "#/$defs/RevisionKind"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "selectors": {
+          "items": {
+            "$ref": "#/$defs/Selector"
+          },
+          "type": "array"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/Snapshot"
+        },
+        "subscriber_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract",
+        "subscriber_id",
+        "actor_id",
+        "request_digest",
+        "condition_digest",
+        "selectors",
+        "scope",
+        "original_expires_at_ms",
+        "snapshot",
+        "initial_cursor",
+        "revision_kind"
+      ],
+      "type": "object"
+    },
+    "Reference": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ReferenceKind"
+        },
+        "version": {
+          "$ref": "#/$defs/ReferenceVersion"
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "version",
+        "digest"
+      ],
+      "type": "object"
+    },
+    "ReferenceKind": {
+      "enum": [
+        "graph_observation_subscription"
+      ],
+      "type": "string"
+    },
+    "ReferenceVersion": {
+      "enum": [
+        "1"
+      ],
+      "type": "string"
+    },
+    "RegisterRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "condition_digest": {
+          "type": "string"
+        },
+        "contract": {
+          "$ref": "#/$defs/Contract"
+        },
+        "expected_scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "from_cursor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "original_expires_at_ms": {
+          "type": "string"
+        },
+        "selectors": {
+          "items": {
+            "$ref": "#/$defs/Selector"
+          },
+          "type": "array"
+        },
+        "subscriber_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract",
+        "subscriber_id",
+        "condition_digest",
+        "expected_scope",
+        "original_expires_at_ms",
+        "selectors"
+      ],
+      "type": "object"
+    },
+    "Registration": {
+      "additionalProperties": false,
+      "properties": {
+        "contract": {
+          "$ref": "#/$defs/Contract"
+        },
+        "gap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gap"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "receipt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Receipt"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "status": {
+          "$ref": "#/$defs/Status"
+        }
+      },
+      "required": [
+        "contract",
+        "status",
+        "scope"
+      ],
+      "type": "object"
+    },
+    "Relation": {
+      "enum": [
+        "blocks",
+        "parent-child",
+        "references",
+        "motivated_by",
+        "produces",
+        "supports",
+        "contradicts",
+        "supersedes"
+      ],
+      "type": "string"
+    },
+    "RevisionKind": {
+      "enum": [
+        "graph_logical_record_revision_1"
+      ],
+      "type": "string"
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "properties": {
+        "generation": {
+          "type": "string"
+        },
+        "stream_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "workspace_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "workspace_id",
+        "stream_id",
+        "generation"
+      ],
+      "type": "object"
+    },
+    "Selector": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "task",
+              "type": "string"
+            },
+            "member_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "starting_logical_revision": {
+              "type": "string"
+            },
+            "task_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "member_id",
+            "task_id",
+            "starting_logical_revision"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "dependent_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "edge_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "edge_version": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "dependency",
+              "type": "string"
+            },
+            "member_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "prerequisite_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "starting_logical_revision": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "member_id",
+            "edge_id",
+            "edge_version",
+            "prerequisite_id",
+            "dependent_id",
+            "starting_logical_revision"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Snapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/SnapshotContent"
+        },
+        "snapshot_digest": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "content",
+        "snapshot_digest"
+      ],
+      "type": "object"
+    },
+    "SnapshotContent": {
+      "additionalProperties": false,
+      "properties": {
+        "captured_cursor": {
+          "$ref": "#/$defs/Cursor"
+        },
+        "objects": {
+          "items": {
+            "$ref": "#/$defs/ObservedObject"
+          },
+          "type": "array"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        }
+      },
+      "required": [
+        "scope",
+        "captured_cursor",
+        "objects"
+      ],
+      "type": "object"
+    },
+    "SnapshotRead": {
+      "additionalProperties": false,
+      "properties": {
+        "contract": {
+          "$ref": "#/$defs/Contract"
+        },
+        "gap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gap"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "request_digest": {
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "snapshot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Snapshot"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/Status"
+        }
+      },
+      "required": [
+        "contract",
+        "request_digest",
+        "status",
+        "scope"
+      ],
+      "type": "object"
+    },
+    "SnapshotRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "contract": {
+          "$ref": "#/$defs/Contract"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/SnapshotTarget"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "contract",
+        "targets"
+      ],
+      "type": "object"
+    },
+    "SnapshotTarget": {
+      "description": "Unpinned identities: this read establishes actual revisions and cursor together.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "task",
+              "type": "string"
+            },
+            "task_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "task_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "dependent_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "edge_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "kind": {
+              "const": "dependency",
+              "type": "string"
+            },
+            "prerequisite_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "edge_id",
+            "prerequisite_id",
+            "dependent_id"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Status": {
+      "enum": [
+        "available",
+        "gap",
+        "expired",
+        "released",
+        "source_changed"
+      ],
+      "type": "string"
+    },
+    "TaskState": {
+      "enum": [
+        "draft",
+        "active",
+        "completed",
+        "canceled"
+      ],
+      "type": "string"
+    },
+    "TransitionClass": {
+      "enum": [
+        "created",
+        "lifecycle_only",
+        "record_changed",
+        "multiple_changes",
+        "deleted",
+        "domain_invariant_failure"
+      ],
+      "type": "string"
+    }
+  },
+  "$id": "urn:aq-graph:graph-committed-observation-1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/SnapshotRequest"
+    },
+    {
+      "$ref": "#/$defs/SnapshotRead"
+    },
+    {
+      "$ref": "#/$defs/RegisterRequest"
+    },
+    {
+      "$ref": "#/$defs/Registration"
+    },
+    {
+      "$ref": "#/$defs/Pull"
+    },
+    {
+      "$ref": "#/$defs/Capabilities"
+    }
+  ],
+  "title": "Document"
+}

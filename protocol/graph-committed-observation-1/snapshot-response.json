@@ -1,0 +1,45 @@
+{
+  "contract": "graph-committed-observation-1",
+  "request_digest": "sha256:170d890bac4387e7c3a80cc4b9c1659eef1d4334a571ed28e137b897059bf59a",
+  "status": "available",
+  "scope": {
+    "workspace_id": "00000000-0000-0000-0000-000000000001",
+    "stream_id": "00000000-0000-0000-0000-000000000002",
+    "generation": "1"
+  },
+  "snapshot": {
+    "content": {
+      "scope": {
+        "workspace_id": "00000000-0000-0000-0000-000000000001",
+        "stream_id": "00000000-0000-0000-0000-000000000002",
+        "generation": "1"
+      },
+      "captured_cursor": {
+        "scope": {
+          "workspace_id": "00000000-0000-0000-0000-000000000001",
+          "stream_id": "00000000-0000-0000-0000-000000000002",
+          "generation": "1"
+        },
+        "committed_sequence": "0",
+        "group_id": null
+      },
+      "objects": [
+        {
+          "kind": "node",
+          "id": "00000000-0000-0000-0000-000000000003",
+          "value": {
+            "id": "00000000-0000-0000-0000-000000000003",
+            "kind": "task",
+            "version": "1",
+            "logical_revision": "1",
+            "task_state": "active",
+            "deleted": false,
+            "retired": false
+          }
+        }
+      ]
+    },
+    "snapshot_digest": "sha256:745f14472f6a816f5256fdd8d9a607e863fcd38c26ee075bc3a4cbc8e02ec4fd"
+  },
+  "gap": null
+}

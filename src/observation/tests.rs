@@ -31,7 +31,7 @@ fn request(cursor: Cursor, id: Uuid, now: i64) -> RegisterRequest {
         from_cursor: Some(cursor),
         original_expires_at_ms: (now + 1000).to_string(),
         selectors: vec![Selector::Task {
-            member_id: "task".into(),
+            member_id: Uuid::from_u128(4),
             task_id: id,
             starting_logical_revision: "1".into(),
         }],
@@ -164,6 +164,30 @@ fn additive_schema_is_generated_closed_and_bounds_pages() {
     assert_eq!(
         schema["$defs"]["Contract"]["enum"][0],
         "graph-committed-observation-1"
+    );
+    let frozen: Value = serde_json::from_str(include_str!(
+        "../../protocol/graph-committed-observation-1/schema.json"
+    ))
+    .unwrap();
+    assert_eq!(
+        schema, frozen,
+        "regenerate only this additive profile intentionally"
+    );
+    let read: SnapshotRead = serde_json::from_str(include_str!(
+        "../../protocol/graph-committed-observation-1/snapshot-response.json"
+    ))
+    .unwrap();
+    assert_eq!(
+        read.snapshot.as_ref().unwrap().snapshot_digest,
+        digest(&read.snapshot.as_ref().unwrap().content).unwrap()
+    );
+    let raw: Value = serde_json::from_str(include_str!(
+        "../../protocol/graph-committed-observation-1/snapshot-response.json"
+    ))
+    .unwrap();
+    assert!(
+        serde_json::from_value::<Document>(raw).is_ok(),
+        "generated schema family describes raw HTTP DTOs, no artificial envelope"
     );
     for q in [
         PullQuery {
@@ -489,10 +513,29 @@ async fn committed_observation_head_serializes_commit_and_snapshot_without_row_l
     let mut tx = f.store.pool.begin().await.unwrap();
     sqlx::query("UPDATE nodes SET title='first',version=version+1,content_revision=content_revision+1 WHERE id=$1").bind(a).execute(&mut *tx).await.unwrap();
     let second_store = f.store.clone();
+    let (started, starting) = tokio::sync::oneshot::channel();
     let second = tokio::spawn(async move {
-        sqlx::query("UPDATE nodes SET title='second',version=version+1,content_revision=content_revision+1 WHERE id=$1").bind(b).execute(&second_store.pool).await
+        let mut connection = second_store.pool.acquire().await.unwrap();
+        let pid: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+            .fetch_one(&mut *connection)
+            .await
+            .unwrap();
+        started.send(pid).unwrap();
+        sqlx::query("UPDATE nodes SET title='second',version=version+1,content_revision=content_revision+1 WHERE id=$1").bind(b).execute(&mut *connection).await
     });
-    tokio::time::sleep(Duration::from_millis(30)).await;
+    let pid = starting.await.unwrap();
+    let until = Instant::now() + Duration::from_secs(1);
+    loop {
+        let waiting:bool=sqlx::query_scalar("SELECT COALESCE((SELECT wait_event_type='Lock' AND state='active' FROM pg_stat_activity WHERE pid=$1),false)").bind(pid).fetch_one(&f.store.pool).await.unwrap();
+        if waiting {
+            break;
+        }
+        assert!(
+            Instant::now() < until,
+            "second actual database writer never reached lock barrier"
+        );
+        tokio::time::sleep(Duration::from_millis(2)).await;
+    }
     assert!(!second.is_finished());
     tx.commit().await.unwrap();
     second.await.unwrap().unwrap();
@@ -548,7 +591,7 @@ async fn committed_observation_raw_dml_coverage_edges_identity_and_truncate_guar
     assert_ne!(snap.content.captured_cursor, before);
     let mut req = request(snap.content.captured_cursor.clone(), a, 100);
     req.selectors = vec![Selector::Dependency {
-        member_id: "dependency".into(),
+        member_id: Uuid::from_u128(4),
         edge_id: edge,
         edge_version: "1".into(),
         prerequisite_id: a,
@@ -813,6 +856,85 @@ async fn committed_observation_http_is_actual_authenticated_closed_and_receipt_o
             assert_eq!(read.status, Status::Available);
         }
     }
+    let initial = f.capture(id).await;
+    let req = request(
+        initial.content.captured_cursor,
+        id,
+        chrono::Utc::now().timestamp_millis(),
+    );
+    let register_uri = format!(
+        "/v1/workspaces/{}/observations/subscriptions",
+        f.p.workspace_id
+    );
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(register_uri)
+                .header("authorization", format!("Bearer {}", f.token))
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&req).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status().as_u16(), 200);
+    let registration: Registration =
+        serde_json::from_slice(&to_bytes(res.into_body(), MAX_RESPONSE).await.unwrap()).unwrap();
+    let receipt = registration.receipt.unwrap();
+    let lookup_uri = format!(
+        "/v1/workspaces/{}/observations/subscriptions/{}/changes?request_digest={}",
+        f.p.workspace_id, req.subscriber_id, receipt.content.request_digest
+    );
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(&lookup_uri)
+                .header("authorization", format!("Bearer {}", f.token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status().as_u16(), 200);
+    let lookup: Pull =
+        serde_json::from_slice(&to_bytes(res.into_body(), MAX_RESPONSE).await.unwrap()).unwrap();
+    assert!(lookup.lookup_only);
+    assert_eq!(lookup.receipt.reference.digest, receipt.reference.digest);
+    let release_uri = format!(
+        "/v1/workspaces/{}/observations/subscriptions/{}?receipt_digest={}",
+        f.p.workspace_id, req.subscriber_id, receipt.reference.digest
+    );
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(release_uri)
+                .header("authorization", format!("Bearer {}", f.token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status().as_u16(), 204);
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(lookup_uri)
+                .header("authorization", format!("Bearer {}", f.token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status().as_u16(), 200);
+    let lookup: Pull =
+        serde_json::from_slice(&to_bytes(res.into_body(), MAX_RESPONSE).await.unwrap()).unwrap();
+    assert_eq!(lookup.status, Status::Released);
     let missing = format!(
         "/v1/workspaces/{}/observations/subscriptions/{}/changes?request_digest=sha256:{}",
         f.p.workspace_id,
@@ -1003,4 +1125,105 @@ async fn committed_observation_without_starting_boundary_never_rebinds_stale_pin
     assert!(page.groups.is_empty());
     // This is a changed pin, not evidence that no completion happened. The adapter
     // MUST refuse/reconcile; Graph does not replace selector1 with snapshot3.
+}
+
+#[tokio::test]
+async fn committed_observation_scope_deletion_is_unavailable_and_recreation_changes_stream() {
+    let f = Fixture::new().await;
+    let task = Uuid::new_v4();
+    // An ordinary DML-only node has no immutable legacy history FKs to remove.
+    // Its actual source journal/subscription are retained until scope deletion.
+    sqlx::query("INSERT INTO nodes(id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,task_state,created_at,updated_at) VALUES($1,$2,'task',1,1,'deleted scope fixture','','','active',clock_timestamp(),clock_timestamp())").bind(task).bind(f.p.workspace_id).execute(&f.store.pool).await.unwrap();
+    let snap = f.capture(task).await;
+    let (request, receipt) = f
+        .register(snap.content.captured_cursor.clone(), task, 100)
+        .await;
+    f.raw_update(
+        task,
+        "UPDATE nodes SET task_state='completed',version=2,content_revision=2 WHERE id=$1",
+    )
+    .await;
+    let retained: (i64, i64) = sqlx::query_as(
+        "SELECT batch_count,control_count FROM graph_observation_heads WHERE workspace_id=$1",
+    )
+    .bind(f.p.workspace_id)
+    .fetch_one(&f.store.pool)
+    .await
+    .unwrap();
+    assert_eq!(retained, (2, 1));
+    let mut tx = f.store.pool.begin().await.unwrap();
+    sqlx::query("DELETE FROM nodes WHERE workspace_id=$1")
+        .bind(f.p.workspace_id)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM credentials WHERE workspace_id=$1")
+        .bind(f.p.workspace_id)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM workspaces WHERE id=$1")
+        .bind(f.p.workspace_id)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    let left:(i64,i64,i64,i64)=sqlx::query_as("SELECT (SELECT count(*) FROM graph_observation_heads WHERE workspace_id=$1),(SELECT count(*) FROM graph_observation_batches WHERE workspace_id=$1),(SELECT count(*) FROM graph_observation_facts WHERE workspace_id=$1),(SELECT count(*) FROM graph_observation_subscriptions WHERE workspace_id=$1)").bind(f.p.workspace_id).fetch_one(&f.store.pool).await.unwrap();
+    assert_eq!(left, (0, 0, 0, 0));
+    assert!(matches!(
+        f.store
+            .observation_pull(
+                &f.p,
+                &f.c,
+                request.subscriber_id,
+                &PullQuery {
+                    request_digest: Some(receipt.content.request_digest.clone()),
+                    ..Default::default()
+                },
+                101
+            )
+            .await,
+        Err(Error::Unauthorized)
+    ));
+    f.store
+        .bootstrap(f.p.workspace_id, &f.p.actor_id, &f.token)
+        .await
+        .unwrap();
+    let recreated = f.head().await;
+    assert_ne!(recreated.scope.stream_id, snap.content.scope.stream_id);
+    assert_eq!(recreated.committed_sequence, "0");
+    let stale = f
+        .store
+        .observation_register(&f.p, &f.c, &request, 101)
+        .await
+        .unwrap();
+    assert_eq!(stale.status, Status::SourceChanged);
+    assert!(stale.receipt.is_none());
+    assert!(matches!(
+        f.store
+            .observation_pull(
+                &f.p,
+                &f.c,
+                request.subscriber_id,
+                &PullQuery {
+                    after: Some(snap.content.captured_cursor.encode().unwrap()),
+                    receipt_digest: Some(receipt.reference.digest),
+                    ..Default::default()
+                },
+                101
+            )
+            .await,
+        Err(Error::NotFound)
+    ));
+    let controls: i64 = sqlx::query_scalar(
+        "SELECT control_count FROM graph_observation_heads WHERE workspace_id=$1",
+    )
+    .bind(f.p.workspace_id)
+    .fetch_one(&f.store.pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        controls, 0,
+        "old source scope must not install a fresh subscription"
+    );
 }

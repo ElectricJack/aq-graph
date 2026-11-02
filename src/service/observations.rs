@@ -64,6 +64,7 @@ pub(super) async fn register(
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct SubscriptionPath {
+    pub workspace: Uuid,
     pub id: Uuid,
 }
 pub(super) async fn changes(
@@ -73,6 +74,9 @@ pub(super) async fn changes(
     Path(path): Path<SubscriptionPath>,
     q: std::result::Result<Query<PullQuery>, QueryRejection>,
 ) -> Response {
+    if path.workspace != p.workspace_id {
+        return Error::Unauthorized.into_response();
+    }
     let q = match parse_query(q) {
         Ok(q) => q,
         Err(e) => return e.into_response(),
@@ -103,6 +107,9 @@ pub(super) async fn release(
     Path(path): Path<SubscriptionPath>,
     q: std::result::Result<Query<ReleaseQuery>, QueryRejection>,
 ) -> Response {
+    if path.workspace != p.workspace_id {
+        return Error::Unauthorized.into_response();
+    }
     let q = match parse_query(q) {
         Ok(q) => q,
         Err(e) => return e.into_response(),

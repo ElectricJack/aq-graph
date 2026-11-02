@@ -79,12 +79,12 @@ impl Scope {
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Selector {
     Task {
-        member_id: String,
+        member_id: Uuid,
         task_id: Uuid,
         starting_logical_revision: String,
     },
     Dependency {
-        member_id: String,
+        member_id: Uuid,
         edge_id: Uuid,
         edge_version: String,
         prerequisite_id: Uuid,
@@ -100,7 +100,7 @@ impl Selector {
                 task_id,
                 starting_logical_revision,
             } => {
-                label(member_id)?;
+                nonnil(*member_id)?;
                 nonnil(*task_id)?;
                 decimal(starting_logical_revision, true)?;
             }
@@ -112,7 +112,7 @@ impl Selector {
                 dependent_id,
                 starting_logical_revision,
             } => {
-                label(member_id)?;
+                nonnil(*member_id)?;
                 for id in [edge_id, prerequisite_id, dependent_id] {
                     nonnil(*id)?;
                 }
@@ -126,9 +126,9 @@ impl Selector {
         }
         Ok(())
     }
-    fn member(&self) -> &str {
+    fn member(&self) -> Uuid {
         match self {
-            Self::Task { member_id, .. } | Self::Dependency { member_id, .. } => member_id,
+            Self::Task { member_id, .. } | Self::Dependency { member_id, .. } => *member_id,
         }
     }
 }
@@ -569,7 +569,7 @@ impl PullQuery {
         let n = self.limit.unwrap_or(MAX_GROUPS);
         let b = self.max_bytes.unwrap_or(MAX_RESPONSE);
         check(
-            n > 0 && n <= MAX_GROUPS && b >= MAX_RECEIPT_BYTES && b <= MAX_RESPONSE,
+            (1..=MAX_GROUPS).contains(&n) && (MAX_RECEIPT_BYTES..=MAX_RESPONSE).contains(&b),
             "observation page limits",
         )?;
         Ok((n, b))
@@ -581,22 +581,20 @@ pub(crate) fn identity(token: &str) -> CredentialIdentity {
     CredentialIdentity(hex::encode(Sha256::digest(token.as_bytes())))
 }
 pub fn schema() -> serde_json::Value {
-    serde_json::to_value(schemars::schema_for!(Document)).expect("observation schema")
+    let mut schema =
+        serde_json::to_value(schemars::schema_for!(Document)).expect("observation schema");
+    schema["$id"] = serde_json::json!("urn:aq-graph:graph-committed-observation-1");
+    schema
 }
 #[derive(Serialize, Deserialize, JsonSchema)]
-#[serde(
-    tag = "document",
-    content = "data",
-    rename_all = "snake_case",
-    deny_unknown_fields
-)]
+#[serde(untagged)]
 pub enum Document {
-    SnapshotRequest(SnapshotRequest),
-    SnapshotRead(SnapshotRead),
-    Request(RegisterRequest),
-    Registration(Registration),
+    SnapshotRequest(Box<SnapshotRequest>),
+    SnapshotRead(Box<SnapshotRead>),
+    Request(Box<RegisterRequest>),
+    Registration(Box<Registration>),
     Pull(Box<Pull>),
-    Capabilities(Capabilities),
+    Capabilities(Box<Capabilities>),
 }
 pub(crate) fn bad(s: &str) -> Error {
     Error::Validation(s.into())
@@ -620,12 +618,6 @@ pub(crate) fn decimal(s: &str, positive: bool) -> Result<i64> {
 }
 fn nonnil(id: Uuid) -> Result<()> {
     check(!id.is_nil(), "observation nonnil identity")
-}
-fn label(s: &str) -> Result<()> {
-    check(
-        !s.trim().is_empty() && s.len() <= 128 && !s.chars().any(char::is_control),
-        "observation member label",
-    )
 }
 pub(crate) fn raw_digest(s: &str) -> Result<&str> {
     let raw = s

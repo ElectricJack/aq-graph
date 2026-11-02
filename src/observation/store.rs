@@ -133,21 +133,40 @@ async fn snapshot(tx: &mut Tx<'_>, h: &Head, selectors: &[SnapshotTarget]) -> Re
             }
         }
     }
+    // Two bounded domain queries, never one round trip per selector under head.
+    let node_ids: Vec<_> = targets
+        .iter()
+        .filter_map(|(kind, id)| (*kind == "node").then_some(*id))
+        .collect();
+    let edge_ids: Vec<_> = targets
+        .iter()
+        .filter_map(|(kind, id)| (*kind == "edge").then_some(*id))
+        .collect();
+    let node_values:Vec<Value>=sqlx::query_scalar("SELECT graph_observation_node_projection(n) FROM nodes n WHERE workspace_id=$1 AND id=ANY($2)").bind(h.scope.workspace_id).bind(&node_ids).fetch_all(&mut **tx).await?;
+    let edge_values:Vec<Value>=sqlx::query_scalar("SELECT graph_observation_edge_projection(e) FROM edges e WHERE workspace_id=$1 AND id=ANY($2)").bind(h.scope.workspace_id).bind(&edge_ids).fetch_all(&mut **tx).await?;
+    let mut nodes = std::collections::BTreeMap::new();
+    for value in node_values {
+        let value: NodeProjection = decode(value)?;
+        nodes.insert(value.id, value);
+    }
+    let mut edges = std::collections::BTreeMap::new();
+    for value in edge_values {
+        let value: EdgeProjection = decode(value)?;
+        edges.insert(value.id, value);
+    }
     let mut objects = vec![];
     for (kind, id) in targets {
-        if kind == "node" {
-            let value:Option<Value>=sqlx::query_scalar("SELECT graph_observation_node_projection(n) FROM nodes n WHERE workspace_id=$1 AND id=$2").bind(h.scope.workspace_id).bind(id).fetch_optional(&mut **tx).await?;
-            objects.push(ObservedObject::Node {
+        objects.push(if kind == "node" {
+            ObservedObject::Node {
                 id,
-                value: value.map(decode).transpose()?,
-            });
+                value: nodes.remove(&id),
+            }
         } else {
-            let value:Option<Value>=sqlx::query_scalar("SELECT graph_observation_edge_projection(e) FROM edges e WHERE workspace_id=$1 AND id=$2").bind(h.scope.workspace_id).bind(id).fetch_optional(&mut **tx).await?;
-            objects.push(ObservedObject::Edge {
+            ObservedObject::Edge {
                 id,
-                value: value.map(decode).transpose()?,
-            });
-        }
+                value: edges.remove(&id),
+            }
+        });
     }
     let content = SnapshotContent {
         scope: h.scope.clone(),
@@ -331,12 +350,12 @@ impl Store {
             tx.commit().await?;
             return Err(Error::Overloaded);
         }
-        if let Some(cursor) = &req.from_cursor {
-            if decimal(&cursor.committed_sequence, false)? < h.floor {
-                let mut out = registration(&h, Status::Gap, None);
-                out.gap = Some(h.gap(Some(cursor.clone()), "retention"));
-                return Ok(out);
-            }
+        if let Some(cursor) = &req.from_cursor
+            && decimal(&cursor.committed_sequence, false)? < h.floor
+        {
+            let mut out = registration(&h, Status::Gap, None);
+            out.gap = Some(h.gap(Some(cursor.clone()), "retention"));
+            return Ok(out);
         }
         let initial_cursor = if let Some(cursor) = &req.from_cursor {
             validate_anchor(&mut tx, &h, cursor).await?;
