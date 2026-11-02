@@ -1,0 +1,263 @@
+{
+  "schema_version": 1,
+  "task": "GRAPH-01",
+  "repository": "aq-graph",
+  "qualified_at": "2026-10-30T23:58:22.860222+00:00",
+  "scope": "Disposable local integration candidate; no remote publication, production deployment, hosted credentials or live resources",
+  "acceptance": {
+    "status": "qualified_local_integration_candidate",
+    "passed": [
+      "125 Rust tests",
+      "9 Python tests",
+      "strict lint and format",
+      "native build and CLI startup",
+      "digest-pinned versioned image build",
+      "isolated selected-image backup/restore and exact receipt replay",
+      "exact image archive checksum and load verification"
+    ],
+    "excluded": [
+      "hermetic byte-for-byte image rebuild",
+      "production AQ integration",
+      "product capacity",
+      "registry publication"
+    ]
+  },
+  "source": {
+    "origin_head": "225329cd6acf5a775fd2a0b016dd1c45fb16c79b",
+    "origin_state": " M docs/aq-integration.md\n",
+    "selection": "committed HEAD",
+    "candidate_commit": "225329cd6acf5a775fd2a0b016dd1c45fb16c79b",
+    "inventory_sha256": "69b2a30c056cee15ce23a8ea8adc134425e6d9b021b675a61f6b0127c93c2e05",
+    "inventory": "source-inventory.json",
+    "archive": "source.tar.gz",
+    "git_bundle": "source.bundle",
+    "normalization": null
+  },
+  "build": {
+    "binding": "Locally observed build from inventoried isolated source; all inventoried files verified unchanged after checks/build",
+    "host": "x86_64-unknown-linux-gnu",
+    "binary": "aq-graph",
+    "command": "CARGO_BUILD_JOBS=3 cargo build --locked --release --bin aq-graph",
+    "toolchain": "rustc.txt",
+    "git_version": "git version 2.43.0"
+  },
+  "checks": [
+    {
+      "name": "current Rust contract/storage/migration tests",
+      "command": "AQ_GRAPH_TEST_DATABASE_URL=<isolated PostgreSQL 17.11 loopback URL> CARGO_BUILD_JOBS=4 cargo test --locked --all-targets",
+      "exit_code": 0,
+      "log": "graph-tests.log",
+      "log_sha256": "dcc606757b5ae820d2c4a732b069abbbeaecd1b96250d88ed5fa9581676b135a",
+      "tests": {
+        "passed": 125,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "name": "Python benchmark-driver regressions",
+      "command": "python3 -m unittest discover -s scripts -p test_*.py",
+      "exit_code": 0,
+      "log": "graph-python.log",
+      "log_sha256": "ff86c5bc495e9e379ea417fbb84004c20ef0a41458ed9f53b8a5e319c9b521cc"
+    },
+    {
+      "name": "strict lint",
+      "command": "CARGO_BUILD_JOBS=3 cargo clippy --locked --all-targets -- -D warnings",
+      "exit_code": 0,
+      "log": "graph-clippy.log",
+      "log_sha256": "aec4f14ef73188d1af7946c7c3549c996f52b8e9d9a6cb9ffde9a2b00bf6c508"
+    },
+    {
+      "name": "format",
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "log": "graph-format.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "native release build",
+      "command": "CARGO_BUILD_JOBS=3 cargo build --locked --release --bin aq-graph",
+      "exit_code": 0,
+      "log": "graph-build.log",
+      "log_sha256": "1c8bbf2b6f66642de96d42ee3a041239852d5a47cc76d282e530a6db01d4e7ed"
+    },
+    {
+      "name": "versioned image build",
+      "command": "docker build --build-arg AQ_GRAPH_VERSION=0.1.0-graph01-225329cd -t aq-graph:graph01-225329cd6acf .",
+      "exit_code": 0,
+      "log": "graph-image-build.log",
+      "log_sha256": "dad336a3a81ac3d85d9d25a080059ca511ba346428b9e67d9d530c2ebe150c12"
+    },
+    {
+      "name": "digest-pinned base image rebuild",
+      "command": "docker build --file <artifact>/Dockerfile.pinned --build-arg AQ_GRAPH_VERSION=0.1.0-graph01-225329cd -t aq-graph:graph01-225329cd6acf-pinned .",
+      "exit_code": 0,
+      "log": "graph-image-rebuild.log",
+      "log_sha256": "82459e88b29dcf491f4d4a993395d6c529138d705a2ff12fedfebd18018db84a"
+    },
+    {
+      "name": "selected image isolated recovery",
+      "command": "AQ_GRAPH_SMOKE_PROJECT=aq-graph-validation-component-final-h3qlzz6k AQ_GRAPH_SMOKE_PORT=19764 AQ_GRAPH_SMOKE_IMAGE=aq-graph:graph01-225329cd6acf-pinned AQ_GRAPH_SMOKE_SKIP_BUILD=1 python3 scripts/deployment-smoke.py",
+      "exit_code": 0,
+      "log": "graph-recovery-final.log",
+      "log_sha256": "78ab4c1572b0ee4fc7ccf3d475e584a2333d5fd4aeb7bfb8e7a1d2ccf07ea628"
+    },
+    {
+      "name": "archived exact image load",
+      "command": "gzip -dc image.tar.gz | docker load; docker image inspect aq-graph:graph01-225329cd6acf-pinned --format {{.Id}}",
+      "exit_code": 0,
+      "log": "graph-image-load.log",
+      "log_sha256": "817e0908d99e502645da95c862b9ee1b9df8364f2af502821d249a3fe8d26d28"
+    },
+    {
+      "name": "native executable startup",
+      "command": "target/release/aq-graph --help",
+      "exit_code": 0,
+      "log": "graph-binary-help.log",
+      "log_sha256": "842780696630be805a5299fb6a07208c9df9ac59dbbfb1e528ef96df5565c5b4"
+    },
+    {
+      "name": "packaged artifact integrity and source replay",
+      "command": "sha256sum -c SHA256SUMS; clone source.bundle into fresh disposable checkout; unpack source.tar.gz; verify every source file against source-inventory.json and exact candidate commit; packaged executable --help",
+      "exit_code": 0,
+      "log": "artifact-verification.log",
+      "log_sha256": "f18e9e6c44855095b7400f4c30fcacea47990bd99b5ca813a2c888011facf1fd"
+    }
+  ],
+  "compatibility": {
+    "api": {
+      "major": 1,
+      "header": "X-AQ-Graph-API-Version: 1",
+      "unsupported_header": "400 unsupported_api_version",
+      "schema": 8,
+      "readiness": "Embedded migration versions and checksums must exactly match; old binary/new schema rollback not assumed"
+    },
+    "mutation": {
+      "batch_limit": 100,
+      "cas": "Positive opaque expected_version/content_revision tokens; stale write returns 409 conflict, never overwrites",
+      "idempotency_scope": [
+        "authenticated actor",
+        "workspace",
+        "operation"
+      ],
+      "same_key_same_payload": "Committed exact receipt/IDs replay after lost response or restart; object key order immaterial",
+      "same_key_changed_payload": "409 conflict",
+      "timeouts": "May occur after commit; retry original key and identical parsed payload",
+      "receipt_retention": "Indefinite pilot retention; no automatic receipt/history pruning"
+    },
+    "principal": {
+      "scope": "One workspace and read/write/admin capability; supplied actor fields rejected; finer AQ attempt/task authorization remains AQ adapter responsibility",
+      "provenance": "Authenticated service principal is actor; task/session metadata is attribution, never another authorized actor",
+      "credentials": "32-4096 bytes; hashes only in storage; issue/rotate/revoke via admin routes; last administrator cannot be removed",
+      "rotation": "Remove bootstrap environment before rotating initial admin; preserve stable actor identity for actor-scoped receipt reconciliation"
+    },
+    "recovery": "PostgreSQL 17.11 exact table count/content hashes, revisions/links/history/draft/summary/ready leaf and idempotent replay match after isolated backup/restore; selected image writes/restarts on restored clone",
+    "platform": "Selected image Linux amd64 with Debian bookworm runtime; optional native CLI built Ubuntu 24.04.4/WSL2 glibc 2.39",
+    "image": {
+      "tag": "aq-graph:graph01-225329cd6acf-pinned",
+      "id": "sha256:807beba98dcd20b0ae335f09cae8c06ecb182a352ee78de278cb47fccb2ee3be",
+      "labels": {
+        "io.aq-graph.api-version": "1",
+        "io.aq-graph.schema-version": "8",
+        "org.opencontainers.image.description": "Standalone task and knowledge graph service and CLI",
+        "org.opencontainers.image.title": "aq-graph",
+        "org.opencontainers.image.version": "0.1.0-graph01-225329cd"
+      },
+      "archive": "image.tar.gz",
+      "build_recipe": "Dockerfile.pinned",
+      "build_command": "docker build --file Dockerfile.pinned --build-arg AQ_GRAPH_VERSION=0.1.0-graph01-225329cd -t aq-graph:graph01-225329cd6acf-pinned .",
+      "rust_base": "rust:1.96.1-bookworm@sha256:a339861ae23e9abb272cea45dfafde21760d2ce6577a70f8a926153677902663",
+      "debian_base": "debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3"
+    }
+  },
+  "limits": [
+    "Source candidate is committed graph HEAD; preexisting uncommitted docs/aq-integration.md changes excluded.",
+    "No production AQ adapters, execution claims, offline replicas or V1 import.",
+    "Standalone tests and recovery do not establish WAN/product capacity or production ingress/security/host recovery.",
+    "No old load benchmark was substituted for current qualification; performance envelope remains independently qualified.",
+    "Base image digests and pinned Dockerfile retained; Dockerfile still uses live apt repositories, so byte-for-byte rebuild reproducibility is not claimed. Exact selected image is archived, checksummed and reload-verified.",
+    "The unpinned initial image and digest-pinned rebuild have different image IDs; only the final pinned image is selected and its recovery was rerun.",
+    "Native CLI requires glibc 2.39; the selected container has its own Debian runtime. macOS/other platforms not rerun here.",
+    "No remote registry publication or production credential changes."
+  ],
+  "artifact_directory": "/home/jkern/dev/.aq-qualification/components-2026-10-30/aq-graph",
+  "artifacts": {
+    "Dockerfile.pinned": {
+      "sha256": "72fdd2d90df4913568e569582c9f71798ed7d65de8984cab7b7060cef8c4a8a3",
+      "bytes": 1565
+    },
+    "aq-graph": {
+      "sha256": "eb9c8f41002cb5d9675f87de0cadbe34e7d74cfc60d2449cd23ac4df76921fea",
+      "bytes": 10453464
+    },
+    "artifact-verification.log": {
+      "sha256": "f18e9e6c44855095b7400f4c30fcacea47990bd99b5ca813a2c888011facf1fd",
+      "bytes": 577
+    },
+    "cargo.txt": {
+      "sha256": "e18efb6caebf2254f7da0f021489eb09bf5eed8f325435cee5c3fe128ba9824c",
+      "bytes": 36
+    },
+    "graph-binary-help.log": {
+      "sha256": "842780696630be805a5299fb6a07208c9df9ac59dbbfb1e528ef96df5565c5b4",
+      "bytes": 1126
+    },
+    "graph-build.log": {
+      "sha256": "1c8bbf2b6f66642de96d42ee3a041239852d5a47cc76d282e530a6db01d4e7ed",
+      "bytes": 6073
+    },
+    "graph-clippy.log": {
+      "sha256": "aec4f14ef73188d1af7946c7c3549c996f52b8e9d9a6cb9ffde9a2b00bf6c508",
+      "bytes": 5539
+    },
+    "graph-format.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "graph-image-build.log": {
+      "sha256": "dad336a3a81ac3d85d9d25a080059ca511ba346428b9e67d9d530c2ebe150c12",
+      "bytes": 5997
+    },
+    "graph-image-load.log": {
+      "sha256": "817e0908d99e502645da95c862b9ee1b9df8364f2af502821d249a3fe8d26d28",
+      "bytes": 123
+    },
+    "graph-image-rebuild.log": {
+      "sha256": "82459e88b29dcf491f4d4a993395d6c529138d705a2ff12fedfebd18018db84a",
+      "bytes": 6188
+    },
+    "graph-python.log": {
+      "sha256": "ff86c5bc495e9e379ea417fbb84004c20ef0a41458ed9f53b8a5e319c9b521cc",
+      "bytes": 125
+    },
+    "graph-recovery-final.log": {
+      "sha256": "78ab4c1572b0ee4fc7ccf3d475e584a2333d5fd4aeb7bfb8e7a1d2ccf07ea628",
+      "bytes": 6837
+    },
+    "graph-tests.log": {
+      "sha256": "dcc606757b5ae820d2c4a732b069abbbeaecd1b96250d88ed5fa9581676b135a",
+      "bytes": 19805
+    },
+    "image.tar.gz": {
+      "sha256": "7aa70669bcff0010069e1888f53b27bbca66b32d062c60c4df5f0aecbed5fe60",
+      "bytes": 36305472
+    },
+    "rustc.txt": {
+      "sha256": "2af3376cb254e69564e00978cada767f05432a299af78300c47d14c103366c1e",
+      "bytes": 196
+    },
+    "source-inventory.json": {
+      "sha256": "251e6937bd2f0e075d25b73824a28b57dba782bd3dc9e289e4ebc9e4dfd1dd34",
+      "bytes": 29335
+    },
+    "source.bundle": {
+      "sha256": "471371c4109d233c96628735c90be2f0dd174d5f20280d2fabbacebd0c04b2b0",
+      "bytes": 6434070
+    },
+    "source.tar.gz": {
+      "sha256": "e403a3fe99de6eb94e2edf20f119204960abae78616aadba3488cbe195225cab",
+      "bytes": 6449470
+    }
+  }
+}

@@ -1,5 +1,7 @@
 # Agent Q integration boundary
 
+The [AQ ecosystem design](../../aq-server/docs/architecture/0001-ecosystem-and-releases.md) defines product packaging and ownership. [AQ's daemon execution and agent-access specification](../../aq-server/docs/specs/0002-execution-and-agent-access.md) defines the scoped gateway used by remote agents. Workers access AQ over HTTPS and hold no graph database replica or graph service credential. This is a consumer integration design; aq-graph remains independently usable through its authenticated API.
+
 The standalone service can be integrated through the [v1 API](api.md). The [Python adapter example](../examples/agent_q_adapter.py) demonstrates persistent HTTP connections, graph-ready candidates, bounded task context, and version-checked completion. It has no dependency on AQ internals and does not implement scheduling or execution claims.
 
 Configure an AQ service identity scoped to its workspace. AQ retains the authenticated identity for the service operation; a task/session identifier supplied as provenance is an attribution, not a different authorized actor. Do not reuse a human administrator token for normal worker access.
