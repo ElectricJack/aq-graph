@@ -15,7 +15,7 @@ COPY migrations ./migrations
 RUN cargo build --locked --release --bin aq-graph
 
 FROM debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3
-ARG AQ_GRAPH_VERSION=0.1.0
+ARG AQ_GRAPH_VERSION=0.1.1
 LABEL org.opencontainers.image.title="aq-graph" \
       org.opencontainers.image.description="Standalone task and knowledge graph service and CLI" \
       org.opencontainers.image.version="${AQ_GRAPH_VERSION}" \

@@ -1,0 +1,10 @@
+Source: https://github.com/ElectricJack/aq-graph/actions/runs/41557588416/job/125661738400
+
+publish	Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093	2026-11-03T01:11:45.2693255Z Found 3 artifact(s)
+publish	Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093	2026-11-03T01:11:45.2694273Z No input name, artifact-ids or pattern filtered specified, downloading all artifacts
+publish	Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093	2026-11-03T01:11:45.2695918Z - aq-graph-linux-x86_64 (ID: 13195780270, Size: 4477328, Expected Digest: sha256:6f93f8b3e48b956d2e4359325f87f388e52930595f4e669c423ee077c1ac4640)
+publish	Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093	2026-11-03T01:11:45.2697410Z - aq-graph-macos-aarch64 (ID: 13194524501, Size: 4140600, Expected Digest: sha256:92d1dc1c77615895ac4b2810f19e71200bd60c0f633c71f5430f3d36f6a1ab8e)
+publish	Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093	2026-11-03T01:11:45.2698772Z - ElectricJack~aq-graph~S9AJS7.dockerbuild (ID: 13194234678, Size: 28855, Expected Digest: sha256:a478697b8416f0f05aa4386372021e3b24e0dc277f78ba7b13a769f143c620e6)
+publish	Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093	2026-11-03T01:11:45.5290350Z Artifact download completed successfully.
+publish	Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093	2026-11-03T01:11:45.5658914Z Artifact download completed successfully.
+publish	Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093	2026-11-03T01:12:10.4846641Z ##[error]Unable to download artifact(s): Unable to download and extract artifact: Artifact download failed after 5 retries.
