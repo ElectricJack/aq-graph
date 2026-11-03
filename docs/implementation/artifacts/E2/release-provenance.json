@@ -1,0 +1,17 @@
+{
+  "release": "v0.1.1",
+  "image_digest": "sha256:9978ccdd8aa6ccd00d80521a1bb791fbf73f1eaae1ddd9b0ae8ee869be071707",
+  "image_reference": "ghcr.io/electricjack/aq-graph@sha256:9978ccdd8aa6ccd00d80521a1bb791fbf73f1eaae1ddd9b0ae8ee869be071707",
+  "source_revision": "2d5b02c610b53baec03658171e1d6e6ebece4bd2",
+  "rust_toolchain": "1.96.1",
+  "target": "x86_64-unknown-linux-gnu",
+  "platform": "linux/amd64",
+  "cargo_lock_sha256": "56b89818b7b0fe9fbefb814ffadb97c23a78b5dc9f0d6dea041325c66fdd434f",
+  "dependency_inventory": "Cargo.lock",
+  "base_images": [
+    "rust:1.96.1-bookworm@sha256:a339861ae23e9abb272cea45dfafde21760d2ce6577a70f8a926153677902663",
+    "debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3"
+  ],
+  "api_version": 1,
+  "schema_version": 8
+}

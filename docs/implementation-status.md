@@ -1,6 +1,12 @@
 # Implementation status
 
-The standalone aq-graph baseline is implemented in Rust with PostgreSQL. Agent Q is not required to run it. The package version is 0.1.0, HTTP API v1, and schema migration 0008. The first public release (`v0.1.0`) and its GHCR digest are **pending owner authorization**; no published image digest is claimed. [E2 evidence](implementation/E2.md) records the prepared workflow, verification and publication handoff.
+The standalone aq-graph baseline is implemented in Rust with PostgreSQL. Agent Q is not required to run it. The package version is **0.1.1**, HTTP API v1, and schema migration 0008. Release [`v0.1.1`](https://github.com/ElectricJack/aq-graph/releases/tag/v0.1.1) is published from `2d5b02c610b53baec03658171e1d6e6ebece4bd2` with verified source/toolchain/lockfile provenance. Pin the image as:
+
+```text
+ghcr.io/electricjack/aq-graph@sha256:9978ccdd8aa6ccd00d80521a1bb791fbf73f1eaae1ddd9b0ae8ee869be071707
+```
+
+[E2 evidence](implementation/E2.md) records registry verification, provenance and rollback constraints. Its [release workflow](https://github.com/ElectricJack/aq-graph/actions/runs/41558682185) passed 126 Rust tests (including `upgrade_from_previous_schema_preserves_data`), 12 Python tests, deployment/recovery and both platform binary builds. The earlier immutable `v0.1.0` tag had an artifact-download failure before image/release publication; `v0.1.1` contains the correction.
 
 ## Available behavior
 
@@ -26,7 +32,7 @@ Performance methodology is in [benchmarking](benchmark.md), with [local results 
 
 ## Deployment and migration limits
 
-Historical deployment evidence exercised the then-current Dockerfile and isolated Compose stack with PostgreSQL 17.11. That run independently verified startup, nonroot/read-only operation, restart, same-schema image recreation, exact backup/restoration of records and history, retry receipts and new writes after restoration. An internal-only networking configuration that prevented host ingress was fixed. CI now uses the same reproducible [deployment/recovery drill](deployment-validation.md); the E2 schema 7→8 regression test covers data-preserving migration in a rollback-only private PostgreSQL schema. Remote release execution, cross-schema upgrades through the deployed stack, hosting purchase and public production deployment remain unperformed.
+Historical deployment evidence exercised the then-current Dockerfile and isolated Compose stack with PostgreSQL 17.11. That run independently verified startup, nonroot/read-only operation, restart, same-schema image recreation, exact backup/restoration of records and history, retry receipts and new writes after restoration. An internal-only networking configuration that prevented host ingress was fixed. CI now uses the same reproducible [deployment/recovery drill](deployment-validation.md); the E2 schema 7→8 regression test covers data-preserving migration in a rollback-only private PostgreSQL schema. Release execution and its same-schema deployment/recovery drill passed for v0.1.1; cross-schema upgrades through the deployed stack, hosting purchase and public production deployment remain unperformed.
 
 Production ingress must enforce connection and slow-client write/idle limits in addition to application request limits. Configure off-host backup storage and test recovery on the deployment target. The recorded reference host is a shared 24-thread Ryzen desktop with service, database and generator colocated. A production VPS reference, agreed p99 budget, controlled cold-cache behavior and larger growth scenarios remain unvalidated. The current performance acceptance targets are not all met.
 

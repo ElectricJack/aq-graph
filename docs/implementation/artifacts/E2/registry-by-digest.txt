@@ -1,0 +1,15 @@
+Name:      ghcr.io/electricjack/aq-graph@sha256:9978ccdd8aa6ccd00d80521a1bb791fbf73f1eaae1ddd9b0ae8ee869be071707
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:9978ccdd8aa6ccd00d80521a1bb791fbf73f1eaae1ddd9b0ae8ee869be071707
+           
+Manifests: 
+  Name:        ghcr.io/electricjack/aq-graph@sha256:c3fc6e3e62914983c94d704e98800d1d46cbc5cf7c91e73f0ec22ee4bdf52824
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    linux/amd64
+               
+  Name:        ghcr.io/electricjack/aq-graph@sha256:00fdda78ab98b47c4a3528037574e5e96a05c2f968e8ee2cd27fb255f75e752e
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    unknown/unknown
+  Annotations: 
+    vnd.docker.reference.digest: sha256:c3fc6e3e62914983c94d704e98800d1d46cbc5cf7c91e73f0ec22ee4bdf52824
+    vnd.docker.reference.type:   attestation-manifest

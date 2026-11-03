@@ -1,0 +1,22 @@
+{
+  "result": "passed",
+  "release": "v0.1.1",
+  "release_url": "https://github.com/ElectricJack/aq-graph/releases/tag/v0.1.1",
+  "published_at": "2026-11-03T01:24:28Z",
+  "workflow_url": "https://github.com/ElectricJack/aq-graph/actions/runs/41558682185",
+  "source_revision": "2d5b02c610b53baec03658171e1d6e6ebece4bd2",
+  "image_reference": "ghcr.io/electricjack/aq-graph@sha256:9978ccdd8aa6ccd00d80521a1bb791fbf73f1eaae1ddd9b0ae8ee869be071707",
+  "cargo_lock_sha256": "56b89818b7b0fe9fbefb814ffadb97c23a78b5dc9f0d6dea041325c66fdd434f",
+  "linux_amd64_manifest": "sha256:c3fc6e3e62914983c94d704e98800d1d46cbc5cf7c91e73f0ec22ee4bdf52824",
+  "attestation_manifest": "sha256:00fdda78ab98b47c4a3528037574e5e96a05c2f968e8ee2cd27fb255f75e752e",
+  "checks": [
+    "tag source matches workflow and provenance",
+    "five workflow jobs succeeded",
+    "exact seven release assets present",
+    "release Cargo.lock equals source and provenance hash",
+    "release image reference matches registry tag digest",
+    "OCI index includes linux/amd64 and linked attestation",
+    "provenance matches generator with checked-out release inputs",
+    "immutable digest reference resolves independently"
+  ]
+}

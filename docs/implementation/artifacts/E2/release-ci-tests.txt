@@ -1,0 +1,25 @@
+Source: https://github.com/ElectricJack/aq-graph/actions/runs/41558682185/job/125663730004
+Commit: 2d5b02c610b53baec03658171e1d6e6ebece4bd2
+Command: cargo test --locked --all-targets; python3 -m unittest discover -s scripts -p "test_*.py"
+
+2026-11-03T01:17:53.5646601Z test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.00s
+2026-11-03T01:17:53.6143282Z test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+2026-11-03T01:17:53.6204737Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-11-03T01:17:56.0299848Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.41s
+2026-11-03T01:17:56.4919583Z test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+2026-11-03T01:17:56.5955411Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+2026-11-03T01:17:56.6918547Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+2026-11-03T01:17:56.7628355Z test upgrade_from_previous_schema_preserves_data ... ok
+2026-11-03T01:17:56.7629038Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+2026-11-03T01:17:59.3951367Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.63s
+2026-11-03T01:17:59.5419429Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+2026-11-03T01:18:02.0538136Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.51s
+2026-11-03T01:18:02.2762302Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+2026-11-03T01:18:04.2453142Z test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.97s
+2026-11-03T01:18:05.2569224Z test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.00s
+2026-11-03T01:18:05.4360766Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+2026-11-03T01:18:06.5240602Z test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.09s
+2026-11-03T01:18:09.8682569Z test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.34s
+2026-11-03T01:18:12.5203716Z test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.65s
+2026-11-03T01:18:13.2928315Z Ran 12 tests in 0.156s
+2026-11-03T01:18:13.2928490Z OK

@@ -1,0 +1,39 @@
+{
+  "result": "passed",
+  "image": "aq-graph:validation",
+  "project": "aq-graph-validation",
+  "port": 18746,
+  "checks": [
+    "credential rerun",
+    "nonroot/read-only",
+    "private PostgreSQL",
+    "fresh start",
+    "restart",
+    "same-schema recreate",
+    "exact revisions/links/history/draft/summary",
+    "ready leaf projection",
+    "receipt replay",
+    "backup/restore",
+    "invalid restore",
+    "existing destination refusal",
+    "restored write"
+  ],
+  "database_snapshot": {
+    "_sqlx_migrations": "8|89f1a2f29daf704ce8b0735f70c80d83",
+    "change_sets": "3|12bae88bdbe913d211b1823a7fcaf87f",
+    "credentials": "1|438d61d68e3ff8db7c7a80a71e5daea2",
+    "edge_versions": "2|91f7ff05d75ec9529dcd3b701ead552e",
+    "edges": "2|1794110b041175a2fec3389ce3083910",
+    "history_entries": "11|4683361ad27d2f65a2d24144cf756132",
+    "idempotency_receipts": "3|c1e6ab0cb09f367b17f2910dfb5a2a6e",
+    "link_set_members": "4|fe8c3c3a8c5c828d86b4b0b956373113",
+    "link_sets": "6|e09e5a4aa0203656c088fa7b4f3672e0",
+    "node_ready_projection": "3|7da7f0b5fb15c7873a3f3099ad2b8ba6",
+    "node_revisions": "7|bfbaed37067af142d589d11115e3222f",
+    "nodes": "3|a2503ef89f680f3f80344c1f988ce128",
+    "workspaces": "1|fa4e5016f529b5613a92dc39999348dc"
+  },
+  "image_id": "sha256:809cc8ca2915f10c1d8a84b67a2d4d885f754ef4134a74cb3a3b65f527218125",
+  "postgres_version": "17.11 (Debian 17.11-1.pgdg12+2)",
+  "elapsed_seconds": 35.88
+}
