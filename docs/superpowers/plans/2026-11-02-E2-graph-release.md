@@ -61,6 +61,29 @@
 - [x] Self-review spec coverage; record no adversarial review requirement. Reconcile all E2 items in the evidence document.
 - [x] Squash local implementation history to one leaf commit, merge the authorized integration branch, rerun targeted tests if merge changes touched files, guarded push, record full SHA. Obtain supervisor guidance for missing origin/dev and tag publication before performing dependent operations.
 - [ ] Create immutable v0.1.0 at the approved pushed source. Verify release workflow/checks, retrieve release JSON/reference and compare GHCR registry digest. Record tag, source, workflow URL, digest and provenance in E2 evidence and implementation status; guarded-push evidence update.
-- [x] Settle AQ checklist, close pass only if acceptance is met, and drain-ack. Publication cannot complete: record the exact blocker and close fail/blocked as directed by the supervisor, rather than inventing a digest.
+- [ ] Settle AQ checklist, close pass only if acceptance is met, and drain-ack. Record actual release identity and verification before closing.
 
-Execution status: implementation and local checks complete. Supervisor instruction `msg-780101497caf4fb185a08fdf46469ffe` forbids tag/GHCR publication pending owner approval; release acceptance remains unmet and the task must close with that limit.
+Execution status: implementation and local checks complete. The owner authorized agents to create release tags and publish images in-task on 2026-11-02 (recovery comment on `smart-falcon-16.5`), superseding the earlier publication hold. Tag `v0.1.0` was created at guarded-pushed source `775cbbe3cfa2e419069262833d6ccfac8427b2f4`; release workflow `41557588416` is running. Final publication evidence must be verified before passing close.
+
+
+### Task 4: Repair archive selection and publish v0.1.1
+
+**Files:** Modify `.github/workflows/release.yml:69-70`, `Cargo.toml:3` and the local `aq-graph` package entry in `Cargo.lock`. Update `docs/implementation/E2.md`, `docs/implementation-status.md` and retained artifacts after verifying publication.
+
+**Interfaces:** Consumes `aq-graph-linux-x86_64` and `aq-graph-macos-aarch64` upload artifacts; excludes Buildx `.dockerbuild` records. Produces tag `v0.1.1`, its GHCR digest and release provenance with matching source/lockfile identity. Preserve `v0.1.0` at its existing commit.
+
+- [x] Regression reproduced by release run `41557588416`: both archives downloaded successfully; the third artifact `ElectricJack~aq-graph~S9AJS7.dockerbuild` failed extraction. No image/release was published. Retain the relevant job log lines as the red check.
+- [ ] Select only release archive artifacts:
+  ```yaml
+  with:
+    pattern: aq-graph-*
+    path: artifacts
+    merge-multiple: true
+  ```
+  This matches the two binary uploads, excludes the build record, and runs before this job uploads its own release evidence.
+- [ ] Set `[package].version` to `0.1.1` in `Cargo.toml` and the root package version to `0.1.1` in `Cargo.lock`; keep all dependency versions and checksums identical. Do not move/delete the existing tag.
+- [ ] Run `/tmp/e2-actionlint/actionlint .github/workflows/release.yml .github/workflows/ci.yml`, `cargo fmt --check`, capped `cargo clippy --locked --all-targets -- -D warnings`, the exact named upgrade test against disposable PostgreSQL, and `aq test scripts/test_release_evidence.py scripts/test_benchmark.py`. Expected: no diagnostics; exactly one passing named upgrade test; 12 Python tests pass. Actual tag CI must also pass the full existing checks/deployment drill and both binary builds.
+- [ ] Commit the repair, merge approved `origin/main`, guarded-push and create `v0.1.1` at that pushed commit using `gh api --method POST repos/ElectricJack/aq-graph/git/refs -f ref=refs/tags/v0.1.1 -f sha=<verified full pushed SHA>`. Watch that one release run in the foreground.
+- [ ] Download the actual release `image-reference.txt`, `release-provenance.json` and `Cargo.lock`; compare source, lock digest, schema/API/toolchain and registry tag/index digest, and inspect the linux/amd64 manifest and provenance. Record the exact real identity and workflow result in E2 evidence/status, guarded-push the evidence commit, then close truthfully.
+
+Self-review: this repair addresses the observed publication failure within E2, retains immutable history and all required CI, changes no API/schema, and follows the task's explicit allowance to bump the package version. No independent subsystem or adversarial review is added.
