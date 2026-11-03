@@ -29,6 +29,12 @@ uuid = { version = "1", features = ["v4", "serde"] }
 http-body-util = "0.1"
 tempfile = "3"
 
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
 [profile.release]
 lto = "thin"
 strip = true
