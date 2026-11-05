@@ -39,10 +39,17 @@ debug = false
 lto = "thin"
 strip = true
 
-# CI-only images (the CI deployment drill): release code generation without
-# the serial ThinLTO link step. Release images and archives keep
-# [profile.release].
+# CI-only images (the CI deployment drill): no ThinLTO, low optimization.
+# Release images and archives keep [profile.release].
+# Dropping ThinLTO alone saves nothing on a 4-vCPU runner (LTO builds
+# dependencies as bitcode and generates code once); the optimization level is
+# the lever (aq-server: 796 s release, 793 s without LTO, 445 s with workspace
+# opt-level 0 and dependencies 1). Debug assertions stay off, as in release.
 [profile.ci-image]
 inherits = "release"
 lto = false
+opt-level = 0
 codegen-units = 16
+
+[profile.ci-image.package."*"]
+opt-level = 1
