@@ -161,12 +161,14 @@ Run Cargo from the checkout root. In an AQ slot, keep artifacts in that slot's
 own `target/`; do not point `CARGO_TARGET_DIR` at another slot or a shared target,
 and clean only your own target. The dev profile (also inherited by tests) keeps
 file/line backtraces with line tables for workspace code and omits dependency
-debuginfo. Repository Cargo configuration disables incremental compilation,
-including Cargo launched by scripts or test runners.
+debuginfo. Interactive builds are incremental (Cargo's dev default): an edit
+and re-test loop is several times faster, at the cost of gigabytes of
+`target/debug/incremental`. CI sets `CARGO_INCREMENTAL=0` because its builds are
+one-shot. Do not alternate the two in one target directory; each switch
+rebuilds the crate. See the "Build health" section of `AGENTS.md`.
 
 ```sh
 export CARGO_TARGET_DIR="$PWD/target"
-export CARGO_INCREMENTAL=0
 export CARGO_BUILD_JOBS=2
 export RUST_TEST_THREADS=2
 cargo fmt --all -- --check
