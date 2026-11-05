@@ -38,3 +38,11 @@ debug = false
 [profile.release]
 lto = "thin"
 strip = true
+
+# CI-only images (the CI deployment drill): release code generation without
+# the serial ThinLTO link step. Release images and archives keep
+# [profile.release].
+[profile.ci-image]
+inherits = "release"
+lto = false
+codegen-units = 16
