@@ -96,5 +96,5 @@ raising the budget. Raising a budget needs the owner's review.
   branch's build (aq-server 458f682d).
 - **Release-only settings stay out of CI images.** ThinLTO lives only in
   `[profile.release]`. The CI deployment drill builds its image with
-  `--build-arg CARGO_PROFILE=ci-image` (release without LTO); `release.yml`
-  builds `release`.
+  `--build-arg CARGO_PROFILE=ci-image` (no LTO, workspace opt-level 0,
+  dependencies 1); `release.yml` builds `release`.
