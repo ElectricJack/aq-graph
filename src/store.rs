@@ -1360,6 +1360,9 @@ async fn execute(
                     knowledge_rules::reset_verification(&mut n);
                     knowledge_rules::clear_summary(&mut n);
                     n.deleted = true;
+                    if n.kind == NodeKind::Task {
+                        n.successor_id = None;
+                    }
                     n.version += 1;
                     n.content_revision += 1;
                     n.updated_at = server_time();
@@ -1376,6 +1379,9 @@ async fn execute(
                         json!({"deleted":true,"version":n.version}),
                     )
                     .await?;
+                    if n.kind == NodeKind::Task {
+                        remove_task_links(tx, p, change, n.id, reason).await?;
+                    }
                     deleted_nodes.push(n.id);
                 }
                 results.push(encode(&n)?);
@@ -1744,4 +1750,60 @@ where
 fn retry_delay(attempt: usize) -> Duration {
     let jitter = u64::from(Uuid::new_v4().as_bytes()[0]) % 17;
     Duration::from_millis((16_u64 << attempt.min(4)) + jitter)
+}
+
+/// Deleting a task also removes every incident relationship atomically. Other
+/// tasks survive, including children and tasks that depended on this one.
+async fn remove_task_links(
+    tx: &mut Tx<'_>,
+    p: &Principal,
+    change: Uuid,
+    task: Uuid,
+    reason: Option<&str>,
+) -> Result<()> {
+    let pointers = sqlx::query_scalar::<_, Value>("SELECT to_jsonb(n) FROM nodes n WHERE workspace_id=$1 AND successor_id=$2 ORDER BY id FOR UPDATE")
+        .bind(p.workspace_id).bind(task).fetch_all(&mut **tx).await?;
+    for row in pointers {
+        let mut n: Node = decode(row)?;
+        n.successor_id = None;
+        n.version += 1;
+        n.content_revision += 1;
+        n.updated_at = server_time();
+        knowledge_rules::reset_verification(&mut n);
+        knowledge_rules::clear_summary(&mut n);
+        save_node(tx, &n, false).await?;
+        revision(tx, p, change, &n, "successor_removed", reason).await?;
+    }
+    let rows = sqlx::query_scalar::<_, Value>("SELECT to_jsonb(e) FROM edges e WHERE workspace_id=$1 AND (source=$2 OR target=$2) AND NOT deleted ORDER BY id FOR UPDATE")
+        .bind(p.workspace_id).bind(task).fetch_all(&mut **tx).await?;
+    for row in rows {
+        let mut e: Edge = decode(row)?;
+        e.deleted = true;
+        e.version += 1;
+        sqlx::query("UPDATE edges SET deleted=true,version=$3 WHERE workspace_id=$1 AND id=$2")
+            .bind(p.workspace_id)
+            .bind(e.id)
+            .bind(e.version)
+            .execute(&mut **tx)
+            .await?;
+        history_entry(
+            tx,
+            p,
+            change,
+            vec![e.source, e.target],
+            "edge",
+            "removed",
+            reason,
+            encode(&e)?,
+        )
+        .await?;
+        // The deleted node already has its deletion revision; only checkpoint
+        // surviving endpoints, so its returned receipt version stays exact.
+        let survivors = relationship_nodes(&e)
+            .into_iter()
+            .filter(|id| *id != task)
+            .collect();
+        checkpoint_nodes(tx, p, change, survivors, "links_changed", reason).await?;
+    }
+    Ok(())
 }

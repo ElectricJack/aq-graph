@@ -23,3 +23,11 @@ aq-graph does not ship or support a v1 importer, legacy-history ingestion API, v
 If the owner later chooses to transfer selected v1 data, use a separately maintained external one-off script outside this repository. Ordinary API writes create new history under the authenticated actor; they must not be presented as preserving original historical actors or timestamps. The optional script may retain legacy references as attributed data, without adding v1-specific semantics to the service.
 
 Normal aq-graph schema upgrades, backup/restore, and node revision restoration remain supported. They manage data already owned by aq-graph and are distinct from importing a previous product. The existing v1 installation and database remain unchanged.
+
+Owner task deletion also tombstones every incident relationship atomically,
+including dependencies and hierarchy. Children and dependent tasks remain live;
+replacement pointers to the deleted task are cleared with retained revisions.
+This applies to task nodes in every lifecycle state and does not require a
+separate relationship-removal batch. Knowledge deletion retains its existing
+relationship and successor rules. Idempotent replay returns the original task
+change set. Deleted task content and history remain available as retained history.
