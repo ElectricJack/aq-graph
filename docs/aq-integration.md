@@ -16,7 +16,7 @@ AQ's execution database and aq-graph do not share a transaction. Use this durabl
 
 ## Fresh-start integration
 
-Agent Q v2 starts with a new workspace and new records. There is no v1 cutover or historical-data import prerequisite. The example adapter and published API establish the boundary; production AQ wiring and validation of v2 workflows remain integration work.
+Agent Q v2 starts with a new workspace and new records. There is no v1 cutover or historical-data import prerequisite. The example adapter and published API establish the boundary. As of 2026-11-12 aq-server is wired to this service: its compose files run aq-graph as a dependency, and task creation, readiness and completion go through the graph API on the local `aq-ms1` stack. The hosted deployment and its validation are still open. Platform state: aq-server `docs/status.md`.
 
 aq-graph does not ship or support a v1 importer, legacy-history ingestion API, v1 database adapter, reconciliation/cutover tool, or migration service for other installations. V1 tests remain useful behavioral evidence, but full v1 parity is not a release criterion.
 
