@@ -2,6 +2,8 @@
 
 **Status:** Draft specification
 
+**2026-11-13:** aligned with the rolling-records principle ([aq-server architecture 0006](../../../aq-server/docs/architecture/0006-records-are-rolling.md)); implementation pending (idempotency receipts, Selective history and Mutation and concurrency contract).
+
 **Scope:** Standalone task and knowledge graph, selective history, and concurrent access
 
 aq-graph provides a shared task and knowledge graph through a persistent service and a command-line client. Agent Q is one consumer; other tools and people can use aq-graph without installing Agent Q.
@@ -120,7 +122,7 @@ Each historical entry includes its stable record ID, revision or event ID, authe
 
 Deletion initially creates a tombstone and retains history and identity. Active references and dependencies must be explicitly resolved or rejected according to the operation's validation rules. Permanent erasure needs a separate administrative policy covering backups, derived indexes, and broken historical references. Credentials and secret material must not enter versioned content.
 
-Keep durable history indefinitely by default during the initial pilot, while measuring its growth. Bound operational logs and idempotency-receipt retention separately. Large artifacts belong in external artifact storage with stable references and integrity metadata. Introduce history pruning only through an explicit policy that describes its effect on pinned revisions and restoration.
+Durable node history is the product. It is kept, and the platform rolling-records rule does not apply to it; its growth is measured. Operational logs and idempotency receipts are not the product, so they are rolling sets that the service deletes itself: logs rotate, and receipts are kept for 7 days **(proposed default)** and then deleted in bounded batches by the running service, with no operator action. Nothing is refused because receipts or logs are many. Large artifacts belong in external artifact storage with stable references and integrity metadata. Introduce node-history pruning only through an explicit policy that describes its effect on pinned revisions and restoration.
 
 Individual record history and atomic change-set history are required. Whole-graph time travel is not promised: timestamps and monotonically allocated IDs alone do not establish transaction commit order or a consistent historical graph snapshot.
 
@@ -130,7 +132,7 @@ Every mutation executes as a short database transaction. It validates authority 
 
 Concurrent independent record edits should proceed without a workspace-wide lock. Same-record edits use expected-version checks and return a structured conflict rather than overwriting another writer. Structural graph operations may need stronger isolation; correctness takes precedence over avoiding retries.
 
-Mutations support idempotency keys scoped to actor, workspace, and operation. A repeated key with the same payload returns the committed outcome within the documented retention window. Reuse with a different payload is an error. If the connection is lost after commit, clients can safely retrieve or retry the operation within that window.
+Mutations support idempotency keys scoped to actor, workspace, and operation. A repeated key with the same payload returns the committed outcome within the receipt window (7 days). Reuse with a different payload is an error. If the connection is lost after commit, clients can safely retrieve or retry the operation within that window. After the window the key is forgotten. Requests carry no request time, so a repeat is accepted as new; its expected versions usually make it conflict, but a create has none. Clients therefore never retry a key after the window. They read current state to learn whether the operation applied.
 
 Use bounded connection pools, request queues, transaction deadlines, response limits, and retry budgets. Saturation returns an actionable overload response and retry guidance. Do not open one PostgreSQL connection for every agent or retry indefinitely during contention.
 

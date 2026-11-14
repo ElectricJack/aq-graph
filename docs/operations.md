@@ -26,7 +26,7 @@ The local initializer creates `.local` mode 0700, client token mode 0600, and Po
 
 ## Backup
 
-Backups contain durable graph content, history and credential hashes. Treat them as sensitive data. Keep durable history indefinitely during the pilot. Do not prune receipt/history tables without a separately documented retention and pinned-revision policy. Diagnostics have bounded Docker log retention (three files, ten megabytes each).
+Backups contain durable graph content, history and credential hashes. Treat them as sensitive data. Durable node history is kept. Idempotency receipts are a rolling set that the service deletes itself after 7 days ([spec 0001](specs/0001-aq-graph.md); 2026-11-13, pending: nothing deletes them yet). Do not prune receipt or history tables by hand; pruning node history needs a separately documented pinned-revision policy. Diagnostics have bounded Docker log retention (three files, ten megabytes each).
 
 ```sh
 scripts/backup.sh /secure/backups/aq-graph-2026-10-29.dump
