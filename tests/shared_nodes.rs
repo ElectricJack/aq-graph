@@ -670,6 +670,17 @@ async fn invalid_successors_and_deletions_roll_back_atomically() {
         let candidate_now = api.node(id(&candidate)).await;
         api.change(vec![patch(&old,json!({"retired":true,"retirement_reason":"Named successor","successor_id":candidate["id"]}))]).await;
         let(status,error)=api.mutation("delete-successor",vec![json!({"op":"remove_edge","id":edge["id"],"expected_version":edge["version"]}),json!({"op":"delete_node","id":candidate["id"],"expected_version":candidate_now["version"].as_i64().unwrap()+1})]).await;
+        if kind == "task" {
+            // Task deletion unlinks atomically: the replacement pointer to the
+            // deleted task is cleared and the retired record itself survives.
+            assert_eq!(status, StatusCode::OK, "{error}");
+            assert_eq!(api.node(id(&candidate)).await["deleted"], true);
+            let retained = api.node(id(&old)).await;
+            assert!(retained["successor_id"].is_null());
+            assert_eq!(retained["retired"], true);
+            assert_eq!(retained["deleted"], false);
+            continue;
+        }
         assert!(
             matches!(status, StatusCode::BAD_REQUEST | StatusCode::CONFLICT),
             "cannot delete referenced successor by removing its relation in the same batch: {error}"
