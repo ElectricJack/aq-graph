@@ -1,0 +1,84 @@
+{
+  "task": "bold-stone-59",
+  "date": "2026-11-02",
+  "source_base": "391dd4c",
+  "rustc": "1.96.1 (31fca3adb 2026-06-26)",
+  "cargo": "1.96.1 (356927216 2026-06-26)",
+  "worktree": "/home/jkern/dev/aq-platform-agents/projects/aq-graph/.aq/worktrees/slot-0",
+  "target_directory": "/home/jkern/dev/aq-platform-agents/projects/aq-graph/.aq/worktrees/slot-0/target",
+  "fixed_build_command": "CARGO_BUILD_JOBS=2 cargo test --locked --test cli --no-run --verbose",
+  "measurement_commands": [
+    "du -s -B1 target",
+    "du -sb target",
+    "du -s -B1 target/debug/incremental"
+  ],
+  "method": "Before: slot target absent, original Cargo.toml and no .cargo config. After: changed dev profile/config, cargo clean --target-dir \"$PWD/target\", identical build in the same slot. Snapshots precede test execution and the temporary backtrace example. No sibling targets touched.",
+  "before": {
+    "disk_bytes": 1284329472,
+    "apparent_bytes": 1276700152,
+    "cli_binary_bytes": {
+      "cli-a6f16e39a6d423b9": 11157184
+    },
+    "incremental_disk_bytes": 155176960,
+    "build_result": "Finished `test` profile [unoptimized + debuginfo] target(s) in 2m 55s",
+    "workspace_debuginfo_2": true,
+    "workspace_incremental_enabled": true
+  },
+  "after": {
+    "disk_bytes": 643928064,
+    "apparent_bytes": 637450986,
+    "cli_binary_bytes": {
+      "cli-29929be96aebc644": 7660392
+    },
+    "incremental_disk_bytes": 4096,
+    "incremental_artifact_files": 0,
+    "build_result": "Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 54s",
+    "workspace_line_tables_only": true,
+    "workspace_incremental_enabled": false
+  },
+  "saved_disk_bytes": 640401408,
+  "disk_reduction_percent": 49.86,
+  "compile_flag_verification": {
+    "workspace_rustc_invocations": 3,
+    "all_workspace_debuginfo": "line-tables-only",
+    "all_workspace_incremental_disabled": true,
+    "dependency_rustc_invocations": 243,
+    "dependency_full_debuginfo_or_incremental_flags": false
+  },
+  "checks": [
+    {
+      "command": "CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=2 cargo test --locked --test cli",
+      "result": "2 passed, 0 failed"
+    },
+    {
+      "command": "aq test scripts/test_release_evidence.py",
+      "result": "3 passed; validates release metadata parsing, run before profile edit"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "result": "pass"
+    },
+    {
+      "command": "cargo metadata --locked --no-deps --format-version 1",
+      "result": "pass; target_directory matches slot-local target"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    }
+  ],
+  "backtrace_probe": {
+    "command": "CARGO_BUILD_JOBS=2 cargo run --locked --example bold_stone_59_backtrace",
+    "temporary_source": "fn main() {\n    assert_eq!(std::env::var(\"CARGO_INCREMENTAL\").as_deref(), Ok(\"0\"));\n    println!(\"{}\", std::backtrace::Backtrace::force_capture());\n}\n",
+    "result": "exit 0; inherited CARGO_INCREMENTAL=0 assertion passed",
+    "frame": "0: bold_stone_59_backtrace::main at ./examples/bold_stone_59_backtrace.rs:3:20",
+    "cleanup": "Temporary example source removed after verification."
+  },
+  "local_log_sha256": {
+    "before-build.log": "d18a1b9db39e7aa36317ea7113a688d921fb7941051f6203c3d2bef19d3f1d8b",
+    "after-build.log": "525b8b6b064b926592945243dcc228c0c13cf01963aacf930f9dc8fb05d14270",
+    "rust-tests.log": "1cd0a3cacf763b9ceb3161d799c8acd962199c662ee0ab7ea46b34732dd5ded8",
+    "python-tests.log": "0c8c688584a43ac1d40524950eb8c0e07f9e8f7f04cacc9295f46e4291a8b163",
+    "backtrace.log": "e337ad1a06a4a74727e301d967051043214deaa552322e632857fe9748b42c3b"
+  }
+}
