@@ -1,5 +1,7 @@
 # aq-graph
 
+> **Running AQ locally?** Start with aq-server's [getting started guide](https://github.com/ElectricJack/aq-server/blob/main/docs/getting-started.md): one sequence builds and runs the whole stack from sibling checkouts, this repository included.
+
 A standalone Rust service and CLI for a shared task and knowledge graph. PostgreSQL holds current records, immutable logical record revisions, lifecycle events, relationship history, atomic batches and named drafts. It runs independently of Agent Q and never reads AQ databases. AQ v2 is a fresh start. V1 import and migration support are outside this repository; any optional one-off transfer belongs in an external script. Normal aq-graph schema upgrades and backup/restore remain supported.
 
 The baseline includes workspace-scoped read/write/admin credentials, version-checked mutations, idempotency, dependency and parent-child cycle protection, intrinsic readiness, bounded context, full-text record search, shared source/date/summary metadata, history and content restoration. A ready task is an active, nonretired leaf with every blocking prerequisite completed and no draft or retired structural ancestor; readiness is not an execution claim. `A blocks B` means B depends on A.
