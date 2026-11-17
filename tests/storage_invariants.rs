@@ -75,7 +75,9 @@ async fn concurrent_endpoint_delete_and_edge_creation_cannot_orphan() {
             deleted.is_ok() || added.is_ok(),
             "one serialization order must succeed: {deleted:?} {added:?}"
         );
-        assert!(!(deleted.is_ok() && added.is_ok()), "both cannot commit");
+        // Task deletion can follow a committed link and remove it atomically.
+        // If the link wins first, its version checkpoint may conflict instead.
+
         let orphan:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM edges e JOIN nodes n ON n.id=e.source OR n.id=e.target WHERE e.workspace_id=$1 AND NOT e.deleted AND n.deleted)").bind(f.p.workspace_id).fetch_one(&f.store.pool).await.unwrap();
         assert!(!orphan);
     }
@@ -351,20 +353,9 @@ async fn draft_preview_restore_tombstone_and_ordered_dependency_resolution() {
     .await
     .unwrap();
     let linked = f.store.get_node(&f.p, id).await.unwrap();
-    assert!(matches!(
-        f.apply(
-            "cannot-delete-referenced",
-            vec![json!({"op":"delete_node","id":id,"expected_version":linked.version})]
-        )
-        .await,
-        Err(Error::Conflict(_))
-    ));
-    // The final proposed graph is validated, so an edge removal can follow the
-    // tombstone operation in the same indivisible batch.
     let deletion = f
         .draft(vec![
             json!({"op":"delete_node","id":id,"expected_version":linked.version}),
-            json!({"op":"remove_edge","id":replacement_edge,"expected_version":1}),
         ])
         .await;
     f.store.validate_draft(&f.p, deletion).await.unwrap();
@@ -375,7 +366,7 @@ async fn draft_preview_restore_tombstone_and_ordered_dependency_resolution() {
         .unwrap();
     let deleted = f.store.get_node(&f.p, id).await.unwrap();
     assert!(deleted.deleted);
-    assert_eq!(deleted.version, linked.version + 2);
+    assert_eq!(deleted.version, linked.version + 1);
     f.apply(
         "undelete",
         vec![json!({"op":"restore_node","id":id,"expected_version":deleted.version,"revision":2,"include_lifecycle":true})],
@@ -618,4 +609,84 @@ async fn competing_summary_and_content_edit_never_attaches_stale_summary() {
             assert_eq!(node.content_revision, 2);
         }
     }
+}
+
+#[tokio::test]
+async fn task_deletion_unlinks_dependencies_and_children_in_every_state_and_replays() {
+    let f = Fixture::new().await;
+    for state in ["draft", "active", "completed", "canceled"] {
+        let task = Uuid::new_v4();
+        let dependent = Uuid::new_v4();
+        let child = Uuid::new_v4();
+        f.node(task, "remove this task", "task").await;
+        f.node(dependent, "keep dependent", "task").await;
+        f.node(child, "keep child", "task").await;
+        f.apply(&format!("link-{task}"),vec![
+            json!({"op":"add_edge","id":Uuid::new_v4(),"source":task,"target":dependent,"edge_type":"blocks"}),
+            json!({"op":"add_edge","id":Uuid::new_v4(),"source":task,"target":child,"edge_type":"parent-child"}),
+        ]).await.unwrap();
+        if state == "completed" {
+            let current = f.store.get_node(&f.p, child).await.unwrap();
+            f.apply(
+                &format!("child-{task}"),
+                vec![update(
+                    child,
+                    current.version,
+                    json!({"task_state":"completed"}),
+                )],
+            )
+            .await
+            .unwrap();
+        }
+        let current = f.store.get_node(&f.p, task).await.unwrap();
+        f.apply(
+            &format!("state-{task}"),
+            vec![update(task, current.version, json!({"task_state":state}))],
+        )
+        .await
+        .unwrap();
+        let current = f.store.get_node(&f.p, task).await.unwrap();
+        let key = format!("delete-{task}");
+        let ops = vec![json!({"op":"delete_node","id":task,"expected_version":current.version})];
+        let receipt = f.apply(&key, ops.clone()).await.unwrap();
+        let replay = f.apply(&key, ops).await.unwrap();
+        assert_eq!(receipt.change_set_id, replay.change_set_id);
+        assert!(f.store.get_node(&f.p, task).await.unwrap().deleted);
+        assert!(!f.store.get_node(&f.p, dependent).await.unwrap().deleted);
+        assert!(!f.store.get_node(&f.p, child).await.unwrap().deleted);
+        let live:i64=sqlx::query_scalar("SELECT count(*) FROM edges WHERE workspace_id=$1 AND (source=$2 OR target=$2) AND NOT deleted").bind(f.p.workspace_id).bind(task).fetch_one(&f.store.pool).await.unwrap();
+        assert_eq!(live, 0);
+    }
+}
+
+#[tokio::test]
+async fn deleting_a_task_clears_replacement_pointers_without_deleting_the_old_record() {
+    let f = Fixture::new().await;
+    let old = Uuid::new_v4();
+    let task = Uuid::new_v4();
+    f.node(old, "retained old record", "knowledge").await;
+    f.node(task, "replacement task", "task").await;
+    f.apply("replacement-link",vec![json!({"op":"add_edge","id":Uuid::new_v4(),"source":task,"target":old,"edge_type":"supersedes"})]).await.unwrap();
+    let current = f.store.get_node(&f.p, old).await.unwrap();
+    f.apply(
+        "point-to-task",
+        vec![update(
+            old,
+            current.version,
+            json!({"retired":true,"retirement_reason":"Replaced","successor_id":task}),
+        )],
+    )
+    .await
+    .unwrap();
+    let current = f.store.get_node(&f.p, task).await.unwrap();
+    f.apply(
+        "delete-task",
+        vec![json!({"op":"delete_node","id":task,"expected_version":current.version})],
+    )
+    .await
+    .unwrap();
+    let retained = f.store.get_node(&f.p, old).await.unwrap();
+    assert!(!retained.deleted);
+    assert!(retained.retired);
+    assert_eq!(retained.successor_id, None);
 }
