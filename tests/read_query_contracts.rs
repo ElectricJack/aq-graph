@@ -1,6 +1,12 @@
 //! Read pagination stays identical across custom/generic prepared plans and workspaces.
 use aq_graph::{domain::*, store::Store};
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+};
+use http_body_util::BodyExt;
 use serde_json::{Value, json};
+use tower::ServiceExt;
 use uuid::Uuid;
 
 struct Fixture {
@@ -69,6 +75,114 @@ impl Fixture {
             .await
             .unwrap();
     }
+}
+
+#[tokio::test]
+async fn work_list_pages_by_recency_across_only_requested_and_authorized_workspaces() {
+    let url = std::env::var("AQ_GRAPH_TEST_DATABASE_URL").expect("disposable PostgreSQL required");
+    let store = Store::connect(&url, 2).await.unwrap();
+    store.migrate().await.unwrap();
+    let token = format!("work-list-{}", Uuid::new_v4());
+    let foreign_token = format!("foreign-{}", Uuid::new_v4());
+    let (alpha, beta, omitted, denied) = (
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+    );
+    let mut tied = [Uuid::new_v4(), Uuid::new_v4()];
+    tied.sort_unstable();
+    let [tie, first] = tied;
+    let older = Uuid::new_v4();
+    for (workspace, credential, tasks) in [
+        (
+            alpha,
+            &token,
+            vec![
+                (first, "Completed elsewhere", "completed"),
+                (older, "Older gateway", "active"),
+            ],
+        ),
+        (beta, &token, vec![(tie, "Current gateway", "active")]),
+        (
+            omitted,
+            &token,
+            vec![(Uuid::new_v4(), "Unrequested gateway", "active")],
+        ),
+        (
+            denied,
+            &foreign_token,
+            vec![(Uuid::new_v4(), "Private gateway", "active")],
+        ),
+    ] {
+        store
+            .bootstrap(workspace, "work-list", credential)
+            .await
+            .unwrap();
+        let principal = store.authenticate(credential, workspace).await.unwrap();
+        let operations: Vec<_> = tasks.iter().map(|(id, title, state)| json!({"op":"create_node","id":id,"kind":"task","title":title,"body":"private body","task_state":state})).collect();
+        store
+            .mutate(
+                &principal,
+                serde_json::from_value(
+                    json!({"idempotency_key":"task-list-fixture","operations":operations}),
+                )
+                .unwrap(),
+            )
+            .await
+            .unwrap();
+    }
+    sqlx::query("UPDATE nodes SET updated_at='2026-11-01T10:00:00Z' WHERE id IN ($1,$2)")
+        .bind(first)
+        .bind(tie)
+        .execute(&store.pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE nodes SET updated_at='2026-11-01T09:00:00Z' WHERE id=$1")
+        .bind(older)
+        .execute(&store.pool)
+        .await
+        .unwrap();
+    let app = aq_graph::service::router(store);
+    let request = |body: Value, credential: &str| {
+        Request::post("/v1/task-list")
+            .header("content-type", "application/json")
+            .header("authorization", format!("Bearer {credential}"))
+            .body(Body::from(body.to_string()))
+            .unwrap()
+    };
+    let read = async |body: Value| -> Value {
+        let response = app.clone().oneshot(request(body, &token)).await.unwrap();
+        let status = response.status();
+        let bytes = response.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "{}",
+            String::from_utf8_lossy(&bytes)
+        );
+        serde_json::from_slice(&bytes).unwrap()
+    };
+    let workspaces = [alpha, beta, denied, alpha];
+    let first_page = read(json!({"workspace_ids":workspaces,"limit":1})).await;
+    assert_eq!(first_page["items"][0]["id"], json!(first));
+    assert_eq!(first_page["unavailable_workspaces"], json!([denied]));
+    assert_eq!(first_page["has_more"], true);
+    assert!(!first_page.to_string().contains("private body"));
+    let rest = read(json!({"workspace_ids":workspaces,"limit":2,"before":[first_page["items"][0]["updated_at"],first]})).await;
+    assert_eq!(rest["items"][0]["id"], json!(tie));
+    assert_eq!(rest["items"][1]["id"], json!(older));
+    assert_eq!(rest["has_more"], false);
+    let matches =
+        read(json!({"workspace_ids":workspaces,"limit":2,"q":"older gateway","state":"active"}))
+            .await;
+    assert_eq!(matches["items"].as_array().unwrap().len(), 1);
+    assert_eq!(matches["items"][0]["id"], json!(older));
+    let refused = app
+        .oneshot(request(json!({"workspace_ids":[denied],"limit":1}), &token))
+        .await
+        .unwrap();
+    assert_eq!(refused.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]

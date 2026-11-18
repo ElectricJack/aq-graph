@@ -1,5 +1,6 @@
 //! Versioned HTTP transport. Authority is always obtained from the credential store.
 use crate::{domain::*, store::Store};
+mod work_list;
 use axum::{
     Json, Router,
     body::{Body, to_bytes},
@@ -65,6 +66,7 @@ pub fn router(store: Store) -> Router {
             get(|| async { Json(json!({"status":"live", "api_version":"1"})) }),
         )
         .route("/health/ready", get(health_ready))
+        .route("/v1/task-list", post(work_list::read))
         .nest("/v1/workspaces/{workspace}", authenticated)
         .fallback(|| async { api_error(StatusCode::NOT_FOUND, "not_found", "Route not found") })
         .method_not_allowed_fallback(|| async {
@@ -268,14 +270,7 @@ async fn authenticate(
     let Some(workspace) = workspace else {
         return Error::Validation("Invalid workspace UUID".into()).into_response();
     };
-    let token = request
-        .headers()
-        .get("authorization")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.split_once(' '))
-        .and_then(|(scheme, token)| scheme.eq_ignore_ascii_case("Bearer").then_some(token))
-        .filter(|s| !s.is_empty() && s.len() <= 4096);
-    let Some(token) = token else {
+    let Some(token) = bearer(request.headers()) else {
         return Error::Unauthorized.into_response();
     };
     match state.store.authenticate(token, workspace).await {
@@ -285,6 +280,15 @@ async fn authenticate(
         }
         Err(error) => error.into_response(),
     }
+}
+
+fn bearer(headers: &axum::http::HeaderMap) -> Option<&str> {
+    headers
+        .get("authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.split_once(' '))
+        .and_then(|(scheme, token)| scheme.eq_ignore_ascii_case("Bearer").then_some(token))
+        .filter(|s| !s.is_empty() && s.len() <= 4096)
 }
 
 fn parse_json<T>(input: std::result::Result<Json<T>, JsonRejection>) -> Result<T> {
