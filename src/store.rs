@@ -7,12 +7,14 @@ mod queries;
 mod restore;
 mod revision_links;
 mod successors;
+mod work_list;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use sqlx::{PgPool, Postgres, Row, Transaction, postgres::PgPoolOptions};
 use std::time::Duration;
 use uuid::Uuid;
+pub(crate) use work_list::{TaskList, TaskListQuery};
 
 #[derive(Clone)]
 pub struct Store {
