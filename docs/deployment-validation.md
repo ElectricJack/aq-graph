@@ -12,6 +12,24 @@ CI builds `aq-graph:validation` with Buildx, restores/exports the GitHub Actions
 
 The Dockerfile builds locked dependencies from `Cargo.toml`/`Cargo.lock` before copying application source or migrations. It deletes this package's placeholder artifacts before the real build, retaining dependency artifacts in the cached layer. Source or migration edits therefore invalidate the application layer; manifest, lockfile or toolchain changes also invalidate dependencies. Release publishing can read the same image-cache scope. Cache hits accelerate compilation but never skip the recovery drill.
 
+## Where the drill runs and what each result means
+
+The workflows are checked in under `.github/workflows/`:
+
+- [`check` job in `ci.yml`](../.github/workflows/ci.yml): formatting, clippy, the Rust/PostgreSQL tests and the script checks. It does not build or start the container image.
+- [`deployment` job in `ci.yml`](../.github/workflows/ci.yml): builds `aq-graph:validation` with `CARGO_PROFILE=ci-image`, loads it into the runner and runs the isolated deployment and recovery drill (`scripts/deployment-smoke.py`).
+- [`release.yml`](../.github/workflows/release.yml): runs only for `v[0-9]*` tags. Its `checks` job reuses `ci.yml` (both jobs above), then `binaries` builds the archives and `publish` pushes the release image to GHCR and creates the GitHub release.
+
+Three different claims can be made about a revision, and each needs different evidence:
+
+| Claim | Evidence | What it does not show |
+| --- | --- | --- |
+| The isolated recovery drill passed | A green `deployment` job in the `ci.yml` run for that commit. The job log shows the drill, and the drill's recorded artifact lists image identity, PostgreSQL version and table digests. The image is the throwaway `aq-graph:validation` and is never pushed. | That an image was published, or that any installation runs this revision. |
+| An image was published | A `release.yml` run for a version tag whose `publish` job succeeded. The GitHub release carries `image-reference.txt` and `release-provenance.json` that bind the GHCR digest to the source revision. The release image is built with the `release` profile, not `ci-image`, so it is not the image the drill ran. | That the drill ran against these exact bytes, or that the image is deployed anywhere. |
+| An installed revision is healthy | Observation of the installation itself: the running image digest matches the released `image-reference.txt`, `GET /health/ready` succeeds and the recorded schema version matches (see [operations](operations.md)). | Nothing in CI or release workflows proves this. No installation is touched by either workflow. |
+
+A maintainer should therefore read a green `deployment` job as "this source builds a container that survives the isolated restart, recreation and restore drill", a successful `publish` job plus its release assets as "this digest was published for this tag", and only a check of the running installation as "this installation is healthy". A release tag is gated by the drill through `checks`, but a green drill on a branch or `main` commit says nothing about a tag that was never pushed.
+
 ## Findings addressed
 
 - An internal-only graph network allowed container readiness to succeed but refused HTTP connections to its published host port on Docker Engine 29.3.1. The graph now also joins a frontend network. PostgreSQL remains solely on the internal database network without a host port.
