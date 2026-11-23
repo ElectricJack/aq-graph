@@ -14,6 +14,16 @@ struct Fixture {
     p: Principal,
     ids: Vec<Uuid>,
 }
+fn fixture_state(index: usize) -> &'static str {
+    match index {
+        4 | 16 => "draft",
+        0..20 => "active",
+        20..80 => ["active", "draft", "completed", "canceled"][index % 4],
+        _ if index.is_multiple_of(2) => "completed",
+        _ => "active",
+    }
+}
+
 impl Fixture {
     async fn new() -> Self {
         let url =
@@ -33,7 +43,7 @@ impl Fixture {
             ids: (0..100).map(|_| Uuid::new_v4()).collect(),
         };
         let ops=f.ids.iter().enumerate().map(|(i,id)| {
-            let state=if i==4 || i==16 {"draft"} else if i<20 {"active"} else if i<80 { ["active","draft","completed","canceled"][i%4] } else if i%2==0 {"completed"} else {"active"};
+            let state = fixture_state(i);
             json!({"op":"create_node","id":id,"kind":"task","title":format!("Node {i}"),"body":"payload ".repeat(256),"task_state":state})
         }).collect();
         f.apply(ops).await;
@@ -77,92 +87,64 @@ impl Fixture {
     }
 }
 
+fn work_list_request(body: Value, credential: &str) -> Request<Body> {
+    Request::post("/v1/task-list")
+        .header("content-type", "application/json")
+        .header("authorization", format!("Bearer {credential}"))
+        .body(Body::from(body.to_string()))
+        .unwrap()
+}
+
+async fn read_work_list(app: &axum::Router, token: &str, body: Value) -> Value {
+    let response = app
+        .clone()
+        .oneshot(work_list_request(body, token))
+        .await
+        .unwrap();
+    let status = response.status();
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&bytes)
+    );
+    serde_json::from_slice(&bytes).unwrap()
+}
+
+async fn seed_workspace_tasks(
+    store: &Store,
+    workspace: Uuid,
+    credential: &str,
+    tasks: Vec<(Uuid, &str, &str)>,
+) {
+    store
+        .bootstrap(workspace, "work-list", credential)
+        .await
+        .unwrap();
+    let principal = store.authenticate(credential, workspace).await.unwrap();
+    let operations: Vec<_> = tasks.iter().map(|(id, title, state)| json!({"op":"create_node","id":id,"kind":"task","title":title,"body":"private body","task_state":state})).collect();
+    store
+        .mutate(
+            &principal,
+            serde_json::from_value(
+                json!({"idempotency_key":"task-list-fixture","operations":operations}),
+            )
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+}
+
 #[tokio::test]
 async fn work_list_pages_by_recency_across_only_requested_and_authorized_workspaces() {
     let url = std::env::var("AQ_GRAPH_TEST_DATABASE_URL").expect("disposable PostgreSQL required");
     let store = Store::connect(&url, 2).await.unwrap();
     store.migrate().await.unwrap();
     let token = format!("work-list-{}", Uuid::new_v4());
-    let foreign_token = format!("foreign-{}", Uuid::new_v4());
-    let (alpha, beta, omitted, denied) = (
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-    );
-    let mut tied = [Uuid::new_v4(), Uuid::new_v4()];
-    tied.sort_unstable();
-    let [tie, first] = tied;
-    let older = Uuid::new_v4();
-    for (workspace, credential, tasks) in [
-        (
-            alpha,
-            &token,
-            vec![
-                (first, "Completed elsewhere", "completed"),
-                (older, "Older gateway", "active"),
-            ],
-        ),
-        (beta, &token, vec![(tie, "Current gateway", "active")]),
-        (
-            omitted,
-            &token,
-            vec![(Uuid::new_v4(), "Unrequested gateway", "active")],
-        ),
-        (
-            denied,
-            &foreign_token,
-            vec![(Uuid::new_v4(), "Private gateway", "active")],
-        ),
-    ] {
-        store
-            .bootstrap(workspace, "work-list", credential)
-            .await
-            .unwrap();
-        let principal = store.authenticate(credential, workspace).await.unwrap();
-        let operations: Vec<_> = tasks.iter().map(|(id, title, state)| json!({"op":"create_node","id":id,"kind":"task","title":title,"body":"private body","task_state":state})).collect();
-        store
-            .mutate(
-                &principal,
-                serde_json::from_value(
-                    json!({"idempotency_key":"task-list-fixture","operations":operations}),
-                )
-                .unwrap(),
-            )
-            .await
-            .unwrap();
-    }
-    sqlx::query("UPDATE nodes SET updated_at='2026-11-01T10:00:00Z' WHERE id IN ($1,$2)")
-        .bind(first)
-        .bind(tie)
-        .execute(&store.pool)
-        .await
-        .unwrap();
-    sqlx::query("UPDATE nodes SET updated_at='2026-11-01T09:00:00Z' WHERE id=$1")
-        .bind(older)
-        .execute(&store.pool)
-        .await
-        .unwrap();
+    let ([alpha, beta, denied], [first, tie, older]) = seed_work_list(&store, &token).await;
     let app = aq_graph::service::router(store);
-    let request = |body: Value, credential: &str| {
-        Request::post("/v1/task-list")
-            .header("content-type", "application/json")
-            .header("authorization", format!("Bearer {credential}"))
-            .body(Body::from(body.to_string()))
-            .unwrap()
-    };
-    let read = async |body: Value| -> Value {
-        let response = app.clone().oneshot(request(body, &token)).await.unwrap();
-        let status = response.status();
-        let bytes = response.into_body().collect().await.unwrap().to_bytes();
-        assert_eq!(
-            status,
-            StatusCode::OK,
-            "{}",
-            String::from_utf8_lossy(&bytes)
-        );
-        serde_json::from_slice(&bytes).unwrap()
-    };
+    let read = |body| read_work_list(&app, &token, body);
     let workspaces = [alpha, beta, denied, alpha];
     let first_page = read(json!({"workspace_ids":workspaces,"limit":1})).await;
     assert_eq!(first_page["items"][0]["id"], json!(first));
@@ -179,7 +161,10 @@ async fn work_list_pages_by_recency_across_only_requested_and_authorized_workspa
     assert_eq!(matches["items"].as_array().unwrap().len(), 1);
     assert_eq!(matches["items"][0]["id"], json!(older));
     let refused = app
-        .oneshot(request(json!({"workspace_ids":[denied],"limit":1}), &token))
+        .oneshot(work_list_request(
+            json!({"workspace_ids":[denied],"limit":1}),
+            &token,
+        ))
         .await
         .unwrap();
     assert_eq!(refused.status(), StatusCode::UNAUTHORIZED);
@@ -254,4 +239,53 @@ async fn history_cursor_pages_preserve_all_incident_events_without_cross_workspa
             Err(Error::NotFound)
         ));
     }
+}
+
+async fn seed_work_list(store: &Store, token: &str) -> ([Uuid; 3], [Uuid; 3]) {
+    let foreign_token = format!("foreign-{}", Uuid::new_v4());
+    let (alpha, beta, omitted, denied) = (
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+    );
+    let mut tied = [Uuid::new_v4(), Uuid::new_v4()];
+    tied.sort_unstable();
+    let [tie, first] = tied;
+    let older = Uuid::new_v4();
+    for (workspace, credential, tasks) in [
+        (
+            alpha,
+            token,
+            vec![
+                (first, "Completed elsewhere", "completed"),
+                (older, "Older gateway", "active"),
+            ],
+        ),
+        (beta, token, vec![(tie, "Current gateway", "active")]),
+        (
+            omitted,
+            token,
+            vec![(Uuid::new_v4(), "Unrequested gateway", "active")],
+        ),
+        (
+            denied,
+            &foreign_token,
+            vec![(Uuid::new_v4(), "Private gateway", "active")],
+        ),
+    ] {
+        seed_workspace_tasks(store, workspace, credential, tasks).await;
+    }
+    sqlx::query("UPDATE nodes SET updated_at='2026-11-01T10:00:00Z' WHERE id IN ($1,$2)")
+        .bind(first)
+        .bind(tie)
+        .execute(&store.pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE nodes SET updated_at='2026-11-01T09:00:00Z' WHERE id=$1")
+        .bind(older)
+        .execute(&store.pool)
+        .await
+        .unwrap();
+    ([alpha, beta, denied], [first, tie, older])
 }

@@ -15,6 +15,51 @@ async fn search_matches_full_reference_in_both_plan_modes() {
         .await
         .unwrap();
     let p = store.authenticate(&token, workspace).await.unwrap();
+    let (base, live) = seed_search_nodes(&store, &p).await;
+    let starts = [
+        None,
+        Some(Uuid::nil()),
+        Some(Uuid::from_u128(base + 250)),
+        Some(Uuid::from_u128(base + 255)),
+        Some(Uuid::from_u128(base + 256)),
+        Some(Uuid::from_u128(base + 319)),
+        Some(Uuid::from_u128(base + 999)),
+        Some(live[live.len() - 257]), // Exactly 256 remaining: exhausted prefix.
+        Some(live[live.len() - 258]),
+    ]; // Exactly 257: fallback may supply final row.
+    for mode in ["force_custom_plan", "force_generic_plan"] {
+        sqlx::query(&format!("SET plan_cache_mode={mode}"))
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        let scenario = SearchScenario {
+            store: &store,
+            principal: &p,
+            mode,
+        };
+        for filters in search_filters() {
+            for term in [
+                "common",
+                "rareword",
+                "missingword",
+                "common -excluded",
+                "-excluded",
+                "the",
+            ] {
+                scenario.assert_all_pages(&filters, term, &starts).await;
+            }
+        }
+    }
+    sqlx::query("DELETE FROM nodes WHERE workspace_id=$1 AND id=$2")
+        .bind(workspace)
+        .bind(Uuid::nil())
+        .execute(&store.pool)
+        .await
+        .unwrap();
+}
+
+async fn seed_search_nodes(store: &Store, p: &Principal) -> (u128, Vec<Uuid>) {
+    let workspace = p.workspace_id;
     // No revision rows are needed for this SQL fixture; remove nil on completion
     // so this database-required test can run repeatedly on the disposable DB.
     sqlx::query("INSERT INTO nodes(id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,task_state,content_type,verification,created_at,updated_at) VALUES ($1,$2,'task',1,1,'common nil','ordinary','','active','note','unverified',now(),now())")
@@ -35,7 +80,7 @@ async fn search_matches_full_reference_in_both_plan_modes() {
             .collect();
         store
             .mutate(
-                &p,
+                p,
                 serde_json::from_value(
                     json!({"idempotency_key":Uuid::new_v4().to_string(),"operations":operations}),
                 )
@@ -54,89 +99,82 @@ async fn search_matches_full_reference_in_both_plan_modes() {
     .fetch_all(&store.pool)
     .await
     .unwrap();
-    let starts = [
-        None,
-        Some(Uuid::nil()),
-        Some(Uuid::from_u128(base + 250)),
-        Some(Uuid::from_u128(base + 255)),
-        Some(Uuid::from_u128(base + 256)),
-        Some(Uuid::from_u128(base + 319)),
-        Some(Uuid::from_u128(base + 999)),
-        Some(live[live.len() - 257]), // Exactly 256 remaining: exhausted prefix.
-        Some(live[live.len() - 258]),
-    ]; // Exactly 257: fallback may supply final row.
-    let at = "2023-01-01T00:00:00Z".parse().unwrap();
-    for mode in ["force_custom_plan", "force_generic_plan"] {
-        sqlx::query(&format!("SET plan_cache_mode={mode}"))
-            .execute(&store.pool)
-            .await
-            .unwrap();
-        for filters in [
-            NodeFilters::default(),
-            NodeFilters {
-                include_retired: true,
-                include_disputed: true,
-                ..Default::default()
-            },
-            NodeFilters {
-                kind: Some(NodeKind::Task),
-                valid_at: Some(at),
-                ..Default::default()
-            },
-            NodeFilters {
-                kind: Some(NodeKind::Knowledge),
-                review_due_at: Some(at),
-                ..Default::default()
-            },
-        ] {
-            for term in [
-                "common",
-                "rareword",
-                "missingword",
-                "common -excluded",
-                "-excluded",
-                "the",
-            ] {
-                for limit in [1, 50, 200] {
-                    for start in starts {
-                        let expected:Vec<Uuid> = sqlx::query_scalar("SELECT id FROM nodes WHERE workspace_id=$1 AND NOT deleted AND ($2::text IS NULL OR kind=$2) AND ($3 OR NOT retired) AND ($4 OR verification IS DISTINCT FROM 'disputed') AND ($5::timestamptz IS NULL OR ((valid_from IS NULL OR valid_from <= $5) AND (valid_until IS NULL OR valid_until > $5))) AND ($6::timestamptz IS NULL OR (review_at IS NOT NULL AND review_at <= $6)) AND search_document @@ websearch_to_tsquery('english',$7) AND ($8::uuid IS NULL OR id>$8) ORDER BY id LIMIT $9")
-                            .bind(workspace).bind(filters.kind.map(|k|k.as_str())).bind(filters.include_retired).bind(filters.include_disputed).bind(filters.valid_at).bind(filters.review_due_at).bind(term).bind(start).bind(i64::from(limit)+1).fetch_all(&store.pool).await.unwrap();
-                        let page = store
-                            .search_nodes(
-                                &p,
-                                term,
-                                filters.clone(),
-                                ListQuery {
-                                    limit,
-                                    cursor: start.map(|id| id.to_string()),
-                                },
-                            )
-                            .await
-                            .unwrap();
-                        let expected_cursor = if expected.len() > limit as usize {
-                            Some(expected[limit as usize - 1].to_string())
-                        } else {
-                            None
-                        };
-                        assert_eq!(
-                            page.items.iter().map(|n| n.id).collect::<Vec<_>>(),
-                            expected
-                                .iter()
-                                .take(limit as usize)
-                                .copied()
-                                .collect::<Vec<_>>(),
-                            "{mode} {term} {filters:?} {start:?}"
-                        );
-                        assert_eq!(page.next_cursor, expected_cursor);
-                    }
-                }
+    (base, live)
+}
+
+struct SearchScenario<'a> {
+    store: &'a Store,
+    principal: &'a Principal,
+    mode: &'a str,
+}
+
+impl SearchScenario<'_> {
+    async fn assert_all_pages(&self, filters: &NodeFilters, term: &str, starts: &[Option<Uuid>]) {
+        for limit in [1, 50, 200] {
+            for &start in starts {
+                self.assert_page(filters, term, (limit, start)).await;
             }
         }
     }
-    sqlx::query("DELETE FROM nodes WHERE workspace_id=$1 AND id=$2")
-        .bind(workspace)
-        .bind(Uuid::nil())
-        .execute(&store.pool)
-        .await
-        .unwrap();
+
+    async fn assert_page(
+        &self,
+        filters: &NodeFilters,
+        term: &str,
+        (limit, start): (u32, Option<Uuid>),
+    ) {
+        let expected:Vec<Uuid> = sqlx::query_scalar("SELECT id FROM nodes WHERE workspace_id=$1 AND NOT deleted AND ($2::text IS NULL OR kind=$2) AND ($3 OR NOT retired) AND ($4 OR verification IS DISTINCT FROM 'disputed') AND ($5::timestamptz IS NULL OR ((valid_from IS NULL OR valid_from <= $5) AND (valid_until IS NULL OR valid_until > $5))) AND ($6::timestamptz IS NULL OR (review_at IS NOT NULL AND review_at <= $6)) AND search_document @@ websearch_to_tsquery('english',$7) AND ($8::uuid IS NULL OR id>$8) ORDER BY id LIMIT $9")
+                            .bind(self.principal.workspace_id).bind(filters.kind.map(|k|k.as_str())).bind(filters.include_retired).bind(filters.include_disputed).bind(filters.valid_at).bind(filters.review_due_at).bind(term).bind(start).bind(i64::from(limit)+1).fetch_all(&self.store.pool).await.unwrap();
+        let page = self
+            .store
+            .search_nodes(
+                self.principal,
+                term,
+                filters.clone(),
+                ListQuery {
+                    limit,
+                    cursor: start.map(|id| id.to_string()),
+                },
+            )
+            .await
+            .unwrap();
+        let expected_cursor = if expected.len() > limit as usize {
+            Some(expected[limit as usize - 1].to_string())
+        } else {
+            None
+        };
+        assert_eq!(
+            page.items.iter().map(|n| n.id).collect::<Vec<_>>(),
+            expected
+                .iter()
+                .take(limit as usize)
+                .copied()
+                .collect::<Vec<_>>(),
+            "{} {term} {filters:?} {start:?}",
+            self.mode
+        );
+        assert_eq!(page.next_cursor, expected_cursor);
+    }
+}
+
+fn search_filters() -> [NodeFilters; 4] {
+    let at = "2023-01-01T00:00:00Z".parse().unwrap();
+    [
+        NodeFilters::default(),
+        NodeFilters {
+            include_retired: true,
+            include_disputed: true,
+            ..Default::default()
+        },
+        NodeFilters {
+            kind: Some(NodeKind::Task),
+            valid_at: Some(at),
+            ..Default::default()
+        },
+        NodeFilters {
+            kind: Some(NodeKind::Knowledge),
+            review_due_at: Some(at),
+            ..Default::default()
+        },
+    ]
 }

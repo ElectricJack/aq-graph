@@ -2,6 +2,7 @@
 use crate::domain::*;
 use crate::knowledge_rules;
 mod compat_graph;
+mod context;
 mod preview;
 mod queries;
 mod restore;
@@ -343,197 +344,6 @@ AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id
             q,
         )
         .await
-    }
-    pub async fn context(&self, p: &Principal, id: Uuid, q: ContextQuery) -> Result<Context> {
-        q.validate()?;
-        if q.depth > 5
-            || q.limit == 0
-            || q.limit > 200
-            || q.max_bytes < 1024
-            || q.max_bytes > 1_048_576
-            || !matches!(q.direction.as_str(), "both" | "incoming" | "outgoing")
-        {
-            return Err(Error::Validation("context requires depth <=5, limit 1..200, max_bytes 1024..1048576, and direction both/incoming/outgoing".into()));
-        }
-        let mut tx = self.pool.begin().await?;
-        sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
-            .execute(&mut *tx)
-            .await?;
-        sqlx::query("SET LOCAL statement_timeout='4s'")
-            .execute(&mut *tx)
-            .await?;
-        let node = load_node(&mut tx, p.workspace_id, id).await?;
-        let mut result = Context {
-            node,
-            nodes: vec![],
-            edges: vec![],
-            pinned_revisions: vec![],
-            truncated: false,
-        };
-        if encode(&result)?.to_string().len() > q.max_bytes as usize {
-            return Err(Error::Validation(
-                "root record exceeds max_bytes; request a larger response".into(),
-            ));
-        }
-        let mut seen = std::collections::HashSet::from([id]);
-        let mut edge_ids = std::collections::HashSet::new();
-        let mut frontier = vec![id];
-        let edge_cap = i64::from(q.limit) * 4;
-        for _ in 0..q.depth {
-            if frontier.is_empty() {
-                break;
-            }
-            let vs=sqlx::query_scalar::<_,Value>("SELECT to_jsonb(e) FROM edges e WHERE workspace_id=$1 AND NOT deleted AND (($2 IN ('both','outgoing') AND source=ANY($3)) OR ($2 IN ('both','incoming') AND target=ANY($3))) ORDER BY id LIMIT $4").bind(p.workspace_id).bind(&q.direction).bind(&frontier).bind(edge_cap+1).fetch_all(&mut *tx).await?;
-            if vs.len() > edge_cap as usize {
-                result.truncated = true;
-            }
-            let edges: Vec<Edge> = vs
-                .into_iter()
-                .take(edge_cap as usize)
-                .map(decode)
-                .collect::<Result<_>>()?;
-            let candidate_ids: Vec<Uuid> = edges
-                .iter()
-                .flat_map(|e| [e.source, e.target])
-                .filter(|v| !seen.contains(v))
-                .collect::<std::collections::HashSet<_>>()
-                .into_iter()
-                .collect();
-            let available =
-                (q.max_bytes as usize).saturating_sub(encode(&result)?.to_string().len());
-            // Admit neighboring documents by byte budget in PostgreSQL, rather
-            // than transfer hundreds of full-size bodies and trim them afterward.
-            let bundle=sqlx::query_scalar::<_,Value>("WITH candidates AS (SELECT id,to_jsonb(n)-'search_document' AS document FROM nodes n WHERE workspace_id=$1 AND id=ANY($2) AND NOT deleted ORDER BY id LIMIT $3), sized AS (SELECT id,document,sum(octet_length(document::text)) OVER(ORDER BY id) AS cumulative FROM candidates) SELECT jsonb_build_object('documents',COALESCE(jsonb_agg(document ORDER BY id) FILTER(WHERE cumulative<=$4),'[]'::jsonb),'total',count(*)) FROM sized").bind(p.workspace_id).bind(&candidate_ids).bind((q.limit as usize-seen.len()+1) as i64).bind(available as i64).fetch_one(&mut *tx).await?;
-            let vs: Vec<Value> = decode(bundle["documents"].clone())?;
-            if bundle["total"].as_u64().unwrap_or(0) > vs.len() as u64 {
-                result.truncated = true;
-            }
-            frontier.clear();
-            for value in vs {
-                let n: Node = decode(value)?;
-                if seen.len() >= q.limit as usize {
-                    result.truncated = true;
-                    break;
-                }
-                seen.insert(n.id);
-                frontier.push(n.id);
-                result.nodes.push(n);
-            }
-            for e in edges {
-                if seen.contains(&e.source) && seen.contains(&e.target) && edge_ids.insert(e.id) {
-                    if result.edges.len() >= edge_cap as usize {
-                        result.truncated = true;
-                    } else {
-                        result.edges.push(e);
-                    }
-                }
-            }
-        }
-        // Inspect pin sizes without materializing snapshots. The byte cap also
-        // bounds intermediate database-to-service transfer, even for high-degree
-        // nodes whose individual pinned revisions contain large documents.
-        let requested: std::collections::HashSet<(Uuid, i64)> = result
-            .edges
-            .iter()
-            .flat_map(|e| {
-                [
-                    e.source_revision.map(|r| (e.source, r)),
-                    e.target_revision.map(|r| (e.target, r)),
-                ]
-            })
-            .flatten()
-            .collect();
-        if !requested.is_empty() {
-            let pins: Vec<Value> = requested
-                .iter()
-                .map(|(id, r)| json!({"node_id":id,"revision":r}))
-                .collect();
-            let rows=sqlx::query("SELECT DISTINCT r.node_id,r.revision,octet_length(r.snapshot::text) AS bytes FROM jsonb_to_recordset($2) AS pin(node_id uuid,revision bigint) JOIN node_revisions r ON r.node_id=pin.node_id AND r.revision=pin.revision WHERE r.workspace_id=$1").bind(p.workspace_id).bind(json!(pins)).fetch_all(&mut *tx).await?;
-            let sizes: std::collections::HashMap<(Uuid, i64), usize> = rows
-                .into_iter()
-                .map(|r| {
-                    (
-                        (r.get("node_id"), r.get("revision")),
-                        r.get::<i32, _>("bytes") as usize,
-                    )
-                })
-                .collect();
-            if requested.iter().any(|pin| !sizes.contains_key(pin)) {
-                return Err(Error::Conflict("pinned revision is unavailable".into()));
-            }
-            let mut included = std::collections::HashSet::new();
-            let mut bytes = 0;
-            result.edges.retain(|e| {
-                let new: std::collections::HashSet<_> = [
-                    e.source_revision.map(|r| (e.source, r)),
-                    e.target_revision.map(|r| (e.target, r)),
-                ]
-                .into_iter()
-                .flatten()
-                .filter(|pin| !included.contains(pin))
-                .collect();
-                let extra: usize = new.iter().map(|pin| sizes[pin]).sum();
-                if bytes + extra > q.max_bytes as usize {
-                    result.truncated = true;
-                    false
-                } else {
-                    bytes += extra;
-                    included.extend(new);
-                    true
-                }
-            });
-            let pins: Vec<Value> = included
-                .iter()
-                .map(|(id, r)| json!({"node_id":id,"revision":r}))
-                .collect();
-            result.pinned_revisions=sqlx::query_scalar::<_,Value>("SELECT r.snapshot FROM jsonb_to_recordset($2) AS pin(node_id uuid,revision bigint) JOIN node_revisions r ON r.node_id=pin.node_id AND r.revision=pin.revision WHERE r.workspace_id=$1 ORDER BY r.node_id,r.revision").bind(p.workspace_id).bind(json!(pins)).fetch_all(&mut *tx).await?;
-        }
-        // Serialize each removed item once. The running upper bound avoids
-        // repeatedly serializing a broad bundle on the async request worker.
-        let mut response_bytes = encode(&result)?.to_string().len();
-        while response_bytes > q.max_bytes as usize {
-            result.truncated = true;
-            if let Some(n) = result.nodes.pop() {
-                response_bytes = response_bytes.saturating_sub(encode(&n)?.to_string().len());
-                seen.remove(&n.id);
-                let mut retained = vec![];
-                for e in std::mem::take(&mut result.edges) {
-                    if seen.contains(&e.source) && seen.contains(&e.target) {
-                        retained.push(e);
-                    } else {
-                        response_bytes =
-                            response_bytes.saturating_sub(encode(&e)?.to_string().len());
-                    }
-                }
-                result.edges = retained;
-            } else if let Some(e) = result.edges.pop() {
-                response_bytes = response_bytes.saturating_sub(encode(&e)?.to_string().len());
-            } else {
-                // Conservative subtraction leaves comma overhead in the estimate.
-                if encode(&result)?.to_string().len() <= q.max_bytes as usize {
-                    break;
-                }
-                return Err(Error::Validation("root record exceeds max_bytes".into()));
-            }
-            let mut retained = vec![];
-            for r in std::mem::take(&mut result.pinned_revisions) {
-                if result.edges.iter().any(|e| {
-                    (json!(e.source) == r["id"]
-                        && e.source_revision
-                            .is_some_and(|v| json!(v) == r["content_revision"]))
-                        || (json!(e.target) == r["id"]
-                            && e.target_revision
-                                .is_some_and(|v| json!(v) == r["content_revision"]))
-                }) {
-                    retained.push(r);
-                } else {
-                    response_bytes = response_bytes.saturating_sub(r.to_string().len());
-                }
-            }
-            result.pinned_revisions = retained;
-        }
-        tx.commit().await?;
-        Ok(result)
     }
     pub async fn history(&self, p: &Principal, id: Uuid, q: ListQuery) -> Result<Value> {
         self.get_node(p, id).await?;
@@ -1394,19 +1204,18 @@ async fn execute(
                 revision: rev,
                 include_lifecycle,
             } => {
-                let n = restore::restore_node(
-                    tx,
-                    p,
-                    &edit_authority,
+                let restore = restore::Restore {
+                    principal: p,
+                    authority: &edit_authority,
                     change,
-                    *id,
-                    *expected_version,
-                    *rev,
-                    *include_lifecycle,
+                    id: *id,
+                    expected_version: *expected_version,
+                    revision: *rev,
+                    include_lifecycle: *include_lifecycle,
                     reason,
                     preview,
-                )
-                .await?;
+                };
+                let n = restore.apply(tx).await?;
                 results.push(encode(&n)?);
             }
             Mutation::AddEdge {

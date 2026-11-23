@@ -49,90 +49,120 @@ pub fn validate_sources(sources: &[Value]) -> Result<()> {
             ));
         }
         let kind = text(source, "kind")?;
-        let (required, allowed): (&[&str], &[&str]) = match kind {
-            "task" => (&["task_id"], &["task_id", "attempt_id", "session_id"]),
-            "review" => (
-                &["review_id", "revision", "sha256"],
-                &["review_id", "revision", "sha256"],
-            ),
-            "git" => (
-                &["repository", "commit", "path"],
-                &["repository", "commit", "path", "blob_sha256"],
-            ),
-            "artifact" => (&["artifact_id", "sha256"], &["artifact_id", "sha256"]),
-            "url" => (
-                &["url", "observed_at", "retained"],
-                &["url", "observed_at", "retained", "artifact_id", "sha256"],
-            ),
-            "legacy" => (
-                &["snapshot_id", "store", "key", "sha256"],
-                &["snapshot_id", "store", "key", "sha256"],
-            ),
-            _ => return Err(invalid("Unsupported evidence descriptor kind")),
-        };
-        if map
-            .keys()
-            .any(|k| k != "source_id" && k != "kind" && !allowed.contains(&k.as_str()))
-        {
-            return Err(invalid("Evidence fields must match the descriptor kind"));
+        let (required, allowed) = descriptor_fields(kind)?;
+        check_descriptor_fields(source, map, required, allowed)?;
+        check_evidence_ids(source, kind)?;
+        if kind == "url" {
+            check_observed_url(source)?;
         }
-        for field in allowed {
-            let Some(value) = map.get(*field).filter(|v| !v.is_null()) else {
-                if required.contains(field) {
-                    return Err(invalid("Evidence descriptor is missing a required field"));
-                }
-                continue;
-            };
-            match *field {
-                "revision" if value.as_i64().is_some_and(|v| v > 0) => {}
-                "revision" => {
-                    return Err(invalid(
-                        "Evidence review revision must be a positive integer",
-                    ));
-                }
-                "retained" if value.is_boolean() => {}
-                "retained" => return Err(invalid("Evidence retained field must be boolean")),
-                _ => {
-                    text(source, field)?;
-                }
+    }
+    Ok(())
+}
+
+fn descriptor_fields(kind: &str) -> Result<(&'static [&'static str], &'static [&'static str])> {
+    Ok(match kind {
+        "task" => (&["task_id"], &["task_id", "attempt_id", "session_id"]),
+        "review" => (
+            &["review_id", "revision", "sha256"],
+            &["review_id", "revision", "sha256"],
+        ),
+        "git" => (
+            &["repository", "commit", "path"],
+            &["repository", "commit", "path", "blob_sha256"],
+        ),
+        "artifact" => (&["artifact_id", "sha256"], &["artifact_id", "sha256"]),
+        "url" => (
+            &["url", "observed_at", "retained"],
+            &["url", "observed_at", "retained", "artifact_id", "sha256"],
+        ),
+        "legacy" => (
+            &["snapshot_id", "store", "key", "sha256"],
+            &["snapshot_id", "store", "key", "sha256"],
+        ),
+        _ => return Err(invalid("Unsupported evidence descriptor kind")),
+    })
+}
+
+fn check_descriptor_fields(
+    source: &Value,
+    map: &serde_json::Map<String, Value>,
+    required: &[&str],
+    allowed: &[&str],
+) -> Result<()> {
+    if map
+        .keys()
+        .any(|k| !["source_id", "kind"].contains(&k.as_str()) && !allowed.contains(&k.as_str()))
+    {
+        return Err(invalid("Evidence fields must match the descriptor kind"));
+    }
+    for field in allowed {
+        let value = map.get(*field).filter(|v| !v.is_null());
+        match value {
+            Some(value) => validate_descriptor_value(source, field, value)?,
+            None if required.contains(field) => {
+                return Err(invalid("Evidence descriptor is missing a required field"));
             }
+            None => {}
         }
-        for field in ["sha256", "blob_sha256"] {
-            if let Some(value) = source.get(field).filter(|v| !v.is_null())
-                && !value.as_str().is_some_and(|s| hex(s, &[64]))
-            {
-                return Err(invalid(
-                    "Evidence SHA-256 must contain 64 lowercase hexadecimal characters",
-                ));
-            }
-        }
-        if kind == "git" && !hex(text(source, "commit")?, &[40, 64]) {
+    }
+    Ok(())
+}
+
+fn validate_descriptor_value(source: &Value, field: &str, value: &Value) -> Result<()> {
+    match field {
+        "revision" if value.as_i64().is_some_and(|v| v > 0) => {}
+        "revision" => {
             return Err(invalid(
-                "Git evidence requires a full hexadecimal commit identity",
+                "Evidence review revision must be a positive integer",
             ));
         }
-        if let Some(artifact) = source.get("artifact_id").filter(|v| !v.is_null())
-            && artifact
-                .as_str()
-                .and_then(|s| Uuid::parse_str(s).ok())
-                .is_none()
+        "retained" if value.is_boolean() => {}
+        "retained" => return Err(invalid("Evidence retained field must be boolean")),
+        _ => {
+            text(source, field)?;
+        }
+    }
+    Ok(())
+}
+
+fn check_evidence_ids(source: &Value, kind: &str) -> Result<()> {
+    for field in ["sha256", "blob_sha256"] {
+        if let Some(value) = source.get(field).filter(|v| !v.is_null())
+            && !value.as_str().is_some_and(|s| hex(s, &[64]))
         {
-            return Err(invalid("Evidence artifact_id must be a UUID"));
+            return Err(invalid(
+                "Evidence SHA-256 must contain 64 lowercase hexadecimal characters",
+            ));
         }
-        if kind == "url" {
-            let url = reqwest::Url::parse(text(source, "url")?)
-                .map_err(|_| invalid("Evidence URL must be absolute HTTP or HTTPS"))?;
-            if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
-                return Err(invalid("Evidence URL must be absolute HTTP or HTTPS"));
-            }
-            DateTime::parse_from_rfc3339(text(source, "observed_at")?)
-                .map_err(|_| invalid("Evidence observed_at must be RFC3339 with timezone"))?;
-            if source["retained"] == true && source.get("artifact_id").is_none_or(Value::is_null) {
-                return Err(invalid(
-                    "Retained URL evidence requires an artifact reference",
-                ));
-            }
-        }
+    }
+    if kind == "git" && !hex(text(source, "commit")?, &[40, 64]) {
+        return Err(invalid(
+            "Git evidence requires a full hexadecimal commit identity",
+        ));
+    }
+    if let Some(artifact) = source.get("artifact_id").filter(|v| !v.is_null())
+        && artifact
+            .as_str()
+            .and_then(|s| Uuid::parse_str(s).ok())
+            .is_none()
+    {
+        return Err(invalid("Evidence artifact_id must be a UUID"));
+    }
+    Ok(())
+}
+
+fn check_observed_url(source: &Value) -> Result<()> {
+    let url = reqwest::Url::parse(text(source, "url")?)
+        .map_err(|_| invalid("Evidence URL must be absolute HTTP or HTTPS"))?;
+    if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
+        return Err(invalid("Evidence URL must be absolute HTTP or HTTPS"));
+    }
+    DateTime::parse_from_rfc3339(text(source, "observed_at")?)
+        .map_err(|_| invalid("Evidence observed_at must be RFC3339 with timezone"))?;
+    if source["retained"] == true && source.get("artifact_id").is_none_or(Value::is_null) {
+        return Err(invalid(
+            "Retained URL evidence requires an artifact reference",
+        ));
     }
     Ok(())
 }
@@ -147,10 +177,9 @@ pub fn authorize_edit(p: &Principal, n: &Node) -> Result<()> {
     if p.capability == Capability::Admin {
         return Ok(());
     }
-    if n.retired
-        || n.verification != Some(Verification::Unverified)
-        || (n.kind == NodeKind::Knowledge && n.created_by != p.actor_id)
-    {
+    let edit_protected = n.retired || n.verification != Some(Verification::Unverified);
+    let other_author = n.kind == NodeKind::Knowledge && n.created_by != p.actor_id;
+    if edit_protected || other_author {
         return Err(Error::Forbidden);
     }
     Ok(())
@@ -189,8 +218,16 @@ pub fn verify(
         ));
     }
     validate_sources(evidence)?;
+    n.provenance = merge_evidence(&n.provenance, evidence)?;
+    n.verification = Some(verification);
+    n.last_verified_by = Some(p.actor_id.clone());
+    n.last_verified_at = Some(server_time());
+    Ok(())
+}
+
+fn merge_evidence(previous: &[Value], evidence: &[Value]) -> Result<Vec<Value>> {
     // Merge evidence by stable source_id while preserving all previous sources.
-    let mut sources = n.provenance.clone();
+    let mut sources = previous.to_vec();
     for evidence in evidence {
         if let Some(existing) = sources
             .iter_mut()
@@ -202,11 +239,7 @@ pub fn verify(
         }
     }
     validate_sources(&sources)?;
-    n.provenance = sources;
-    n.verification = Some(verification);
-    n.last_verified_by = Some(p.actor_id.clone());
-    n.last_verified_at = Some(server_time());
-    Ok(())
+    Ok(sources)
 }
 
 pub fn validate_retirement(n: &Node) -> Result<()> {
@@ -217,20 +250,17 @@ pub fn validate_retirement(n: &Node) -> Result<()> {
         return Err(invalid("A node cannot name itself as its successor"));
     }
 
-    if n.retirement_reason
-        .as_ref()
-        .is_some_and(|reason| reason.trim().is_empty() || reason.len() > 4096)
-    {
+    validate_retirement_reason(n.retired, n.retirement_reason.as_deref())
+}
+
+fn validate_retirement_reason(retired: bool, reason: Option<&str>) -> Result<()> {
+    if reason.is_some_and(|reason| reason.trim().is_empty() || reason.len() > 4096) {
         return Err(invalid("Retirement reason must contain 1..4096 bytes"));
     }
-    if !n.retired && n.retirement_reason.is_some() {
+    if !retired && reason.is_some() {
         return Err(invalid("A retirement reason requires a retired node"));
     }
-    if n.retired
-        && n.retirement_reason
-            .as_ref()
-            .is_none_or(|reason| reason.trim().is_empty() || reason.len() > 4096)
-    {
+    if retired && reason.is_none() {
         return Err(invalid(
             "Retirement requires a nonempty reason of at most 4096 bytes",
         ));
@@ -284,27 +314,34 @@ pub fn validate_create(n: &Node) -> Result<()> {
     if n.content_type.is_none() {
         return Err(invalid("Every new node requires a content classification"));
     }
-    if (n.kind == NodeKind::Task && n.task_state.is_none())
-        || (n.kind == NodeKind::Knowledge
-            && (n.task_state.is_some() || !n.acceptance_criteria.is_empty()))
-    {
-        return Err(invalid(
-            "Task lifecycle and acceptance criteria apply only to tasks",
-        ));
-    }
-    if n.verification != Some(Verification::Unverified)
-        || n.last_verified_by.is_some()
-        || n.last_verified_at.is_some()
-        || n.retired
-        || n.retirement_reason.is_some()
-    {
+    validate_task_fields(n)?;
+    let verified = !matches!(
+        (n.verification, &n.last_verified_by, &n.last_verified_at),
+        (Some(Verification::Unverified), None, None)
+    );
+    let retired = n.retired || n.retirement_reason.is_some();
+    if verified || retired {
         return Err(invalid(
             "Create active unverified nodes; use explicit verification or retirement operations",
         ));
     }
-    if n.summary.is_some() || n.summary_of_revision.is_some() || n.successor_id.is_some() {
+    let has_summary = n.summary.is_some() || n.summary_of_revision.is_some();
+    if has_summary || n.successor_id.is_some() {
         return Err(invalid(
             "Create without summary or successor; use explicit revision operations",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_task_fields(n: &Node) -> Result<()> {
+    let invalid_task_fields = match n.kind {
+        NodeKind::Task => n.task_state.is_none(),
+        NodeKind::Knowledge => n.task_state.is_some() || !n.acceptance_criteria.is_empty(),
+    };
+    if invalid_task_fields {
+        return Err(invalid(
+            "Task lifecycle and acceptance criteria apply only to tasks",
         ));
     }
     Ok(())
