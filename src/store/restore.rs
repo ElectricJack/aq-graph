@@ -193,7 +193,13 @@ impl Restore<'_> {
     }
     async fn restore_edge(&self, tx: &mut Tx<'_>, mut e: Edge) -> Result<Vec<Uuid>> {
         self.authorize_source(tx, e.source).await?;
-        compat_graph::validate_edge(tx, self.principal, e.source, e.target, e.edge_type).await?;
+        compat_graph::ProposedEdge {
+            source: e.source,
+            target: e.target,
+            edge_type: e.edge_type,
+        }
+        .validate(tx, self.principal)
+        .await?;
         for (node, pin) in [(e.source, e.source_revision), (e.target, e.target_revision)] {
             if let Some(pin) = pin {
                 load_revision(tx, self.principal.workspace_id, node, pin).await?;

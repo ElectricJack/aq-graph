@@ -1239,7 +1239,13 @@ async fn execute(
                         continue;
                     }
                 }
-                compat_graph::validate_edge(tx, p, *source, *target, *edge_type).await?;
+                compat_graph::ProposedEdge {
+                    source: *source,
+                    target: *target,
+                    edge_type: *edge_type,
+                }
+                .validate(tx, p)
+                .await?;
                 let b = load_node(tx, p.workspace_id, *target).await?;
                 if matches!(edge_type, EdgeType::Blocks | EdgeType::ParentChild) {
                     knowledge_rules::authorize_edit(&edit_authority, &b)?;
@@ -1313,16 +1319,16 @@ async fn execute(
                 parent_id,
             } => {
                 results.push(
-                    compat_graph::set_parent(
-                        tx,
-                        p,
-                        &edit_authority,
+                    compat_graph::Reparent {
+                        principal: p,
+                        authority: &edit_authority,
                         change,
-                        *id,
-                        *expected_version,
-                        *parent_id,
                         reason,
-                    )
+                        id: *id,
+                        expected_version: *expected_version,
+                        parent_id: *parent_id,
+                    }
+                    .apply(tx)
                     .await?,
                 );
             }
