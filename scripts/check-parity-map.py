@@ -6,6 +6,7 @@ from collections import Counter
 import fnmatch
 import hashlib
 import json
+import math
 from pathlib import Path
 import re
 import subprocess
@@ -99,146 +100,448 @@ def selected(path):
     # fnmatch '*' spans slashes; enforce the requested direct tests/ family paths.
     return any(fnmatch.fnmatchcase(path,pattern) and (path.count('/')==pattern.count('/')) for pattern in PATTERNS)
 
-def qualified_tests(nodes,scope='',decorators=()):
+
+def qualified_tests(nodes, scope="", decorators=()):
     for node in nodes:
-        if isinstance(node,ast.ClassDef):
-            yield from qualified_tests(node.body,scope+node.name+'.',decorators+tuple(node.decorator_list))
-        elif isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef)) and node.name.startswith('test_'):
-            yield scope+node.name,node,decorators+tuple(node.decorator_list)
+        if isinstance(node, ast.ClassDef):
+            yield from qualified_tests(
+                node.body,
+                scope + node.name + ".",
+                decorators + tuple(node.decorator_list),
+            )
+        elif isinstance(
+            node, (ast.FunctionDef, ast.AsyncFunctionDef)
+        ) and node.name.startswith("test_"):
+            yield scope + node.name, node, decorators + tuple(node.decorator_list)
 
-def size(node,bindings,depth=0):
-    if depth>10:
+
+def size(node, bindings, depth=0):
+    if depth > 10:
         return None
-    if isinstance(node,(ast.List,ast.Tuple,ast.Set,ast.Dict)):
-        return len(node.keys if isinstance(node,ast.Dict) else node.elts)
-    if isinstance(node,ast.Name) and node.id in bindings:
-        return size(bindings[node.id],bindings,depth+1)
-    if isinstance(node,ast.Call) and isinstance(node.func,ast.Name):
-        if node.func.id=='range' and all(isinstance(n,ast.Constant) and type(n.value) is int for n in node.args):
-            try: return len(range(*(n.value for n in node.args)))
-            except (TypeError,ValueError,OverflowError): return None
-        if node.func.id in ('list','tuple','sorted') and len(node.args)==1:
-            return size(node.args[0],bindings,depth+1)
-    if isinstance(node,ast.BinOp) and isinstance(node.op,ast.Add):
-        left,right=size(node.left,bindings,depth+1),size(node.right,bindings,depth+1)
-        return left+right if left is not None and right is not None else None
-    return None
+    match node:
+        case (
+            ast.List(elts=items)
+            | ast.Tuple(elts=items)
+            | ast.Set(elts=items)
+            | ast.Dict(keys=items)
+        ):
+            return len(items)
+        case ast.Name(id=name) if name in bindings:
+            return size(bindings[name], bindings, depth + 1)
+        case ast.Call(func=ast.Name(id="range"), args=args):
+            return range_size(args)
+        case ast.Call(func=ast.Name(id=("list" | "tuple" | "sorted")), args=[argument]):
+            return size(argument, bindings, depth + 1)
+        case ast.BinOp(op=ast.Add(), left=left, right=right):
+            sizes = [size(part, bindings, depth + 1) for part in (left, right)]
+            return None if None in sizes else sum(sizes)
+        case _:
+            return None
 
-def param_info(decorators,bindings):
-    parameters=[]
-    for decorator in decorators:
-        if isinstance(decorator,ast.Call) and ast.unparse(decorator.func).endswith('.parametrize'):
-            values=decorator.args[1] if len(decorator.args)>1 else next((k.value for k in decorator.keywords if k.arg=='argvalues'),None)
-            parameters.append({'decorator':ast.unparse(decorator),'static_values_count':size(values,bindings) if values is not None else None})
-    combinations=1
-    for parameter in parameters:
-        if parameter['static_values_count'] is None:
-            combinations=None
-            break
-        combinations*=parameter['static_values_count']
-    return {'decorators':parameters,'static_combinations':combinations,'fixture_expansion':'not_evaluated','note':'AST estimate only; fixtures, dynamic comprehensions, skips and plugin collection are not executed.'}
 
-def triage(path,name):
-    filename=Path(path).name
-    category,reason=PROFILES[filename]
-    if name in CORE_OVERRIDES.get(filename,set()):
-        category='knowledge_core' if filename.startswith('test_knowledge') or filename=='test_record_contracts.py' else 'graph_core'
-        reason='Portable assertion candidate isolated from the surrounding AQ surface; inspect full source before adapting, and record any omitted v1-only obligations.'
-    if filename=='test_hierarchy_queries.py' and name in AQ_HIERARCHY:
-        category='aq_orchestration'
-        reason='This case asserts AQ container/session/routing/ordinal or automatic lifecycle policy; v2 parent-child edges do not independently block execution or settle tasks.'
-    if filename=='test_dependency_queries.py' and name in {'test_stuck_defined_tasks_are_listed_once_with_their_route','test_get_stuck_defined_tasks_reads_tasks_that_carry_a_route','test_guarded_dependency_waits_for_hierarchy_then_rechecks_target'}:
-        category='aq_orchestration';reason='AQ routing, held hierarchy admission and defined-task recovery are separate from graph-intrinsic readiness.'
-    if filename=='test_knowledge_service.py' and name in {'test_outbox_failure_rolls_back_revision_and_receipt','test_export_intent_is_private_metadata_only'}:
-        category='optional_integration';reason='The assertion includes AQ export/outbox side effects absent from the synchronous v2 baseline; graph atomicity alone is only partial coverage.'
-    if category=='migration' and filename!='test_knowledge_redaction.py':
-        return category,'P2','excluded','Outside aq-graph product scope: v1 import, cutover, legacy identity and old-product schema compatibility are reference evidence only. AQ v2 is a fresh start; any optional owner-specific transfer is an external script, not a supported aq-graph feature.'
-    if category in ('graph_core','knowledge_core'):
-        return category,'P0' if filename in {'test_record_schema.py','test_record_links.py','test_knowledge_service.py','test_knowledge_authority.py','test_knowledge_authorization.py','test_knowledge_proposals.py'} else 'P1','needs_translation',reason+' No v2 behavioral equivalence is claimed until assertions and runtime results are verified.'
-    return category,'P2' if category in ('migration','performance') else 'P3','deferred',reason+' Explicit scope/adapter work is required; this is not counted as v2 parity.'
+def range_size(arguments):
+    if not all(
+        isinstance(arg, ast.Constant) and type(arg.value) is int for arg in arguments
+    ):
+        return None
+    try:
+        return len(range(*(arg.value for arg in arguments)))
+    except (TypeError, ValueError, OverflowError):
+        return None
 
-def extract(source,revision):
-    paths=[p for p in git(source,'ls-tree','-r','--name-only',revision,'tests').splitlines() if selected(p)]
-    records=[];files=[]
+
+def param_info(decorators, bindings):
+    parameters = [
+        parameter(decorator, bindings)
+        for decorator in decorators
+        if isinstance(decorator, ast.Call)
+        and ast.unparse(decorator.func).endswith(".parametrize")
+    ]
+    counts = [entry["static_values_count"] for entry in parameters]
+    combinations = None if None in counts else math.prod(counts)
+    return {
+        "decorators": parameters,
+        "static_combinations": combinations,
+        "fixture_expansion": "not_evaluated",
+        "note": "AST estimate only; fixtures, dynamic comprehensions, skips and plugin collection are not executed.",
+    }
+
+
+def parameter(decorator, bindings):
+    if len(decorator.args) > 1:
+        values = decorator.args[1]
+    else:
+        values = next(
+            (kw.value for kw in decorator.keywords if kw.arg == "argvalues"), None
+        )
+    return {
+        "decorator": ast.unparse(decorator),
+        "static_values_count": size(values, bindings),
+    }
+
+
+SPECIFIC_PROFILES = {
+    "test_hierarchy_queries.py": (
+        AQ_HIERARCHY,
+        "aq_orchestration",
+        "This case asserts AQ container/session/routing/ordinal or automatic lifecycle policy; v2 parent-child edges do not independently block execution or settle tasks.",
+    ),
+    "test_dependency_queries.py": (
+        {
+            "test_stuck_defined_tasks_are_listed_once_with_their_route",
+            "test_get_stuck_defined_tasks_reads_tasks_that_carry_a_route",
+            "test_guarded_dependency_waits_for_hierarchy_then_rechecks_target",
+        },
+        "aq_orchestration",
+        "AQ routing, held hierarchy admission and defined-task recovery are separate from graph-intrinsic readiness.",
+    ),
+    "test_knowledge_service.py": (
+        {
+            "test_outbox_failure_rolls_back_revision_and_receipt",
+            "test_export_intent_is_private_metadata_only",
+        },
+        "optional_integration",
+        "The assertion includes AQ export/outbox side effects absent from the synchronous v2 baseline; graph atomicity alone is only partial coverage.",
+    ),
+}
+
+
+def triage(path, name):
+    filename = Path(path).name
+    category, reason = PROFILES[filename]
+    if name in CORE_OVERRIDES.get(filename, set()):
+        category = (
+            "knowledge_core"
+            if filename.startswith("test_knowledge")
+            or filename == "test_record_contracts.py"
+            else "graph_core"
+        )
+        reason = "Portable assertion candidate isolated from the surrounding AQ surface; inspect full source before adapting, and record any omitted v1-only obligations."
+    special = SPECIFIC_PROFILES.get(filename)
+    if special:
+        names, override_category, override_reason = special
+        if name in names:
+            category, reason = override_category, override_reason
+    return disposition(filename, category, reason)
+
+
+def disposition(filename, category, reason):
+    if category == "migration" and filename != "test_knowledge_redaction.py":
+        return (
+            category,
+            "P2",
+            "excluded",
+            "Outside aq-graph product scope: v1 import, cutover, legacy identity and old-product schema compatibility are reference evidence only. AQ v2 is a fresh start; any optional owner-specific transfer is an external script, not a supported aq-graph feature.",
+        )
+    if category in ("graph_core", "knowledge_core"):
+        return (
+            category,
+            "P0"
+            if filename
+            in {
+                "test_record_schema.py",
+                "test_record_links.py",
+                "test_knowledge_service.py",
+                "test_knowledge_authority.py",
+                "test_knowledge_authorization.py",
+                "test_knowledge_proposals.py",
+            }
+            else "P1",
+            "needs_translation",
+            reason
+            + " No v2 behavioral equivalence is claimed until assertions and runtime results are verified.",
+        )
+    return (
+        category,
+        "P2" if category in ("migration", "performance") else "P3",
+        "deferred",
+        reason
+        + " Explicit scope/adapter work is required; this is not counted as v2 parity.",
+    )
+
+
+def extract(source, revision):
+    paths = [
+        p
+        for p in git(
+            source, "ls-tree", "-r", "--name-only", revision, "tests"
+        ).splitlines()
+        if selected(p)
+    ]
+    records = []
+    files = []
     for path in paths:
-        text=git(source,'show',f'{revision}:{path}')
-        tree=ast.parse(text,filename=path)
-        module_doc=(ast.get_docstring(tree) or '').split('\n\n')[0]
-        bindings={target.id:node.value for node in tree.body if isinstance(node,ast.Assign) for target in node.targets if isinstance(target,ast.Name)}
-        tests=list(qualified_tests(tree.body))
-        files.append({'path':path,'sha256':hashlib.sha256(text.encode()).hexdigest(),'test_definitions':len(tests),'module_behavior':module_doc})
-        for name,node,decorators in tests:
-            segment=ast.get_source_segment(text,node)
-            assertions=[ast.unparse(n.test) for n in ast.walk(node) if isinstance(n,ast.Assert)]
-            calls=list(dict.fromkeys(ast.unparse(n.func) for n in ast.walk(node) if isinstance(n,ast.Call)))
-            category,priority,status,reason=triage(path,name)
-            records.append({'id':path+'::'+name,'source':{'path':path,'function':name,'line':node.lineno,'end_line':node.end_lineno,'sha256':hashlib.sha256(segment.encode()).hexdigest(),'docstring':ast.get_docstring(node),'assertion_count':len(assertions),'assertion_samples':[a[:300] for a in assertions[:4]],'called_operations':[c[:160] for c in calls[:24]],'called_operations_truncated':len(calls)>24,'parameterization':param_info(decorators,bindings)},'category':category,'priority':priority,'status':status,'reason':reason,'v2_tests':[],'candidate_v2_tests':[],'verification':{'result':'not_run','command':None},'coverage_scope':'none'})
-    return {'schema_version':1,'source':{'repository':'agent-queue2','revision':revision,'selection_patterns':PATTERNS,'method':'git show pinned blobs + Python AST; no v1 imports, pytest collection, tests, daemon, database, or mutations'},'files':files,'tests':records}
+        text = git(source, "show", f"{revision}:{path}")
+        source_file, definitions = inspect_test_module(path, text)
+        files.append(source_file)
+        records.extend(definitions)
+    return {
+        "schema_version": 1,
+        "source": {
+            "repository": "agent-queue2",
+            "revision": revision,
+            "selection_patterns": PATTERNS,
+            "method": "git show pinned blobs + Python AST; no v1 imports, pytest collection, tests, daemon, database, or mutations",
+        },
+        "files": files,
+        "tests": records,
+    }
+
+
+def inspect_test_module(path, text):
+    tree = ast.parse(text, filename=path)
+    module_doc = (ast.get_docstring(tree) or "").split("\n\n")[0]
+    bindings = module_bindings(tree)
+    tests = list(qualified_tests(tree.body))
+    source_file = {
+        "path": path,
+        "sha256": hashlib.sha256(text.encode()).hexdigest(),
+        "test_definitions": len(tests),
+        "module_behavior": module_doc,
+    }
+    return source_file, [test_record(path, text, test, bindings) for test in tests]
+
+
+def module_bindings(tree):
+    return {
+        target.id: node.value
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        for target in node.targets
+        if isinstance(target, ast.Name)
+    }
+
+
+def test_record(path, text, test, bindings):
+    name, node, decorators = test
+    segment = ast.get_source_segment(text, node)
+    assertions = [
+        ast.unparse(n.test) for n in ast.walk(node) if isinstance(n, ast.Assert)
+    ]
+    calls = list(
+        dict.fromkeys(
+            ast.unparse(n.func) for n in ast.walk(node) if isinstance(n, ast.Call)
+        )
+    )
+    category, priority, status, reason = triage(path, name)
+    return {
+        "id": path + "::" + name,
+        "source": {
+            "path": path,
+            "function": name,
+            "line": node.lineno,
+            "end_line": node.end_lineno,
+            "sha256": hashlib.sha256(segment.encode()).hexdigest(),
+            "docstring": ast.get_docstring(node),
+            "assertion_count": len(assertions),
+            "assertion_samples": [a[:300] for a in assertions[:4]],
+            "called_operations": [c[:160] for c in calls[:24]],
+            "called_operations_truncated": len(calls) > 24,
+            "parameterization": param_info(decorators, bindings),
+        },
+        "category": category,
+        "priority": priority,
+        "status": status,
+        "reason": reason,
+        "v2_tests": [],
+        "candidate_v2_tests": [],
+        "verification": {"result": "not_run", "command": None},
+        "coverage_scope": "none",
+    }
+
 
 def summary(data):
-    rows=data['tests']
-    parameters=[r['source']['parameterization'] for r in rows]
-    return {'source_files':len(data['files']),'test_definitions':len(rows),'by_category':dict(sorted(Counter(r['category'] for r in rows).items())),'by_status':dict(sorted(Counter(r['status'] for r in rows).items())),'by_priority':dict(sorted(Counter(r['priority'] for r in rows).items())),'parameterized_definitions':sum(bool(p['decorators']) for p in parameters),'static_combinations_known':sum(p['static_combinations'] is not None for p in parameters),'sum_known_static_combinations':sum(p['static_combinations'] for p in parameters if p['static_combinations'] is not None),'dynamic_parameter_definitions':sum(p['static_combinations'] is None for p in parameters),'count_caveat':'Definitions are not pytest collected cases. Known static combinations exclude unresolved decorator values and all fixture/plugin expansion.'}
+    rows = data["tests"]
+    parameters = [r["source"]["parameterization"] for r in rows]
+    counts = [
+        p["static_combinations"]
+        for p in parameters
+        if p["static_combinations"] is not None
+    ]
 
-def validate(data,source=None):
-    errors=[];seen=set()
-    if data.get('schema_version')!=1:
-        errors.append('Unsupported inventory schema_version')
-    for row in data['tests']:
-        ident=row['id']
-        if ident in seen: errors.append('Duplicate id: '+ident)
-        seen.add(ident)
-        if row['status'] not in ('needs_translation','existing_coverage','translated','deferred','excluded'): errors.append('Invalid status: '+ident)
-        if not row.get('reason'): errors.append('Missing reason: '+ident)
-        if row['status'] in ('existing_coverage','translated'):
-            if not row.get('v2_tests') or row.get('verification',{}).get('result')!='passed' or not row.get('verification',{}).get('command'):
-                errors.append('Verified status needs exact targets and passing command: '+ident)
-            if row.get('coverage_scope')!='portable_obligations': errors.append('Partial assertions must remain needs_translation: '+ident)
-        for target in row.get('v2_tests',[])+row.get('candidate_v2_tests',[]):
-            path=ROOT/target['path']
-            function=target['function'].split('::')[-1]
-            if not path.is_file() or not re.search(r'\bfn\s+'+re.escape(function)+r'\s*\(',path.read_text()): errors.append('Missing Rust target: '+ident+' -> '+str(target))
-            if not target.get('assertions'): errors.append('Target needs assertion correspondence: '+ident)
-    if data.get('summary')!=summary(data): errors.append('Summary is stale; regenerate with --refresh')
-    if source is not None:
-        fresh=extract(source,data['source']['revision'])
-        if fresh['files']!=data['files']: errors.append('Pinned file hashes or definition counts differ')
-        old={r['id']:r['source'] for r in data['tests']};new={r['id']:r['source'] for r in fresh['tests']}
-        if old!=new: errors.append('Pinned AST evidence differs or test definitions are missing/extra')
+    def by(field):
+        return dict(sorted(Counter(row[field] for row in rows).items()))
+
+    return {
+        "source_files": len(data["files"]),
+        "test_definitions": len(rows),
+        "by_category": by("category"),
+        "by_status": by("status"),
+        "by_priority": by("priority"),
+        "parameterized_definitions": sum(bool(p["decorators"]) for p in parameters),
+        "static_combinations_known": len(counts),
+        "sum_known_static_combinations": sum(counts),
+        "dynamic_parameter_definitions": len(parameters) - len(counts),
+        "count_caveat": "Definitions are not pytest collected cases. Known static combinations exclude unresolved decorator values and all fixture/plugin expansion.",
+    }
+
+
+def validate_verification(row):
+    ident = row["id"]
+    errors = []
+    verification = row.get("verification", {})
+    verified = verification.get("result") == "passed" and verification.get("command")
+    if not row.get("v2_tests") or not verified:
+        errors.append(
+            "Verified status needs exact targets and passing command: " + ident
+        )
+    if row.get("coverage_scope") != "portable_obligations":
+        errors.append("Partial assertions must remain needs_translation: " + ident)
     return errors
 
-def main():
-    parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--source-root',type=Path,help='Read-only v1 git checkout; required for refresh and optional for full source verification')
-    parser.add_argument('--revision',help='Revision to pin on initial generation; existing inventories keep their recorded revision')
-    parser.add_argument('--inventory',type=Path,default=DEFAULT_MAP)
-    parser.add_argument('--refresh',action='store_true',help='Generate/update source AST evidence while preserving unchanged reviewed dispositions')
-    args=parser.parse_args()
-    if args.refresh:
-        if not args.source_root: parser.error('--refresh requires --source-root')
-        previous=json.loads(args.inventory.read_text()) if args.inventory.exists() else None
-        requested_revision=args.revision or (previous['source']['revision'] if previous else 'HEAD')
-        revision=git(args.source_root,'rev-parse','--verify',requested_revision+'^{commit}').strip()
-        data=extract(args.source_root,revision)
-        if previous:
-            old={r['id']:r for r in previous['tests']}
-            old_files={f['path']:f['sha256'] for f in previous['files']}
-            new_files={f['path']:f['sha256'] for f in data['files']}
-            for row in data['tests']:
-                prior=old.get(row['id'])
-                if prior and prior['source']['sha256']==row['source']['sha256'] and old_files.get(row['source']['path'])==new_files.get(row['source']['path']):
-                    for key in ('category','priority','status','reason','v2_tests','candidate_v2_tests','verification','coverage_scope','notes','schema5_verification'):
-                        if key in prior: row[key]=prior[key]
-        data['summary']=summary(data)
-        args.inventory.parent.mkdir(parents=True,exist_ok=True)
-        args.inventory.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
-    else:
-        data=json.loads(args.inventory.read_text())
-    errors=validate(data,args.source_root)
-    if errors:
-        for error in errors: print(error,file=sys.stderr)
-        raise SystemExit(1)
-    print(json.dumps(data['summary'],indent=2))
 
-if __name__=='__main__':
+def check_rust_target(ident, target):
+    errors = []
+    path = ROOT / target["path"]
+    function = target["function"].split("::")[-1]
+    if not path.is_file() or not re.search(
+        r"\bfn\s+" + re.escape(function) + r"\s*\(", path.read_text()
+    ):
+        errors.append("Missing Rust target: " + ident + " -> " + str(target))
+    if not target.get("assertions"):
+        errors.append("Target needs assertion correspondence: " + ident)
+    return errors
+
+
+def validate_row(row):
+    ident = row["id"]
+    errors = []
+    if row["status"] not in (
+        "needs_translation",
+        "existing_coverage",
+        "translated",
+        "deferred",
+        "excluded",
+    ):
+        errors.append("Invalid status: " + ident)
+    if not row.get("reason"):
+        errors.append("Missing reason: " + ident)
+    if row["status"] in ("existing_coverage", "translated"):
+        errors.extend(validate_verification(row))
+    for target in row.get("v2_tests", []) + row.get("candidate_v2_tests", []):
+        errors.extend(check_rust_target(ident, target))
+    return errors
+
+
+def validate(data, source=None):
+    errors = []
+    seen = set()
+    if data.get("schema_version") != 1:
+        errors.append("Unsupported inventory schema_version")
+    for row in data["tests"]:
+        ident = row["id"]
+        if ident in seen:
+            errors.append("Duplicate id: " + ident)
+        seen.add(ident)
+        errors.extend(validate_row(row))
+    if data.get("summary") != summary(data):
+        errors.append("Summary is stale; regenerate with --refresh")
+    if source is not None:
+        errors.extend(check_source(data, source))
+    return errors
+
+
+def test_sources(inventory):
+    return {row["id"]: row["source"] for row in inventory["tests"]}
+
+
+def file_hashes(inventory):
+    return {entry["path"]: entry["sha256"] for entry in inventory["files"]}
+
+
+def check_source(data, source):
+    errors = []
+    fresh = extract(source, data["source"]["revision"])
+    if fresh["files"] != data["files"]:
+        errors.append("Pinned file hashes or definition counts differ")
+    if test_sources(data) != test_sources(fresh):
+        errors.append(
+            "Pinned AST evidence differs or test definitions are missing/extra"
+        )
+    return errors
+
+
+def copy_reviewed_fields(row, prior):
+    keys = (
+        "category",
+        "priority",
+        "status",
+        "reason",
+        "v2_tests",
+        "candidate_v2_tests",
+        "verification",
+        "coverage_scope",
+        "notes",
+        "schema5_verification",
+    )
+    row.update({key: prior[key] for key in keys if key in prior})
+
+
+def retain_reviewed_dispositions(previous, data):
+    old = {r["id"]: r for r in previous["tests"]}
+    old_files = file_hashes(previous)
+    new_files = file_hashes(data)
+    for row in data["tests"]:
+        prior = old.get(row["id"])
+        if prior is None or prior["source"]["sha256"] != row["source"]["sha256"]:
+            continue
+        path = row["source"]["path"]
+        if old_files.get(path) == new_files.get(path):
+            copy_reviewed_fields(row, prior)
+
+
+def refresh(args):
+    previous = (
+        json.loads(args.inventory.read_text()) if args.inventory.exists() else None
+    )
+    requested_revision = args.revision or (
+        previous["source"]["revision"] if previous else "HEAD"
+    )
+    revision = git(
+        args.source_root, "rev-parse", "--verify", requested_revision + "^{commit}"
+    ).strip()
+    data = extract(args.source_root, revision)
+    if previous:
+        retain_reviewed_dispositions(previous, data)
+    data["summary"] = summary(data)
+    args.inventory.parent.mkdir(parents=True, exist_ok=True)
+    args.inventory.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    return data
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--source-root",
+        type=Path,
+        help="Read-only v1 git checkout; required for refresh and optional for full source verification",
+    )
+    parser.add_argument(
+        "--revision",
+        help="Revision to pin on initial generation; existing inventories keep their recorded revision",
+    )
+    parser.add_argument("--inventory", type=Path, default=DEFAULT_MAP)
+    parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Generate/update source AST evidence while preserving unchanged reviewed dispositions",
+    )
+    args = parser.parse_args()
+    if args.refresh and not args.source_root:
+        parser.error("--refresh requires --source-root")
+    return args
+
+
+def main():
+    args = parse_args()
+    data = refresh(args) if args.refresh else json.loads(args.inventory.read_text())
+    errors = validate(data, args.source_root)
+    if errors:
+        for error in errors:
+            print(error, file=sys.stderr)
+        raise SystemExit(1)
+    print(json.dumps(data["summary"], indent=2))
+
+
+if __name__ == "__main__":
     main()

@@ -8,33 +8,51 @@ import re
 import tomllib
 
 
-def write_evidence(root: Path, output: Path, image: str, digest: str,
-                   tag: str, revision: str) -> dict:
-    with (root / 'Cargo.toml').open('rb') as source:
-        version = tomllib.load(source)['package']['version']
-    if tag != 'v' + version:
-        raise ValueError('release tag must match Cargo package version')
+def from_instructions(root: Path):
+    for line in (root / 'Dockerfile').read_text().splitlines():
+        parts = line.split()
+        if parts and parts[0].upper() == 'FROM':
+            yield parts
+
+
+def pinned_base(image: str) -> str:
+    if not re.fullmatch(r'[^\s@]+@sha256:[0-9a-f]{64}', image):
+        raise ValueError('every external Docker base must be digest-pinned')
+    return image
+
+
+def docker_bases(root: Path) -> list[str]:
+    bases = []
+    stages = set()
+    for parts in from_instructions(root):
+        base = parts[1]
+        if base not in stages:
+            bases.append(pinned_base(base))
+        if len(parts) == 4 and parts[2].upper() == 'AS':
+            stages.add(parts[3])
+    names = [base.split('@', 1)[0] for base in bases]
+    if names != ['rust:1.96.1-bookworm', 'debian:bookworm-slim']:
+        raise ValueError('expected Rust 1.96.1 bookworm and Debian bookworm-slim bases')
+    return bases
+
+
+def validate_image_reference(image: str, digest: str, revision: str) -> None:
     if not re.fullmatch(r'sha256:[0-9a-f]{64}', digest):
         raise ValueError('pushed image digest must be sha256 plus 64 lowercase hex digits')
     if not re.fullmatch(r'[0-9a-f]{40}', revision):
         raise ValueError('source revision must be a full Git SHA')
     if not re.fullmatch(r'ghcr\.io/[a-z0-9_.-]+/[a-z0-9_.-]+', image):
         raise ValueError('image must be an untagged GHCR repository')
-    bases = []
-    stages = set()
-    for line in (root / 'Dockerfile').read_text().splitlines():
-        parts = line.split()
-        if not parts or parts[0].upper() != 'FROM':
-            continue
-        base = parts[1]
-        if base not in stages:
-            if not re.fullmatch(r'[^\s@]+@sha256:[0-9a-f]{64}', base):
-                raise ValueError('every external Docker base must be digest-pinned')
-            bases.append(base)
-        if len(parts) == 4 and parts[2].upper() == 'AS':
-            stages.add(parts[3])
-    if len(bases) != 2 or not bases[0].startswith('rust:1.96.1-bookworm@') or not bases[1].startswith('debian:bookworm-slim@'):
-        raise ValueError('expected Rust 1.96.1 bookworm and Debian bookworm-slim bases')
+
+
+def write_evidence(root: Path, output: Path, image: str, digest: str,
+                   tag: str, revision: str) -> dict:
+    with (root / 'Cargo.toml').open('rb') as source:
+        version = tomllib.load(source)['package']['version']
+    if tag != 'v' + version:
+        raise ValueError('release tag must match Cargo package version')
+    validate_image_reference(image, digest, revision)
+    bases = docker_bases(root)
     record = {
         'release': tag,
         'image_digest': digest,
