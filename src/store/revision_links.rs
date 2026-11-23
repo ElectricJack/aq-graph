@@ -74,89 +74,15 @@ mod tests {
             .unwrap();
         let mut tx = pool.begin().await.unwrap();
         let schema = format!("revision_links_{}", Uuid::new_v4().simple());
-        sqlx::raw_sql(&format!(
-            "CREATE SCHEMA {schema}; SET LOCAL search_path TO {schema},pg_catalog;"
-        ))
-        .execute(&mut *tx)
-        .await
-        .unwrap();
-        for migration in [
-            include_str!("../../migrations/0001_initial.sql"),
-            include_str!("../../migrations/0002_workspace_credential_scope.sql"),
-            include_str!("../../migrations/0003_knowledge_pagination.sql"),
-            include_str!("../../migrations/0004_graph_contract.sql"),
-            include_str!("../../migrations/0005_knowledge_contract.sql"),
-            include_str!("../../migrations/0006_unified_revisions.sql"),
-        ] {
-            sqlx::raw_sql(migration).execute(&mut *tx).await.unwrap();
-        }
+        create_schema(&mut tx, &schema).await;
         let workspace = Uuid::new_v4();
         let p = Principal {
             workspace_id: workspace,
             actor_id: "revision-author".into(),
             capability: Capability::Admin,
         };
-        sqlx::query("INSERT INTO workspaces(id) VALUES($1)")
-            .bind(workspace)
-            .execute(&mut *tx)
-            .await
-            .unwrap();
-        sqlx::query("INSERT INTO nodes(id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,task_state,created_at,updated_at,created_by) SELECT lpad(to_hex(g),32,'0')::uuid,$1,'task',1,1,'task','','','active',clock_timestamp(),clock_timestamp(),'revision-author' FROM generate_series(1,3) g").bind(workspace).execute(&mut *tx).await.unwrap();
-        for (id, source, target, kind) in [
-            (10, 1, 2, "blocks"),
-            (11, 2, 3, "references"),
-            (12, 3, 1, "references"),
-        ] {
-            sqlx::query("INSERT INTO edges(id,workspace_id,source,target,edge_type,version,created_at) VALUES($1,$2,$3,$4,$5,1,clock_timestamp())").bind(Uuid::from_u128(id)).bind(workspace).bind(Uuid::from_u128(source)).bind(Uuid::from_u128(target)).bind(kind).execute(&mut *tx).await.unwrap();
-        }
-        let change = Uuid::new_v4();
-        sqlx::query("INSERT INTO change_sets(id,workspace_id,actor_id,operations,status) VALUES($1,$2,'revision-author','[]','applied')").bind(change).bind(workspace).execute(&mut *tx).await.unwrap();
-        let first = capture_links(&mut tx, &p, Uuid::from_u128(1))
-            .await
-            .unwrap();
-        let dependent = capture_links(&mut tx, &p, Uuid::from_u128(2))
-            .await
-            .unwrap();
-        for (id, set) in [(1, Some(first)), (2, Some(dependent)), (3, None)] {
-            sqlx::query("INSERT INTO node_revisions(workspace_id,node_id,revision,snapshot,actor_id,operation,change_set_id,link_set_id) SELECT workspace_id,id,1,to_jsonb(n)-'search_document','revision-author','created',$2,$3 FROM nodes n WHERE id=$1").bind(Uuid::from_u128(id)).bind(change).bind(set).execute(&mut *tx).await.unwrap();
-        }
-        let links = load_links(&mut tx, workspace, Uuid::from_u128(1), 1)
-            .await
-            .unwrap();
-        assert_eq!(links.len(), 1);
-        assert_eq!(
-            links[0].id,
-            Uuid::from_u128(10),
-            "incoming informational links stay derived"
-        );
-        let links = load_links(&mut tx, workspace, Uuid::from_u128(2), 1)
-            .await
-            .unwrap();
-        assert_eq!(
-            links.iter().map(|e| e.id).collect::<Vec<_>>(),
-            vec![Uuid::from_u128(10), Uuid::from_u128(11)],
-            "incoming blocks belongs to dependent revision"
-        );
-        // Historical serializers can encode the same PostgreSQL timestamp
-        // using another offset or fractional width. Compare typed edge rows.
-        sqlx::query("UPDATE edge_versions SET snapshot=jsonb_set(snapshot,'{created_at}',to_jsonb(to_char((snapshot->>'created_at')::timestamptz AT TIME ZONE 'Etc/GMT+8','YYYY-MM-DD\"T\"HH24:MI:SS.US')||'-08:00')) WHERE id=$1").bind(Uuid::from_u128(10)).execute(&mut *tx).await.unwrap();
-        assert_eq!(
-            capture_links(&mut tx, &p, Uuid::from_u128(1))
-                .await
-                .unwrap(),
-            first,
-            "equivalent offsets must not look like a same-version overwrite"
-        );
-        let live = load_edge(&mut tx, workspace, Uuid::from_u128(10))
-            .await
-            .unwrap();
-        assert_eq!(
-            load_links(&mut tx, workspace, Uuid::from_u128(1), 1)
-                .await
-                .unwrap()[0]
-                .created_at,
-            live.created_at
-        );
+        let (first, dependent) = seed_revisions(&mut tx, &p).await;
+        assert_original_links(&mut tx, &p, first).await;
         sqlx::query(
             "UPDATE nodes SET title='content changed',version=2,content_revision=2 WHERE id=$1",
         )
@@ -171,30 +97,7 @@ mod tests {
             first,
             "content-only edit must reuse immutable membership"
         );
-        sqlx::query("UPDATE edges SET version=2,description='new live description' WHERE id=$1")
-            .bind(Uuid::from_u128(10))
-            .execute(&mut *tx)
-            .await
-            .unwrap();
-        let changed = capture_links(&mut tx, &p, Uuid::from_u128(1))
-            .await
-            .unwrap();
-        assert_ne!(changed, first);
-        assert_ne!(
-            capture_links(&mut tx, &p, Uuid::from_u128(2))
-                .await
-                .unwrap(),
-            dependent,
-            "incoming structural version change affects dependent"
-        );
-        let old = load_links(&mut tx, workspace, Uuid::from_u128(1), 1)
-            .await
-            .unwrap();
-        assert_eq!(old[0].version, 1);
-        assert!(
-            old[0].description.is_none(),
-            "historic links cannot follow current payload"
-        );
+        assert_edge_version_change(&mut tx, &p, first, dependent).await;
         assert!(
             matches!(load_links(&mut tx,workspace,Uuid::from_u128(3),1).await,Err(Error::Conflict(message)) if message.contains("legacy"))
         );
@@ -224,5 +127,113 @@ mod tests {
                 .unwrap();
         assert!(!exists);
         pool.close().await;
+    }
+
+    async fn create_schema(tx: &mut Tx<'_>, schema: &str) {
+        sqlx::raw_sql(&format!(
+            "CREATE SCHEMA {schema}; SET LOCAL search_path TO {schema},pg_catalog;"
+        ))
+        .execute(&mut **tx)
+        .await
+        .unwrap();
+        for migration in [
+            include_str!("../../migrations/0001_initial.sql"),
+            include_str!("../../migrations/0002_workspace_credential_scope.sql"),
+            include_str!("../../migrations/0003_knowledge_pagination.sql"),
+            include_str!("../../migrations/0004_graph_contract.sql"),
+            include_str!("../../migrations/0005_knowledge_contract.sql"),
+            include_str!("../../migrations/0006_unified_revisions.sql"),
+        ] {
+            sqlx::raw_sql(migration).execute(&mut **tx).await.unwrap();
+        }
+    }
+
+    async fn seed_revisions(tx: &mut Tx<'_>, p: &Principal) -> (Uuid, Uuid) {
+        let workspace = p.workspace_id;
+        sqlx::query("INSERT INTO workspaces(id) VALUES($1)")
+            .bind(workspace)
+            .execute(&mut **tx)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO nodes(id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,task_state,created_at,updated_at,created_by) SELECT lpad(to_hex(g),32,'0')::uuid,$1,'task',1,1,'task','','','active',clock_timestamp(),clock_timestamp(),'revision-author' FROM generate_series(1,3) g").bind(workspace).execute(&mut **tx).await.unwrap();
+        for (id, source, target, kind) in [
+            (10, 1, 2, "blocks"),
+            (11, 2, 3, "references"),
+            (12, 3, 1, "references"),
+        ] {
+            sqlx::query("INSERT INTO edges(id,workspace_id,source,target,edge_type,version,created_at) VALUES($1,$2,$3,$4,$5,1,clock_timestamp())").bind(Uuid::from_u128(id)).bind(workspace).bind(Uuid::from_u128(source)).bind(Uuid::from_u128(target)).bind(kind).execute(&mut **tx).await.unwrap();
+        }
+        let change = Uuid::new_v4();
+        sqlx::query("INSERT INTO change_sets(id,workspace_id,actor_id,operations,status) VALUES($1,$2,'revision-author','[]','applied')").bind(change).bind(workspace).execute(&mut **tx).await.unwrap();
+        let first = capture_links(tx, p, Uuid::from_u128(1)).await.unwrap();
+        let dependent = capture_links(tx, p, Uuid::from_u128(2)).await.unwrap();
+        for (id, set) in [(1, Some(first)), (2, Some(dependent)), (3, None)] {
+            sqlx::query("INSERT INTO node_revisions(workspace_id,node_id,revision,snapshot,actor_id,operation,change_set_id,link_set_id) SELECT workspace_id,id,1,to_jsonb(n)-'search_document','revision-author','created',$2,$3 FROM nodes n WHERE id=$1").bind(Uuid::from_u128(id)).bind(change).bind(set).execute(&mut **tx).await.unwrap();
+        }
+        (first, dependent)
+    }
+
+    async fn assert_original_links(tx: &mut Tx<'_>, p: &Principal, first: Uuid) {
+        let workspace = p.workspace_id;
+        let links = load_links(tx, workspace, Uuid::from_u128(1), 1)
+            .await
+            .unwrap();
+        assert_eq!(links.len(), 1);
+        assert_eq!(
+            links[0].id,
+            Uuid::from_u128(10),
+            "incoming informational links stay derived"
+        );
+        let links = load_links(tx, workspace, Uuid::from_u128(2), 1)
+            .await
+            .unwrap();
+        assert_eq!(
+            links.iter().map(|e| e.id).collect::<Vec<_>>(),
+            vec![Uuid::from_u128(10), Uuid::from_u128(11)],
+            "incoming blocks belongs to dependent revision"
+        );
+        // Historical serializers can encode the same PostgreSQL timestamp
+        // using another offset or fractional width. Compare typed edge rows.
+        sqlx::query("UPDATE edge_versions SET snapshot=jsonb_set(snapshot,'{created_at}',to_jsonb(to_char((snapshot->>'created_at')::timestamptz AT TIME ZONE 'Etc/GMT+8','YYYY-MM-DD\"T\"HH24:MI:SS.US')||'-08:00')) WHERE id=$1").bind(Uuid::from_u128(10)).execute(&mut **tx).await.unwrap();
+        assert_eq!(
+            capture_links(tx, p, Uuid::from_u128(1)).await.unwrap(),
+            first,
+            "equivalent offsets must not look like a same-version overwrite"
+        );
+        let live = load_edge(tx, workspace, Uuid::from_u128(10)).await.unwrap();
+        assert_eq!(
+            load_links(tx, workspace, Uuid::from_u128(1), 1)
+                .await
+                .unwrap()[0]
+                .created_at,
+            live.created_at
+        );
+    }
+    async fn assert_edge_version_change(
+        tx: &mut Tx<'_>,
+        p: &Principal,
+        first: Uuid,
+        dependent: Uuid,
+    ) {
+        sqlx::query("UPDATE edges SET version=2,description='new live description' WHERE id=$1")
+            .bind(Uuid::from_u128(10))
+            .execute(&mut **tx)
+            .await
+            .unwrap();
+        let changed = capture_links(tx, p, Uuid::from_u128(1)).await.unwrap();
+        assert_ne!(changed, first);
+        assert_ne!(
+            capture_links(tx, p, Uuid::from_u128(2)).await.unwrap(),
+            dependent,
+            "incoming structural version change affects dependent"
+        );
+        let old = load_links(tx, p.workspace_id, Uuid::from_u128(1), 1)
+            .await
+            .unwrap();
+        assert_eq!(old[0].version, 1);
+        assert!(
+            old[0].description.is_none(),
+            "historic links cannot follow current payload"
+        );
     }
 }

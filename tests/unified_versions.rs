@@ -34,17 +34,11 @@ impl Api {
             token,
         }
     }
-    async fn request_as(
-        &self,
-        token: &str,
-        method: &str,
-        path: &str,
-        body: Option<Value>,
-    ) -> (StatusCode, Value) {
+    async fn request(&self, method: &str, path: &str, body: Option<Value>) -> (StatusCode, Value) {
         let request = Request::builder()
             .method(method)
             .uri(format!("/v1/workspaces/{}{path}", self.workspace))
-            .header("authorization", format!("Bearer {token}"))
+            .header("authorization", format!("Bearer {}", self.token))
             .header("content-type", "application/json")
             .body(Body::from(body.map(|v| v.to_string()).unwrap_or_default()))
             .unwrap();
@@ -58,8 +52,12 @@ impl Api {
             serde_json::from_slice(&bytes).expect("JSON API response"),
         )
     }
-    async fn request(&self, method: &str, path: &str, body: Option<Value>) -> (StatusCode, Value) {
-        self.request_as(&self.token, method, path, body).await
+    fn with_token(&self, token: String) -> Self {
+        Self {
+            app: self.app.clone(),
+            workspace: self.workspace,
+            token,
+        }
     }
     async fn get(&self, path: &str) -> Value {
         let (status, value) = self.request("GET", path, None).await;
@@ -145,20 +143,7 @@ async fn task_and_knowledge_share_exact_relationship_versions_and_restore() {
         let initial = api.create(kind, "Original title").await;
         let source = id(&initial);
         let target = api.create("knowledge", "Pinned target").await;
-        let first = api.snapshot(source, revision(&initial)).await;
-        assert_eq!(
-            first["node"], initial,
-            "an exact revision must match the persisted current node at that same version"
-        );
-        assert_eq!(first["relationships_available"], true);
-        assert!(links(&first).is_empty());
-        api.change(vec![patch(
-            &initial,
-            json!({"title":"Edited title","body":"Edited content"}),
-        )])
-        .await;
-        let edited = api.node(source).await;
-        assert_advanced(&initial, &edited);
+        let (first, edited) = assert_content_revision(&api, &initial).await;
         let edge_id = Uuid::new_v4();
         api.change(vec![json!({"op":"add_edge","id":edge_id,"source":source,"target":target["id"],"edge_type":"references","target_revision":target["content_revision"],"description":"Retained relationship explanation"})]).await;
         let linked = api.node(source).await;
@@ -181,21 +166,7 @@ async fn task_and_knowledge_share_exact_relationship_versions_and_restore() {
             first,
             "old snapshots remain exact after content and link edits"
         );
-        let diff = api
-            .get(&format!(
-                "/nodes/{source}/diff?from={}&to={}",
-                revision(&edited),
-                revision(&linked)
-            ))
-            .await;
-        assert!(
-            diff["changes"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|change| change["field"] == "links"),
-            "relationship changes belong to common diff: {diff}"
-        );
+        assert_link_diff(&api, source, &edited, &linked).await;
         let removed=api.change(vec![json!({"op":"remove_edge","id":edge_id,"expected_version":original_edge["version"]})]).await;
         let removed_edge = removed["results"][0].clone();
         let unlinked = api.node(source).await;
@@ -209,48 +180,8 @@ async fn task_and_knowledge_share_exact_relationship_versions_and_restore() {
         let restored = api.node(source).await;
         assert_advanced(&unlinked, &restored);
         let current = api.snapshot(source, revision(&restored)).await;
-        assert_eq!(links(&current).len(), 1);
-        let edge = &links(&current)[0];
-        for field in [
-            "id",
-            "source",
-            "target",
-            "edge_type",
-            "source_revision",
-            "target_revision",
-            "description",
-            "created_at",
-        ] {
-            assert_eq!(
-                edge[field], original_edge[field],
-                "restore preserves edge identity/content field {field}"
-            );
-        }
-        assert!(
-            edge["version"].as_i64().unwrap() > removed_edge["version"].as_i64().unwrap(),
-            "edge versions never rewind on restoration"
-        );
-        assert_eq!(edge["deleted"], false);
-        let history = api.history(source).await;
-        assert_eq!(
-            revision_count(&history),
-            5,
-            "create/edit/add/remove/restore each creates one snapshot: {history}"
-        );
-        assert_eq!(
-            api.mutation("restore-original-link", vec![operation]).await,
-            (StatusCode::OK, receipt),
-            "same-key retry survives stale CAS"
-        );
-        assert_eq!(api.history(source).await, history);
-        api.change(vec![restore(&restored, revision(&restored), Some(false))])
-            .await;
-        assert_eq!(
-            api.node(source).await,
-            restored,
-            "unchanged restore is a no-op"
-        );
-        assert_eq!(api.history(source).await, history);
+        assert_restored_edge(&current, &original_edge, &removed_edge);
+        assert_restore_replay(&api, &restored, operation, receipt).await;
         assert_eq!(
             api.snapshot(source, revision(&linked)).await,
             retained,
@@ -476,33 +407,7 @@ async fn common_revision_reads_and_restores_enforce_scope_version_and_permission
             .await;
         assert_eq!(status, StatusCode::CONFLICT, "{error}");
         assert_eq!(api.history(id(&initial)).await, before);
-        let reader = format!("reader-{}", Uuid::new_v4());
-        let (status, result) = api
-            .request(
-                "POST",
-                "/credentials",
-                Some(json!({"actor_id":"reader","token":reader,"capability":"read"})),
-            )
-            .await;
-        assert_eq!(status, StatusCode::OK, "{result}");
-        assert_eq!(
-            api.request_as(
-                &reader,
-                "GET",
-                &format!(
-                    "/nodes/{}/revisions/{}",
-                    initial["id"].as_str().unwrap(),
-                    revision(&initial)
-                ),
-                None
-            )
-            .await
-            .0,
-            StatusCode::OK
-        );
-        let current = api.node(id(&initial)).await;
-        let (status,error)=api.request_as(&reader,"POST","/mutations",Some(json!({"idempotency_key":"read-only","operations":[restore(&current,revision(&initial),Some(true))]}))).await;
-        assert_eq!(status, StatusCode::FORBIDDEN, "{error}");
+        assert_reader_can_retrieve_but_not_restore(&api, &initial).await;
     }
 }
 
@@ -689,4 +594,121 @@ async fn both_kinds_restore_with_cas_conflicts_and_concurrent_idempotent_receipt
             "same-key restore appends exactly one revision"
         );
     }
+}
+
+async fn assert_reader_can_retrieve_but_not_restore(api: &Api, initial: &Value) {
+    let reader = format!("reader-{}", Uuid::new_v4());
+    let (status, result) = api
+        .request(
+            "POST",
+            "/credentials",
+            Some(json!({"actor_id":"reader","token":reader,"capability":"read"})),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{result}");
+    let reader = api.with_token(reader);
+    assert_eq!(
+        reader
+            .request(
+                "GET",
+                &format!(
+                    "/nodes/{}/revisions/{}",
+                    initial["id"].as_str().unwrap(),
+                    revision(initial)
+                ),
+                None
+            )
+            .await
+            .0,
+        StatusCode::OK
+    );
+    let current = api.node(id(initial)).await;
+    let (status,error)=reader.request("POST","/mutations",Some(json!({"idempotency_key":"read-only","operations":[restore(&current,revision(initial),Some(true))]}))).await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{error}");
+}
+
+fn assert_restored_edge(current: &Value, original_edge: &Value, removed_edge: &Value) {
+    assert_eq!(links(current).len(), 1);
+    let edge = &links(current)[0];
+    for field in [
+        "id",
+        "source",
+        "target",
+        "edge_type",
+        "source_revision",
+        "target_revision",
+        "description",
+        "created_at",
+    ] {
+        assert_eq!(
+            edge[field], original_edge[field],
+            "restore preserves edge identity/content field {field}"
+        );
+    }
+    assert!(
+        edge["version"].as_i64().unwrap() > removed_edge["version"].as_i64().unwrap(),
+        "edge versions never rewind on restoration"
+    );
+    assert_eq!(edge["deleted"], false);
+}
+
+async fn assert_link_diff(api: &Api, source: Uuid, edited: &Value, linked: &Value) {
+    let diff = api
+        .get(&format!(
+            "/nodes/{source}/diff?from={}&to={}",
+            revision(edited),
+            revision(linked)
+        ))
+        .await;
+    assert!(
+        diff["changes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|change| change["field"] == "links"),
+        "relationship changes belong to common diff: {diff}"
+    );
+}
+
+async fn assert_content_revision(api: &Api, initial: &Value) -> (Value, Value) {
+    let source = id(initial);
+    let first = api.snapshot(source, revision(initial)).await;
+    assert_eq!(
+        first["node"], *initial,
+        "an exact revision must match the persisted current node at that same version"
+    );
+    assert_eq!(first["relationships_available"], true);
+    assert!(links(&first).is_empty());
+    api.change(vec![patch(
+        initial,
+        json!({"title":"Edited title","body":"Edited content"}),
+    )])
+    .await;
+    let edited = api.node(source).await;
+    assert_advanced(initial, &edited);
+    (first, edited)
+}
+
+async fn assert_restore_replay(api: &Api, restored: &Value, operation: Value, receipt: Value) {
+    let source = id(restored);
+    let history = api.history(source).await;
+    assert_eq!(
+        revision_count(&history),
+        5,
+        "create/edit/add/remove/restore each creates one snapshot: {history}"
+    );
+    assert_eq!(
+        api.mutation("restore-original-link", vec![operation]).await,
+        (StatusCode::OK, receipt),
+        "same-key retry survives stale CAS"
+    );
+    assert_eq!(api.history(source).await, history);
+    api.change(vec![restore(restored, revision(restored), Some(false))])
+        .await;
+    assert_eq!(
+        api.node(source).await,
+        *restored,
+        "unchanged restore is a no-op"
+    );
+    assert_eq!(api.history(source).await, history);
 }

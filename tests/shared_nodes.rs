@@ -34,48 +34,19 @@ impl Api {
             token,
         }
     }
-    async fn call_as(
-        &self,
-        token: &str,
-        method: &str,
-        path: &str,
-        body: Option<Value>,
-    ) -> (StatusCode, Value) {
-        let request = Request::builder()
-            .method(method)
-            .uri(format!("/v1/workspaces/{}{path}", self.workspace))
-            .header("authorization", format!("Bearer {token}"))
-            .header("content-type", "application/json")
-            .body(Body::from(body.map(|v| v.to_string()).unwrap_or_default()))
-            .unwrap();
-        let response = self.app.clone().oneshot(request).await.unwrap();
-        let status = response.status();
-        let bytes = to_bytes(response.into_body(), service::MAX_RESPONSE_BYTES)
-            .await
-            .unwrap();
-        (
-            status,
-            serde_json::from_slice(&bytes).expect("JSON response"),
-        )
+    fn as_actor<'a>(&'a self, token: &'a str) -> Actor<'a> {
+        Actor { api: self, token }
     }
     async fn call(&self, method: &str, path: &str, body: Option<Value>) -> (StatusCode, Value) {
-        self.call_as(&self.token, method, path, body).await
+        self.as_actor(&self.token).call(method, path, body).await
     }
     async fn get(&self, path: &str) -> Value {
         let (status, v) = self.call("GET", path, None).await;
         assert_eq!(status, StatusCode::OK, "{path}: {v}");
         v
     }
-    async fn mutation_as(
-        &self,
-        token: &str,
-        key: &str,
-        operations: Vec<Value>,
-    ) -> (StatusCode, Value) {
-        self.call_as(token,"POST","/mutations",Some(json!({"idempotency_key":key,"reason":"Shared record field contract","operations":operations}))).await
-    }
     async fn mutation(&self, key: &str, operations: Vec<Value>) -> (StatusCode, Value) {
-        self.mutation_as(&self.token, key, operations).await
+        self.as_actor(&self.token).mutation(key, operations).await
     }
     async fn change(&self, operations: Vec<Value>) -> Value {
         let (status, v) = self.mutation(&Uuid::new_v4().to_string(), operations).await;
@@ -83,22 +54,9 @@ impl Api {
         v
     }
     async fn create(&self, kind: &str, title: &str) -> Value {
-        self.create_as(&self.token, kind, title, json!({})).await
-    }
-    async fn create_as(&self, token: &str, kind: &str, title: &str, extra: Value) -> Value {
-        let id = Uuid::new_v4();
-        let mut op = json!({"op":"create_node","id":id,"kind":kind,"title":title,"body":"sharedneedle original body","content_type":"decision"});
-        if kind == "task" {
-            op["task_state"] = json!("active");
-        }
-        op.as_object_mut()
-            .unwrap()
-            .extend(extra.as_object().unwrap().clone());
-        let (status, v) = self
-            .mutation_as(token, &Uuid::new_v4().to_string(), vec![op])
-            .await;
-        assert_eq!(status, StatusCode::OK, "{v}");
-        self.node(id).await
+        self.as_actor(&self.token)
+            .create(kind, title, json!({}))
+            .await
     }
     async fn node(&self, id: Uuid) -> Value {
         self.get(&format!("/nodes/{id}")).await
@@ -124,6 +82,46 @@ impl Api {
             n["id"].as_str().unwrap()
         ))
         .await
+    }
+}
+struct Actor<'a> {
+    api: &'a Api,
+    token: &'a str,
+}
+impl Actor<'_> {
+    async fn call(&self, method: &str, path: &str, body: Option<Value>) -> (StatusCode, Value) {
+        let request = Request::builder()
+            .method(method)
+            .uri(format!("/v1/workspaces/{}{path}", self.api.workspace))
+            .header("authorization", format!("Bearer {}", self.token))
+            .header("content-type", "application/json")
+            .body(Body::from(body.map(|v| v.to_string()).unwrap_or_default()))
+            .unwrap();
+        let response = self.api.app.clone().oneshot(request).await.unwrap();
+        let status = response.status();
+        let bytes = to_bytes(response.into_body(), service::MAX_RESPONSE_BYTES)
+            .await
+            .unwrap();
+        (
+            status,
+            serde_json::from_slice(&bytes).expect("JSON response"),
+        )
+    }
+    async fn mutation(&self, key: &str, operations: Vec<Value>) -> (StatusCode, Value) {
+        self.call("POST","/mutations",Some(json!({"idempotency_key":key,"reason":"Shared record field contract","operations":operations}))).await
+    }
+    async fn create(&self, kind: &str, title: &str, extra: Value) -> Value {
+        let id = Uuid::new_v4();
+        let mut op = json!({"op":"create_node","id":id,"kind":kind,"title":title,"body":"sharedneedle original body","content_type":"decision"});
+        if kind == "task" {
+            op["task_state"] = json!("active");
+        }
+        op.as_object_mut()
+            .unwrap()
+            .extend(extra.as_object().unwrap().clone());
+        let (status, v) = self.mutation(&Uuid::new_v4().to_string(), vec![op]).await;
+        assert_eq!(status, StatusCode::OK, "{v}");
+        self.api.node(id).await
     }
 }
 fn id(n: &Value) -> Uuid {
@@ -155,21 +153,11 @@ async fn both_kinds_have_canonical_content_type_provenance_and_independent_verif
         let api = Api::new().await;
         let writer = api.writer("writer").await;
         let n = api
-            .create_as(
-                &writer,
-                kind,
-                "Shared finding",
-                json!({"provenance":[evidence()]}),
-            )
+            .as_actor(&writer)
+            .create(kind, "Shared finding", json!({"provenance":[evidence()]}))
             .await;
-        assert_eq!(n["content_type"], "decision");
-        assert!(
-            n.get("knowledge_type").is_none(),
-            "output uses the shared canonical field"
-        );
-        assert_eq!(n["verification"], "unverified");
-        assert_eq!(n["provenance"], json!([evidence()]));
-        let(status,error)=api.mutation_as(&writer,"writer-verify",vec![json!({"op":"verify_node","id":n["id"],"expected_version":n["version"],"verification":"verified","evidence":[evidence()]})]).await;
+        assert_initial_fields(&n);
+        let(status,error)=api.as_actor(&writer).mutation("writer-verify",vec![json!({"op":"verify_node","id":n["id"],"expected_version":n["version"],"verification":"verified","evidence":[evidence()]})]).await;
         assert_eq!(
             status,
             StatusCode::FORBIDDEN,
@@ -184,8 +172,8 @@ async fn both_kinds_have_canonical_content_type_provenance_and_independent_verif
             "verification never completes or activates a task"
         );
         let (status, error) = api
-            .mutation_as(
-                &writer,
+            .as_actor(&writer)
+            .mutation(
                 "protected-edit",
                 vec![patch(&verified, json!({"body":"protected overwrite"}))],
             )
@@ -204,32 +192,7 @@ async fn both_kinds_have_canonical_content_type_provenance_and_independent_verif
         assert_eq!(corrected["verification"], "unverified");
         assert!(corrected["last_verified_by"].is_null());
         assert_eq!(corrected["provenance"], verified["provenance"]);
-        let mut legacy = json!({"knowledge_type":"fact"});
-        // Use the legacy alias without the canonical key; both keys together are ambiguous.
-        let id = Uuid::new_v4();
-        legacy.as_object_mut().unwrap().extend(
-            json!({"op":"create_node","id":id,"kind":kind,"title":"Legacy type alias"})
-                .as_object()
-                .unwrap()
-                .clone(),
-        );
-        api.change(vec![legacy]).await;
-        let alias = api.node(id).await;
-        assert_eq!(alias["content_type"], "fact");
-        assert!(alias.get("knowledge_type").is_none());
-        let ambiguous = Uuid::new_v4();
-        let(status,error)=api.mutation("ambiguous-type-alias",vec![json!({"op":"create_node","id":ambiguous,"kind":kind,"title":"Ambiguous category","content_type":"fact","knowledge_type":"note"})]).await;
-        assert_eq!(
-            status,
-            StatusCode::BAD_REQUEST,
-            "canonical and legacy aliases cannot disagree: {error}"
-        );
-        assert_eq!(
-            api.call("GET", &format!("/nodes/{ambiguous}"), None)
-                .await
-                .0,
-            StatusCode::NOT_FOUND
-        );
+        assert_content_type_aliases(&api, kind).await;
     }
 }
 
@@ -265,34 +228,7 @@ async fn shared_summaries_pin_current_revision_preserve_noops_and_invalidate_on_
             summarized,
             "a no-op does not invalidate its summary"
         );
-        let before = api.history(&n).await;
-        let (status, error) = api
-            .mutation(
-                "oversized-summary",
-                vec![summary(
-                    &summarized,
-                    revision(&summarized),
-                    json!("é".repeat(4097)),
-                )],
-            )
-            .await;
-        assert_eq!(
-            status,
-            StatusCode::BAD_REQUEST,
-            "summary limit counts UTF-8 bytes: {error}"
-        );
-        let (status, error) = api
-            .mutation(
-                "stale-summary-source",
-                vec![summary(
-                    &summarized,
-                    base,
-                    json!("Must not summarize a stale base"),
-                )],
-            )
-            .await;
-        assert_eq!(status, StatusCode::CONFLICT, "{error}");
-        assert_eq!(api.history(&n).await, before);
+        assert_bad_summaries_rollback(&api, &summarized, base).await;
         api.change(vec![patch(
             &summarized,
             json!({"body":"Changed source body"}),
@@ -319,18 +255,7 @@ async fn shared_summaries_pin_current_revision_preserve_noops_and_invalidate_on_
             exact,
             "old derived text and its citation remain exact history"
         );
-        api.change(vec![summary(
-            &restored,
-            revision(&restored),
-            json!("Fresh summary"),
-        )])
-        .await;
-        let fresh = api.node(id(&n)).await;
-        api.change(vec![summary(&fresh, revision(&fresh), Value::Null)])
-            .await;
-        let cleared = api.node(id(&n)).await;
-        assert!(cleared["summary"].is_null());
-        assert!(cleared["summary_of_revision"].is_null());
+        assert_explicit_summary_clear(&api, &restored).await;
     }
 }
 
@@ -422,29 +347,7 @@ async fn dates_are_nullable_ordered_normalized_and_do_not_schedule_tasks() {
 #[tokio::test]
 async fn shared_list_search_apply_kind_validity_review_and_workspace_filters() {
     let api = Api::new().await;
-    let mut inside = vec![];
-    for kind in ["task", "knowledge"] {
-        for (title, dates) in [
-            (
-                "Inside",
-                json!({"valid_from":"2030-01-01T00:00:00Z","valid_until":"2030-01-02T00:00:00Z","review_at":"2030-01-01T00:00:00Z"}),
-            ),
-            (
-                "Expired",
-                json!({"valid_from":"2029-01-01T00:00:00Z","valid_until":"2030-01-01T00:00:00Z","review_at":"2029-12-31T00:00:00Z"}),
-            ),
-            (
-                "Future",
-                json!({"valid_from":"2030-01-02T00:00:00Z","review_at":"2030-01-02T00:00:00Z"}),
-            ),
-            ("Unbounded", json!({})),
-        ] {
-            let n = api.create_as(&api.token, kind, title, dates).await;
-            if title == "Inside" {
-                inside.push(n);
-            }
-        }
-    }
+    let inside = seed_dated_records(&api).await;
     assert_eq!(
         api.get("/search?q=sharedneedle").await["items"]
             .as_array()
@@ -453,41 +356,7 @@ async fn shared_list_search_apply_kind_validity_review_and_workspace_filters() {
         8,
         "search defaults to both kinds"
     );
-    for route in ["/nodes?", "/search?q=sharedneedle&"] {
-        assert_eq!(
-            api.get(&format!("{route}valid_at=2030-01-01T00:00:00Z"))
-                .await["items"]
-                .as_array()
-                .unwrap()
-                .len(),
-            4,
-            "validity is half-open and null bounds unbounded"
-        );
-        assert_eq!(
-            api.get(&format!("{route}review_due_at=2030-01-01T00:00:00Z"))
-                .await["items"]
-                .as_array()
-                .unwrap()
-                .len(),
-            4,
-            "review filter includes exact boundary and excludes null review_at"
-        );
-        let filters = "valid_at=2030-01-01T00:00:00Z&review_due_at=2030-01-01T00:00:00Z";
-        let page = api.get(&format!("{route}{filters}")).await;
-        assert_eq!(page["items"].as_array().unwrap().len(), 2);
-        assert!(inside.iter().all(|n| has(&page, n)));
-        let tasks = api.get(&format!("{route}{filters}&kind=task")).await;
-        assert_eq!(tasks["items"].as_array().unwrap().len(), 1);
-        assert_eq!(tasks["items"][0]["kind"], "task");
-        let first = api.get(&format!("{route}{filters}&limit=1")).await;
-        let cursor = first["next_cursor"].as_str().unwrap();
-        let next = api
-            .get(&format!("{route}{filters}&limit=1&cursor={cursor}"))
-            .await;
-        assert_eq!(next["items"].as_array().unwrap().len(), 1);
-        assert_ne!(first["items"][0]["id"], next["items"][0]["id"]);
-        assert!(next["next_cursor"].is_null());
-    }
+    assert_dated_pages(&api, &inside).await;
     let foreign = Api::new().await;
     assert!(
         foreign.get("/nodes?valid_at=2030-01-01T00:00:00Z").await["items"]
@@ -674,11 +543,7 @@ async fn invalid_successors_and_deletions_roll_back_atomically() {
             // Task deletion unlinks atomically: the replacement pointer to the
             // deleted task is cleared and the retired record itself survives.
             assert_eq!(status, StatusCode::OK, "{error}");
-            assert_eq!(api.node(id(&candidate)).await["deleted"], true);
-            let retained = api.node(id(&old)).await;
-            assert!(retained["successor_id"].is_null());
-            assert_eq!(retained["retired"], true);
-            assert_eq!(retained["deleted"], false);
+            assert_deleted_task_successor(&api, &candidate, &old).await;
             continue;
         }
         assert!(
@@ -704,11 +569,12 @@ async fn shared_fields_keep_task_workspace_writes_and_knowledge_author_permissio
         let alice = api.writer("alice").await;
         let bob = api.writer("bob").await;
         let original = api
-            .create_as(&alice, kind, "Shared field permissions", json!({}))
+            .as_actor(&alice)
+            .create(kind, "Shared field permissions", json!({}))
             .await;
         let (status, result) = api
-            .mutation_as(
-                &bob,
+            .as_actor(&bob)
+            .mutation(
                 "other-writer",
                 vec![patch(&original, json!({"content_type":"procedure"}))],
             )
@@ -725,8 +591,8 @@ async fn shared_fields_keep_task_workspace_writes_and_knowledge_author_permissio
         let current = api.node(id(&original)).await;
         assert_eq!(current["created_by"], "alice");
         let (status, error) = api
-            .mutation_as(
-                &alice,
+            .as_actor(&alice)
+            .mutation(
                 "author-retirement",
                 vec![patch(
                     &current,
@@ -739,7 +605,7 @@ async fn shared_fields_keep_task_workspace_writes_and_knowledge_author_permissio
             StatusCode::FORBIDDEN,
             "retirement needs admin for both kinds: {error}"
         );
-        let(status,error)=api.mutation_as(&alice,"privileged-restore",vec![json!({"op":"restore_node","id":current["id"],"expected_version":current["version"],"revision":original["content_revision"],"include_lifecycle":true})]).await;
+        let(status,error)=api.as_actor(&alice).mutation("privileged-restore",vec![json!({"op":"restore_node","id":current["id"],"expected_version":current["version"],"revision":original["content_revision"],"include_lifecycle":true})]).await;
         assert_eq!(
             status,
             StatusCode::FORBIDDEN,
@@ -799,15 +665,7 @@ async fn summary_draft_preview_is_complete_rollback_only_and_matches_application
             .iter()
             .find(|entry| entry["id"] == n["id"])
             .unwrap();
-        assert_eq!(preview["before"]["summary"], Value::Null);
-        assert_eq!(
-            preview["after"]["summary"],
-            "A reviewed derived description"
-        );
-        assert_eq!(
-            preview["after"]["summary_of_revision"],
-            n["content_revision"]
-        );
+        assert_summary_preview(preview, &n);
         assert_eq!(api.node(id(&n)).await, n);
         assert_eq!(
             api.history(&n).await,
@@ -859,7 +717,8 @@ async fn protected_tasks_require_admin_for_both_structural_endpoints_and_parent_
         json!({"op":"add_edge","source":source["id"],"target":target["id"],"edge_type":"blocks"});
     let before = api.history(&source).await;
     let (status, error) = api
-        .mutation_as(&writer, "protected-target-add", vec![add.clone()])
+        .as_actor(&writer)
+        .mutation("protected-target-add", vec![add.clone()])
         .await;
     assert_eq!(
         status,
@@ -867,7 +726,7 @@ async fn protected_tasks_require_admin_for_both_structural_endpoints_and_parent_
         "source write access cannot bypass a protected structural target: {error}"
     );
     assert_eq!(api.history(&source).await, before);
-    let(status,error)=api.mutation_as(&writer,"protected-parent-assignment",vec![json!({"op":"set_parent","id":target["id"],"expected_version":protected["version"],"parent_id":parent["id"]})]).await;
+    let(status,error)=api.as_actor(&writer).mutation("protected-parent-assignment",vec![json!({"op":"set_parent","id":target["id"],"expected_version":protected["version"],"parent_id":parent["id"]})]).await;
     assert_eq!(status, StatusCode::FORBIDDEN, "{error}");
     let linked = api.change(vec![add]).await;
     let edge = linked["results"][0].clone();
@@ -878,8 +737,8 @@ async fn protected_tasks_require_admin_for_both_structural_endpoints_and_parent_
     );
     api.verify(&current, "verified").await;
     let (status, error) = api
-        .mutation_as(
-            &writer,
+        .as_actor(&writer)
+        .mutation(
             "protected-target-remove",
             vec![json!({"op":"remove_edge","id":edge["id"],"expected_version":edge["version"]})],
         )
@@ -895,7 +754,7 @@ async fn protected_tasks_require_admin_for_both_structural_endpoints_and_parent_
     .await;
     let child = api.node(id(&target)).await;
     api.verify(&parent, "verified").await;
-    let(status,error)=api.mutation_as(&writer,"protected-parent-target",vec![json!({"op":"set_parent","id":child["id"],"expected_version":child["version"],"parent_id":parent["id"]})]).await;
+    let(status,error)=api.as_actor(&writer).mutation("protected-parent-target",vec![json!({"op":"set_parent","id":child["id"],"expected_version":child["version"],"parent_id":parent["id"]})]).await;
     assert_eq!(
         status,
         StatusCode::FORBIDDEN,
@@ -924,7 +783,8 @@ async fn default_task_restore_cannot_bypass_protected_neighbor_authority() {
     let history = api.history(&current).await;
     let restore = json!({"op":"restore_node","id":current["id"],"expected_version":current["version"],"revision":historical["content_revision"]});
     let (status, error) = api
-        .mutation_as(&writer, "restore-protected-neighbor", vec![restore.clone()])
+        .as_actor(&writer)
+        .mutation("restore-protected-neighbor", vec![restore.clone()])
         .await;
     assert_eq!(
         status,
@@ -935,4 +795,174 @@ async fn default_task_restore_cannot_bypass_protected_neighbor_authority() {
     assert_eq!(api.history(&current).await, history);
     api.change(vec![restore]).await;
     assert_eq!(api.node(id(&source)).await["verification"], "unverified");
+}
+
+fn assert_initial_fields(n: &Value) {
+    assert_eq!(n["content_type"], "decision");
+    assert!(
+        n.get("knowledge_type").is_none(),
+        "output uses the shared canonical field"
+    );
+    assert_eq!(n["verification"], "unverified");
+    assert_eq!(n["provenance"], json!([evidence()]));
+}
+
+async fn assert_content_type_aliases(api: &Api, kind: &str) {
+    let mut legacy = json!({"knowledge_type":"fact"});
+    // Use the legacy alias without the canonical key; both keys together are ambiguous.
+    let id = Uuid::new_v4();
+    legacy.as_object_mut().unwrap().extend(
+        json!({"op":"create_node","id":id,"kind":kind,"title":"Legacy type alias"})
+            .as_object()
+            .unwrap()
+            .clone(),
+    );
+    api.change(vec![legacy]).await;
+    let alias = api.node(id).await;
+    assert_eq!(alias["content_type"], "fact");
+    assert!(alias.get("knowledge_type").is_none());
+    let ambiguous = Uuid::new_v4();
+    let(status,error)=api.mutation("ambiguous-type-alias",vec![json!({"op":"create_node","id":ambiguous,"kind":kind,"title":"Ambiguous category","content_type":"fact","knowledge_type":"note"})]).await;
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "canonical and legacy aliases cannot disagree: {error}"
+    );
+    assert_eq!(
+        api.call("GET", &format!("/nodes/{ambiguous}"), None)
+            .await
+            .0,
+        StatusCode::NOT_FOUND
+    );
+}
+
+async fn assert_bad_summaries_rollback(api: &Api, summarized: &Value, base: i64) {
+    let before = api.history(summarized).await;
+    let (status, error) = api
+        .mutation(
+            "oversized-summary",
+            vec![summary(
+                summarized,
+                revision(summarized),
+                json!("é".repeat(4097)),
+            )],
+        )
+        .await;
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "summary limit counts UTF-8 bytes: {error}"
+    );
+    let (status, error) = api
+        .mutation(
+            "stale-summary-source",
+            vec![summary(
+                summarized,
+                base,
+                json!("Must not summarize a stale base"),
+            )],
+        )
+        .await;
+    assert_eq!(status, StatusCode::CONFLICT, "{error}");
+    assert_eq!(api.history(summarized).await, before);
+}
+
+async fn assert_explicit_summary_clear(api: &Api, restored: &Value) {
+    api.change(vec![summary(
+        restored,
+        revision(restored),
+        json!("Fresh summary"),
+    )])
+    .await;
+    let fresh = api.node(id(restored)).await;
+    api.change(vec![summary(&fresh, revision(&fresh), Value::Null)])
+        .await;
+    let cleared = api.node(id(restored)).await;
+    assert!(cleared["summary"].is_null());
+    assert!(cleared["summary_of_revision"].is_null());
+}
+
+async fn seed_dated_records(api: &Api) -> Vec<Value> {
+    let mut inside = vec![];
+    for kind in ["task", "knowledge"] {
+        for (title, dates) in [
+            (
+                "Inside",
+                json!({"valid_from":"2030-01-01T00:00:00Z","valid_until":"2030-01-02T00:00:00Z","review_at":"2030-01-01T00:00:00Z"}),
+            ),
+            (
+                "Expired",
+                json!({"valid_from":"2029-01-01T00:00:00Z","valid_until":"2030-01-01T00:00:00Z","review_at":"2029-12-31T00:00:00Z"}),
+            ),
+            (
+                "Future",
+                json!({"valid_from":"2030-01-02T00:00:00Z","review_at":"2030-01-02T00:00:00Z"}),
+            ),
+            ("Unbounded", json!({})),
+        ] {
+            let n = api.as_actor(&api.token).create(kind, title, dates).await;
+            if title == "Inside" {
+                inside.push(n);
+            }
+        }
+    }
+    inside
+}
+
+async fn assert_dated_pages(api: &Api, inside: &[Value]) {
+    for route in ["/nodes?", "/search?q=sharedneedle&"] {
+        assert_eq!(
+            api.get(&format!("{route}valid_at=2030-01-01T00:00:00Z"))
+                .await["items"]
+                .as_array()
+                .unwrap()
+                .len(),
+            4,
+            "validity is half-open and null bounds unbounded"
+        );
+        assert_eq!(
+            api.get(&format!("{route}review_due_at=2030-01-01T00:00:00Z"))
+                .await["items"]
+                .as_array()
+                .unwrap()
+                .len(),
+            4,
+            "review filter includes exact boundary and excludes null review_at"
+        );
+        let filters = "valid_at=2030-01-01T00:00:00Z&review_due_at=2030-01-01T00:00:00Z";
+        let page = api.get(&format!("{route}{filters}")).await;
+        assert_eq!(page["items"].as_array().unwrap().len(), 2);
+        assert!(inside.iter().all(|n| has(&page, n)));
+        let tasks = api.get(&format!("{route}{filters}&kind=task")).await;
+        assert_eq!(tasks["items"].as_array().unwrap().len(), 1);
+        assert_eq!(tasks["items"][0]["kind"], "task");
+        let first = api.get(&format!("{route}{filters}&limit=1")).await;
+        let cursor = first["next_cursor"].as_str().unwrap();
+        let next = api
+            .get(&format!("{route}{filters}&limit=1&cursor={cursor}"))
+            .await;
+        assert_eq!(next["items"].as_array().unwrap().len(), 1);
+        assert_ne!(first["items"][0]["id"], next["items"][0]["id"]);
+        assert!(next["next_cursor"].is_null());
+    }
+}
+
+async fn assert_deleted_task_successor(api: &Api, candidate: &Value, old: &Value) {
+    assert_eq!(api.node(id(candidate)).await["deleted"], true);
+    let retained = api.node(id(old)).await;
+    assert!(retained["successor_id"].is_null());
+    assert_eq!(retained["retired"], true);
+    assert_eq!(retained["deleted"], false);
+}
+
+fn assert_summary_preview(preview: &Value, n: &Value) {
+    assert_eq!(preview["before"]["summary"], Value::Null);
+    assert_eq!(
+        preview["after"]["summary"],
+        "A reviewed derived description"
+    );
+    assert_eq!(
+        preview["after"]["summary_of_revision"],
+        n["content_revision"]
+    );
 }

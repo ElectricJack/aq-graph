@@ -2,137 +2,17 @@
 //! External source descriptors are attributed evidence references, never proof of
 //! remote retention, access rights, truth, or an Agent Q review's approval.
 use crate::domain::*;
-use chrono::DateTime;
 use serde_json::Value;
-use std::collections::HashSet;
-use uuid::Uuid;
+mod evidence;
+use evidence::merge_evidence;
+pub use evidence::validate_sources;
 
 fn invalid(message: &str) -> Error {
     Error::Validation(message.into())
 }
-fn text<'a>(value: &'a Value, field: &str) -> Result<&'a str> {
-    value
-        .get(field)
-        .and_then(Value::as_str)
-        .filter(|s| !s.trim().is_empty())
-        .ok_or_else(|| invalid("Evidence descriptor requires nonempty string fields"))
-}
-fn hex(value: &str, lengths: &[usize]) -> bool {
-    lengths.contains(&value.len())
-        && value
-            .bytes()
-            .all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
-}
-
-/// Check v1-compatible portable descriptor shapes, without dereferencing URLs,
-/// repositories, paths, or any AQ database identity supplied by a caller.
-pub fn validate_sources(sources: &[Value]) -> Result<()> {
-    if sources.len() > 64
-        || serde_json::to_vec(sources)
-            .map_err(|_| invalid("Invalid evidence JSON"))?
-            .len()
-            > 16_384
-    {
-        return Err(invalid(
-            "Evidence permits at most 64 descriptors and 16384 bytes",
-        ));
-    }
-    let mut ids = HashSet::new();
-    for source in sources {
-        let map = source
-            .as_object()
-            .ok_or_else(|| invalid("Evidence descriptors must be objects"))?;
-        let source_id = text(source, "source_id")?;
-        if source_id.len() > 128 || !ids.insert(source_id) {
-            return Err(invalid(
-                "Evidence source_id must be unique and contain 1..128 bytes",
-            ));
-        }
-        let kind = text(source, "kind")?;
-        let (required, allowed): (&[&str], &[&str]) = match kind {
-            "task" => (&["task_id"], &["task_id", "attempt_id", "session_id"]),
-            "review" => (
-                &["review_id", "revision", "sha256"],
-                &["review_id", "revision", "sha256"],
-            ),
-            "git" => (
-                &["repository", "commit", "path"],
-                &["repository", "commit", "path", "blob_sha256"],
-            ),
-            "artifact" => (&["artifact_id", "sha256"], &["artifact_id", "sha256"]),
-            "url" => (
-                &["url", "observed_at", "retained"],
-                &["url", "observed_at", "retained", "artifact_id", "sha256"],
-            ),
-            "legacy" => (
-                &["snapshot_id", "store", "key", "sha256"],
-                &["snapshot_id", "store", "key", "sha256"],
-            ),
-            _ => return Err(invalid("Unsupported evidence descriptor kind")),
-        };
-        if map
-            .keys()
-            .any(|k| k != "source_id" && k != "kind" && !allowed.contains(&k.as_str()))
-        {
-            return Err(invalid("Evidence fields must match the descriptor kind"));
-        }
-        for field in allowed {
-            let Some(value) = map.get(*field).filter(|v| !v.is_null()) else {
-                if required.contains(field) {
-                    return Err(invalid("Evidence descriptor is missing a required field"));
-                }
-                continue;
-            };
-            match *field {
-                "revision" if value.as_i64().is_some_and(|v| v > 0) => {}
-                "revision" => {
-                    return Err(invalid(
-                        "Evidence review revision must be a positive integer",
-                    ));
-                }
-                "retained" if value.is_boolean() => {}
-                "retained" => return Err(invalid("Evidence retained field must be boolean")),
-                _ => {
-                    text(source, field)?;
-                }
-            }
-        }
-        for field in ["sha256", "blob_sha256"] {
-            if let Some(value) = source.get(field).filter(|v| !v.is_null())
-                && !value.as_str().is_some_and(|s| hex(s, &[64]))
-            {
-                return Err(invalid(
-                    "Evidence SHA-256 must contain 64 lowercase hexadecimal characters",
-                ));
-            }
-        }
-        if kind == "git" && !hex(text(source, "commit")?, &[40, 64]) {
-            return Err(invalid(
-                "Git evidence requires a full hexadecimal commit identity",
-            ));
-        }
-        if let Some(artifact) = source.get("artifact_id").filter(|v| !v.is_null())
-            && artifact
-                .as_str()
-                .and_then(|s| Uuid::parse_str(s).ok())
-                .is_none()
-        {
-            return Err(invalid("Evidence artifact_id must be a UUID"));
-        }
-        if kind == "url" {
-            let url = reqwest::Url::parse(text(source, "url")?)
-                .map_err(|_| invalid("Evidence URL must be absolute HTTP or HTTPS"))?;
-            if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
-                return Err(invalid("Evidence URL must be absolute HTTP or HTTPS"));
-            }
-            DateTime::parse_from_rfc3339(text(source, "observed_at")?)
-                .map_err(|_| invalid("Evidence observed_at must be RFC3339 with timezone"))?;
-            if source["retained"] == true && source.get("artifact_id").is_none_or(Value::is_null) {
-                return Err(invalid(
-                    "Retained URL evidence requires an artifact reference",
-                ));
-            }
-        }
+fn require_workspace(p: &Principal, n: &Node) -> Result<()> {
+    if p.workspace_id != n.workspace_id {
+        return Err(Error::NotFound);
     }
     Ok(())
 }
@@ -141,16 +21,13 @@ pub fn validate_sources(sources: &[Value]) -> Result<()> {
 /// knowledge-specific creator and protected-revision checks.
 pub fn authorize_edit(p: &Principal, n: &Node) -> Result<()> {
     p.require_write()?;
-    if p.workspace_id != n.workspace_id {
-        return Err(Error::NotFound);
-    }
+    require_workspace(p, n)?;
     if p.capability == Capability::Admin {
         return Ok(());
     }
-    if n.retired
-        || n.verification != Some(Verification::Unverified)
-        || (n.kind == NodeKind::Knowledge && n.created_by != p.actor_id)
-    {
+    let edit_protected = n.retired || n.verification != Some(Verification::Unverified);
+    let other_author = n.kind == NodeKind::Knowledge && n.created_by != p.actor_id;
+    if edit_protected || other_author {
         return Err(Error::Forbidden);
     }
     Ok(())
@@ -172,9 +49,22 @@ pub fn verify(
     reason: Option<&str>,
 ) -> Result<()> {
     p.require_admin()?;
-    if p.workspace_id != n.workspace_id {
-        return Err(Error::NotFound);
-    }
+    require_workspace(p, n)?;
+    validate_assertion(n, verification, evidence, reason)?;
+    validate_sources(evidence)?;
+    n.provenance = merge_evidence(&n.provenance, evidence)?;
+    n.verification = Some(verification);
+    n.last_verified_by = Some(p.actor_id.clone());
+    n.last_verified_at = Some(server_time());
+    Ok(())
+}
+
+fn validate_assertion(
+    n: &Node,
+    verification: Verification,
+    evidence: &[Value],
+    reason: Option<&str>,
+) -> Result<()> {
     if n.deleted || n.retired {
         return Err(invalid("Verification requires a live nonretired node"));
     }
@@ -183,29 +73,11 @@ pub fn verify(
             "Verification requires verified/disputed status and named evidence",
         ));
     }
-    if reason.is_none_or(|reason| reason.trim().is_empty() || reason.len() > 4096) {
+    if reason.is_none_or(invalid_reason) {
         return Err(invalid(
             "Verification requires a nonempty reason of at most 4096 bytes",
         ));
     }
-    validate_sources(evidence)?;
-    // Merge evidence by stable source_id while preserving all previous sources.
-    let mut sources = n.provenance.clone();
-    for evidence in evidence {
-        if let Some(existing) = sources
-            .iter_mut()
-            .find(|source| source["source_id"] == evidence["source_id"])
-        {
-            *existing = evidence.clone();
-        } else {
-            sources.push(evidence.clone());
-        }
-    }
-    validate_sources(&sources)?;
-    n.provenance = sources;
-    n.verification = Some(verification);
-    n.last_verified_by = Some(p.actor_id.clone());
-    n.last_verified_at = Some(server_time());
     Ok(())
 }
 
@@ -217,20 +89,21 @@ pub fn validate_retirement(n: &Node) -> Result<()> {
         return Err(invalid("A node cannot name itself as its successor"));
     }
 
-    if n.retirement_reason
-        .as_ref()
-        .is_some_and(|reason| reason.trim().is_empty() || reason.len() > 4096)
-    {
+    validate_retirement_reason(n.retired, n.retirement_reason.as_deref())
+}
+
+fn invalid_reason(reason: &str) -> bool {
+    reason.trim().is_empty() || reason.len() > 4096
+}
+
+fn validate_retirement_reason(retired: bool, reason: Option<&str>) -> Result<()> {
+    if reason.is_some_and(invalid_reason) {
         return Err(invalid("Retirement reason must contain 1..4096 bytes"));
     }
-    if !n.retired && n.retirement_reason.is_some() {
+    if !retired && reason.is_some() {
         return Err(invalid("A retirement reason requires a retired node"));
     }
-    if n.retired
-        && n.retirement_reason
-            .as_ref()
-            .is_none_or(|reason| reason.trim().is_empty() || reason.len() > 4096)
-    {
+    if retired && reason.is_none() {
         return Err(invalid(
             "Retirement requires a nonempty reason of at most 4096 bytes",
         ));
@@ -284,27 +157,34 @@ pub fn validate_create(n: &Node) -> Result<()> {
     if n.content_type.is_none() {
         return Err(invalid("Every new node requires a content classification"));
     }
-    if (n.kind == NodeKind::Task && n.task_state.is_none())
-        || (n.kind == NodeKind::Knowledge
-            && (n.task_state.is_some() || !n.acceptance_criteria.is_empty()))
-    {
-        return Err(invalid(
-            "Task lifecycle and acceptance criteria apply only to tasks",
-        ));
-    }
-    if n.verification != Some(Verification::Unverified)
-        || n.last_verified_by.is_some()
-        || n.last_verified_at.is_some()
-        || n.retired
-        || n.retirement_reason.is_some()
-    {
+    validate_task_fields(n)?;
+    let verified = !matches!(
+        (n.verification, &n.last_verified_by, &n.last_verified_at),
+        (Some(Verification::Unverified), None, None)
+    );
+    let retired = n.retired || n.retirement_reason.is_some();
+    if verified || retired {
         return Err(invalid(
             "Create active unverified nodes; use explicit verification or retirement operations",
         ));
     }
-    if n.summary.is_some() || n.summary_of_revision.is_some() || n.successor_id.is_some() {
+    let has_summary = n.summary.is_some() || n.summary_of_revision.is_some();
+    if has_summary || n.successor_id.is_some() {
         return Err(invalid(
             "Create without summary or successor; use explicit revision operations",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_task_fields(n: &Node) -> Result<()> {
+    let invalid_task_fields = match n.kind {
+        NodeKind::Task => n.task_state.is_none(),
+        NodeKind::Knowledge => n.task_state.is_some() || !n.acceptance_criteria.is_empty(),
+    };
+    if invalid_task_fields {
+        return Err(invalid(
+            "Task lifecycle and acceptance criteria apply only to tasks",
         ));
     }
     Ok(())
@@ -314,6 +194,7 @@ pub fn validate_create(n: &Node) -> Result<()> {
 mod shared_policy_tests {
     use super::*;
     use serde_json::json;
+    use uuid::Uuid;
     fn node(kind: NodeKind) -> Node {
         serde_json::from_value(json!({"id":Uuid::new_v4(),"workspace_id":Uuid::nil(),"kind":kind,"version":1,"content_revision":1,"title":"shared record","body":"","acceptance_criteria":"","labels":[],"metadata":{},"task_state":if kind==NodeKind::Task{Some(TaskState::Active)}else{None},"content_type":"note","verification":"unverified","retired":false,"provenance":[],"deleted":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","created_by":"creator"})).unwrap()
     }

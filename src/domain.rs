@@ -481,11 +481,9 @@ impl Default for ContextQuery {
 }
 impl ContextQuery {
     pub fn validate(&self) -> Result<()> {
-        if self.depth > 5
-            || self.limit == 0
-            || self.limit > 200
-            || !(1024..=1_048_576).contains(&self.max_bytes)
-        {
+        let bounded_page =
+            (1..=200).contains(&self.limit) && (1024..=1_048_576).contains(&self.max_bytes);
+        if self.depth > 5 || !bounded_page {
             return Err(Error::Validation(
                 "context requires depth 0..5, limit 1..200, max_bytes 1024..1048576".into(),
             ));
@@ -519,243 +517,8 @@ impl MutationRequest {
     }
 }
 
-pub fn validate_key(key: &str) -> Result<()> {
-    if key.trim().is_empty() || key.len() > 128 {
-        return Err(Error::Validation(
-            "idempotency_key must contain 1..128 bytes".into(),
-        ));
-    }
-    Ok(())
-}
-
-pub fn validate_operations(ops: &[Mutation]) -> Result<()> {
-    if ops.is_empty() || ops.len() > 100 {
-        return Err(Error::Validation(
-            "a change set must have 1..100 operations".into(),
-        ));
-    }
-    for op in ops {
-        match op {
-            Mutation::CreateNode {
-                kind,
-                title,
-                body,
-                acceptance_criteria,
-                labels,
-                metadata,
-                task_state,
-                verification,
-                provenance,
-                valid_from,
-                valid_until,
-                ..
-            } => {
-                validate_content(
-                    title,
-                    body,
-                    acceptance_criteria,
-                    labels,
-                    metadata,
-                    provenance,
-                )?;
-                validate_validity(*valid_from, *valid_until)?;
-                if *kind == NodeKind::Knowledge
-                    && (task_state.is_some() || !acceptance_criteria.is_empty())
-                {
-                    return Err(Error::Validation(
-                        "task fields cannot be set on knowledge".into(),
-                    ));
-                }
-                if verification.is_some_and(|state| state != Verification::Unverified) {
-                    return Err(Error::Validation(
-                        "create unverified records; use verify_node for verification assertions"
-                            .into(),
-                    ));
-                }
-            }
-            Mutation::UpdateNode {
-                expected_version,
-                patch,
-                ..
-            } => {
-                validate_version(*expected_version)?;
-                if let Some(title) = &patch.title {
-                    validate_title(title)?;
-                }
-                if patch.body.as_ref().is_some_and(|s| s.len() > 262_144)
-                    || patch
-                        .acceptance_criteria
-                        .as_ref()
-                        .is_some_and(|s| s.len() > 16_384)
-                {
-                    return Err(Error::Validation("content exceeds maximum size".into()));
-                }
-                if let Some(labels) = &patch.labels {
-                    validate_labels(labels)?;
-                }
-                if let Some(metadata) = &patch.metadata {
-                    validate_metadata(metadata)?;
-                }
-                if patch
-                    .retirement_reason
-                    .as_ref()
-                    .is_some_and(|v| v.len() > 4096)
-                {
-                    return Err(Error::Validation(
-                        "retirement reason exceeds 4096 bytes".into(),
-                    ));
-                }
-                if let Some(provenance) = &patch.provenance {
-                    validate_provenance(provenance)?;
-                }
-                if let (FieldPatch::Set(from), FieldPatch::Set(until)) =
-                    (&patch.valid_from, &patch.valid_until)
-                {
-                    validate_validity(Some(*from), Some(*until))?;
-                }
-            }
-            Mutation::DeleteNode {
-                expected_version, ..
-            }
-            | Mutation::RemoveEdge {
-                expected_version, ..
-            }
-            | Mutation::SetParent {
-                expected_version, ..
-            } => validate_version(*expected_version)?,
-            Mutation::VerifyKnowledge {
-                expected_version,
-                evidence,
-                ..
-            }
-            | Mutation::VerifyNode {
-                expected_version,
-                evidence,
-                ..
-            } => {
-                validate_version(*expected_version)?;
-                validate_provenance(evidence)?;
-            }
-            Mutation::SetSummary {
-                expected_version,
-                source_revision,
-                summary,
-                ..
-            } => {
-                validate_version(*expected_version)?;
-                validate_version(*source_revision)?;
-                if let Some(summary) = summary {
-                    validate_summary_text(summary)?;
-                }
-            }
-            Mutation::RestoreNode {
-                expected_version,
-                revision,
-                ..
-            } => {
-                validate_version(*expected_version)?;
-                validate_version(*revision)?;
-            }
-            Mutation::AddEdge {
-                source,
-                target,
-                source_revision,
-                target_revision,
-                edge_type,
-                description,
-                ..
-            } => {
-                if description.as_ref().is_some_and(|v| v.len() > 4096) {
-                    return Err(Error::Validation(
-                        "edge description exceeds 4096 bytes".into(),
-                    ));
-                }
-                if source == target {
-                    return Err(Error::Validation("self links are not allowed".into()));
-                }
-                for rev in [source_revision, target_revision].into_iter().flatten() {
-                    validate_version(*rev)?;
-                }
-                if matches!(edge_type, EdgeType::Blocks | EdgeType::ParentChild)
-                    && (source_revision.is_some() || target_revision.is_some())
-                {
-                    return Err(Error::Validation(
-                        "structural edges must reference current task state".into(),
-                    ));
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-fn validate_version(version: i64) -> Result<()> {
-    if version < 1 {
-        Err(Error::Validation(
-            "version and revision must be positive".into(),
-        ))
-    } else {
-        Ok(())
-    }
-}
-fn validate_title(title: &str) -> Result<()> {
-    if title.trim().is_empty() || title.len() > 512 {
-        Err(Error::Validation("title must contain 1..512 bytes".into()))
-    } else {
-        Ok(())
-    }
-}
-fn validate_labels(labels: &[String]) -> Result<()> {
-    if labels.len() > 64 || labels.iter().any(|l| l.trim().is_empty() || l.len() > 128) {
-        Err(Error::Validation(
-            "at most 64 labels of 1..128 bytes are allowed".into(),
-        ))
-    } else {
-        Ok(())
-    }
-}
-fn validate_metadata(metadata: &Value) -> Result<()> {
-    let map = metadata
-        .as_object()
-        .ok_or_else(|| Error::Validation("metadata must be an object".into()))?;
-    if map.keys().any(|k| !k.contains(':') || k.len() > 128) || metadata.to_string().len() > 16_384
-    {
-        return Err(Error::Validation(
-            "metadata requires namespaced keys (e.g. aq:priority) and at most 16384 bytes".into(),
-        ));
-    }
-    Ok(())
-}
-fn validate_provenance(provenance: &[Value]) -> Result<()> {
-    if provenance.len() > 64
-        || serde_json::to_vec(provenance)
-            .map_err(|e| Error::Internal(e.to_string()))?
-            .len()
-            > 16_384
-        || provenance.iter().any(|v| !v.is_object())
-    {
-        return Err(Error::Validation(
-            "provenance must have at most 64 objects and 16384 bytes".into(),
-        ));
-    }
-    crate::knowledge_rules::validate_sources(provenance)
-}
-pub fn validate_content(
-    title: &str,
-    body: &str,
-    acceptance: &str,
-    labels: &[String],
-    metadata: &Value,
-    provenance: &[Value],
-) -> Result<()> {
-    validate_title(title)?;
-    if body.len() > 262_144 || acceptance.len() > 16_384 {
-        return Err(Error::Validation("content exceeds maximum size".into()));
-    }
-    validate_labels(labels)?;
-    validate_metadata(metadata)?;
-    validate_provenance(provenance)
-}
+mod validation;
+pub use validation::{validate_content, validate_key, validate_operations};
 
 #[cfg(test)]
 mod tests {
@@ -790,8 +553,8 @@ mod tests {
             .validate()
             .is_err()
         );
-        assert!(validate_metadata(&serde_json::json!({"priority":2})).is_err());
-        assert!(validate_metadata(&serde_json::json!({"aq:priority":2})).is_ok());
+        assert!(validation::validate_metadata(&serde_json::json!({"priority":2})).is_err());
+        assert!(validation::validate_metadata(&serde_json::json!({"aq:priority":2})).is_ok());
     }
 }
 

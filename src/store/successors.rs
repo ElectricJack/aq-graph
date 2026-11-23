@@ -2,28 +2,10 @@
 use super::*;
 
 pub(super) async fn validate(tx: &mut Tx<'_>, p: &Principal, ops: &[Mutation]) -> Result<()> {
-    let relevant = ops.iter().any(|op| matches!(op,
-        Mutation::UpdateNode { patch, .. } if !patch.successor_id.is_keep() || patch.retired.is_some()))
-        || ops.iter().any(|op| matches!(op, Mutation::RemoveEdge { .. } | Mutation::DeleteNode { .. } | Mutation::RestoreNode { .. }));
-    if !relevant {
+    if !ops.iter().any(affects_successor) {
         return Ok(());
     }
-    let mut roots = Vec::new();
-    for op in ops {
-        match op {
-            Mutation::UpdateNode { id, .. }
-            | Mutation::DeleteNode { id, .. }
-            | Mutation::RestoreNode { id, .. } => roots.push(*id),
-            Mutation::AddEdge { source, target, .. } => roots.extend([*source, *target]),
-            Mutation::RemoveEdge { id, .. } => {
-                let edge = load_edge(tx, p.workspace_id, *id).await?;
-                roots.extend([edge.source, edge.target]);
-            }
-            _ => {}
-        }
-    }
-    roots.sort_unstable();
-    roots.dedup();
+    let roots = affected_roots(tx, p, ops).await?;
     // Check only changed nodes and pointers into changed nodes. The partial
     // successor index avoids scanning unrelated graph records on each write.
     let invalid = sqlx::query_scalar::<_, bool>("SELECT EXISTS (
@@ -49,4 +31,36 @@ pub(super) async fn validate(tx: &mut Tx<'_>, p: &Principal, ops: &[Mutation]) -
         ));
     }
     Ok(())
+}
+
+fn affects_successor(op: &Mutation) -> bool {
+    match op {
+        Mutation::UpdateNode { patch, .. } => {
+            !patch.successor_id.is_keep() || patch.retired.is_some()
+        }
+        Mutation::RemoveEdge { .. }
+        | Mutation::DeleteNode { .. }
+        | Mutation::RestoreNode { .. } => true,
+        _ => false,
+    }
+}
+
+async fn affected_roots(tx: &mut Tx<'_>, p: &Principal, ops: &[Mutation]) -> Result<Vec<Uuid>> {
+    let mut roots = Vec::new();
+    for op in ops {
+        match op {
+            Mutation::UpdateNode { id, .. }
+            | Mutation::DeleteNode { id, .. }
+            | Mutation::RestoreNode { id, .. } => roots.push(*id),
+            Mutation::AddEdge { source, target, .. } => roots.extend([*source, *target]),
+            Mutation::RemoveEdge { id, .. } => {
+                let edge = load_edge(tx, p.workspace_id, *id).await?;
+                roots.extend([edge.source, edge.target]);
+            }
+            _ => {}
+        }
+    }
+    roots.sort_unstable();
+    roots.dedup();
+    Ok(roots)
 }

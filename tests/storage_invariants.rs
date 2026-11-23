@@ -129,30 +129,8 @@ async fn workspace_scope_covers_records_history_edges_drafts_and_tokens() {
     let draft = b
         .draft(vec![update(foreign, 1, json!({"title":"private edit"}))])
         .await;
-    assert!(matches!(
-        a.store.get_node(&a.p, foreign).await,
-        Err(Error::NotFound)
-    ));
-    assert!(matches!(
-        a.store.history(&a.p, foreign, ListQuery::default()).await,
-        Err(Error::NotFound)
-    ));
-    assert!(matches!(
-        a.store.diff(&a.p, foreign, 1, 1).await,
-        Err(Error::NotFound)
-    ));
-    assert!(matches!(
-        a.store.get_draft(&a.p, draft).await,
-        Err(Error::NotFound)
-    ));
-    assert!(matches!(
-        a.store.validate_draft(&a.p, draft).await,
-        Err(Error::NotFound)
-    ));
-    assert!(matches!(
-        a.store.apply_draft(&a.p, draft, "foreign-apply").await,
-        Err(Error::NotFound)
-    ));
+    assert_record_is_private(&a, foreign).await;
+    assert_draft_is_private(&a, draft).await;
     assert!(matches!(
         a.apply("foreign-edge", vec![link(Uuid::new_v4(), own, foreign)])
             .await,
@@ -166,35 +144,7 @@ async fn workspace_scope_covers_records_history_edges_drafts_and_tokens() {
         .await,
         Err(Error::NotFound)
     ));
-    let token = format!("shared-secret-{}", Uuid::new_v4());
-    a.store
-        .grant(&a.p, "same-secret", &token, Capability::Read)
-        .await
-        .unwrap();
-    b.store
-        .grant(&b.p, "same-secret", &token, Capability::Write)
-        .await
-        .unwrap();
-    assert_eq!(
-        a.store
-            .authenticate(&token, a.p.workspace_id)
-            .await
-            .unwrap()
-            .capability,
-        Capability::Read
-    );
-    assert_eq!(
-        b.store
-            .authenticate(&token, b.p.workspace_id)
-            .await
-            .unwrap()
-            .capability,
-        Capability::Write
-    );
-    assert!(matches!(
-        a.store.authenticate(&token, Uuid::new_v4()).await,
-        Err(Error::Unauthorized)
-    ));
+    assert_token_scoped(&a, &b).await;
 }
 
 #[tokio::test]
@@ -309,22 +259,7 @@ async fn draft_preview_restore_tombstone_and_ordered_dependency_resolution() {
         ])
         .await;
     let preview = f.store.validate_draft(&f.p, draft).await.unwrap();
-    let node_preview = preview["preview"]["nodes"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|n| n["id"] == json!(id))
-        .unwrap();
-    assert_eq!(node_preview["before"]["title"], "revised");
-    assert_eq!(node_preview["after"]["title"], "original");
-    let edge_preview = preview["preview"]["edges"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|e| e["id"] == json!(edge))
-        .unwrap();
-    assert_eq!(edge_preview["before"]["deleted"], false);
-    assert_eq!(edge_preview["after"]["deleted"], true);
+    assert_restore_preview(&preview, id, edge);
     let untouched = f.store.get_node(&f.p, id).await.unwrap();
     assert_eq!(untouched.title, "revised");
     assert_eq!(untouched.version, 3);
@@ -345,40 +280,7 @@ async fn draft_preview_restore_tombstone_and_ordered_dependency_resolution() {
             .edges
             .is_empty()
     );
-    let replacement_edge = Uuid::new_v4();
-    f.apply(
-        "replacement-link",
-        vec![link(replacement_edge, id, neighbor)],
-    )
-    .await
-    .unwrap();
-    let linked = f.store.get_node(&f.p, id).await.unwrap();
-    let deletion = f
-        .draft(vec![
-            json!({"op":"delete_node","id":id,"expected_version":linked.version}),
-        ])
-        .await;
-    f.store.validate_draft(&f.p, deletion).await.unwrap();
-    assert!(!f.store.get_node(&f.p, id).await.unwrap().deleted);
-    f.store
-        .apply_draft(&f.p, deletion, "delete-and-unlink")
-        .await
-        .unwrap();
-    let deleted = f.store.get_node(&f.p, id).await.unwrap();
-    assert!(deleted.deleted);
-    assert_eq!(deleted.version, linked.version + 1);
-    f.apply(
-        "undelete",
-        vec![json!({"op":"restore_node","id":id,"expected_version":deleted.version,"revision":2,"include_lifecycle":true})],
-    )
-    .await
-    .unwrap();
-    let n = f.store.get_node(&f.p, id).await.unwrap();
-    assert!(!n.deleted);
-    assert_eq!(n.title, "revised");
-    assert_eq!(n.task_state, Some(TaskState::Completed));
-    assert_eq!(n.version, deleted.version + 1);
-    assert_eq!(n.content_revision, deleted.content_revision + 1);
+    assert_delete_then_restore(&f, id, neighbor).await;
 }
 
 #[tokio::test]
@@ -436,23 +338,7 @@ async fn broad_large_pinned_context_obeys_byte_budget_without_current_fallback()
         .unwrap();
     assert!(context.truncated);
     assert!(serde_json::to_vec(&context).unwrap().len() <= 50_000);
-    for edge in &context.edges {
-        for (node, rev) in [
-            (edge.source, edge.source_revision),
-            (edge.target, edge.target_revision),
-        ] {
-            if let Some(rev) = rev {
-                let pin = context
-                    .pinned_revisions
-                    .iter()
-                    .find(|p| p["id"] == json!(node) && p["content_revision"] == rev)
-                    .expect("every retained pin resolves exactly");
-                if node != root {
-                    assert_ne!(pin["title"], "current changed title");
-                }
-            }
-        }
-    }
+    assert_pins_resolve(&context, root);
     let tiny = f
         .store
         .context(
@@ -475,54 +361,8 @@ async fn broad_large_pinned_context_obeys_byte_budget_without_current_fallback()
 #[tokio::test]
 async fn fulltext_search_paginates_matching_live_knowledge_and_preserves_rare_terms() {
     let f = Fixture::new().await;
-    let knowledge: Vec<_> = (0..14).map(|_| Uuid::new_v4()).collect();
-    let mut operations:Vec<_>=knowledge.iter().enumerate().map(|(index,id)|json!({"op":"create_node","id":id,"kind":"knowledge","title":format!("Authentication evidence {index}"),"body":if index==0{"Unicorn authentication evidence"}else{"Authentication evidence"}})).collect();
-    operations.extend((0..5).map(|_|json!({"op":"create_node","kind":"task","title":"Authentication task must not enter knowledge search"})));
-    f.apply("search-fixture", operations).await.unwrap();
-    f.apply(
-        "search-retirement-and-delete",
-        vec![
-            update(
-                knowledge[1],
-                1,
-                json!({"retired":true,"retirement_reason":"Superseded test finding"}),
-            ),
-            json!({"op":"delete_node","id":knowledge[2],"expected_version":1}),
-        ],
-    )
-    .await
-    .unwrap();
-    let mut cursor = None;
-    let mut actual = vec![];
-    loop {
-        let page = f
-            .store
-            .search_nodes(
-                &f.p,
-                "authentication",
-                NodeFilters {
-                    kind: Some(NodeKind::Knowledge),
-                    ..Default::default()
-                },
-                ListQuery { limit: 3, cursor },
-            )
-            .await
-            .unwrap();
-        assert!(
-            page.items
-                .iter()
-                .all(|n| n.kind == NodeKind::Knowledge && !n.deleted && !n.retired)
-        );
-        actual.extend(page.items.into_iter().map(|n| n.id));
-        cursor = page.next_cursor;
-        if cursor.is_none() {
-            break;
-        }
-        assert!(
-            actual.len() <= knowledge.len(),
-            "pagination did not advance"
-        );
-    }
+    let knowledge = seed_search(&f).await;
+    let actual = collect_matching_knowledge(&f, knowledge.len()).await;
     let mut expected: Vec<_> = knowledge
         .iter()
         .copied()
@@ -651,11 +491,7 @@ async fn task_deletion_unlinks_dependencies_and_children_in_every_state_and_repl
         let receipt = f.apply(&key, ops.clone()).await.unwrap();
         let replay = f.apply(&key, ops).await.unwrap();
         assert_eq!(receipt.change_set_id, replay.change_set_id);
-        assert!(f.store.get_node(&f.p, task).await.unwrap().deleted);
-        assert!(!f.store.get_node(&f.p, dependent).await.unwrap().deleted);
-        assert!(!f.store.get_node(&f.p, child).await.unwrap().deleted);
-        let live:i64=sqlx::query_scalar("SELECT count(*) FROM edges WHERE workspace_id=$1 AND (source=$2 OR target=$2) AND NOT deleted").bind(f.p.workspace_id).bind(task).fetch_one(&f.store.pool).await.unwrap();
-        assert_eq!(live, 0);
+        assert_task_unlinked(&f, task, dependent, child).await;
     }
 }
 
@@ -689,4 +525,207 @@ async fn deleting_a_task_clears_replacement_pointers_without_deleting_the_old_re
     assert!(!retained.deleted);
     assert!(retained.retired);
     assert_eq!(retained.successor_id, None);
+}
+
+async fn assert_record_is_private(a: &Fixture, foreign: Uuid) {
+    assert!(matches!(
+        a.store.get_node(&a.p, foreign).await,
+        Err(Error::NotFound)
+    ));
+    assert!(matches!(
+        a.store.history(&a.p, foreign, ListQuery::default()).await,
+        Err(Error::NotFound)
+    ));
+    assert!(matches!(
+        a.store.diff(&a.p, foreign, 1, 1).await,
+        Err(Error::NotFound)
+    ));
+}
+
+async fn assert_draft_is_private(a: &Fixture, draft: Uuid) {
+    assert!(matches!(
+        a.store.get_draft(&a.p, draft).await,
+        Err(Error::NotFound)
+    ));
+    assert!(matches!(
+        a.store.validate_draft(&a.p, draft).await,
+        Err(Error::NotFound)
+    ));
+    assert!(matches!(
+        a.store.apply_draft(&a.p, draft, "foreign-apply").await,
+        Err(Error::NotFound)
+    ));
+}
+
+async fn assert_token_scoped(a: &Fixture, b: &Fixture) {
+    let token = format!("shared-secret-{}", Uuid::new_v4());
+    a.store
+        .grant(&a.p, "same-secret", &token, Capability::Read)
+        .await
+        .unwrap();
+    b.store
+        .grant(&b.p, "same-secret", &token, Capability::Write)
+        .await
+        .unwrap();
+    assert_eq!(
+        a.store
+            .authenticate(&token, a.p.workspace_id)
+            .await
+            .unwrap()
+            .capability,
+        Capability::Read
+    );
+    assert_eq!(
+        b.store
+            .authenticate(&token, b.p.workspace_id)
+            .await
+            .unwrap()
+            .capability,
+        Capability::Write
+    );
+    assert!(matches!(
+        a.store.authenticate(&token, Uuid::new_v4()).await,
+        Err(Error::Unauthorized)
+    ));
+}
+
+fn assert_restore_preview(preview: &Value, id: Uuid, edge: Uuid) {
+    let node_preview = preview["preview"]["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|n| n["id"] == json!(id))
+        .unwrap();
+    assert_eq!(node_preview["before"]["title"], "revised");
+    assert_eq!(node_preview["after"]["title"], "original");
+    let edge_preview = preview["preview"]["edges"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["id"] == json!(edge))
+        .unwrap();
+    assert_eq!(edge_preview["before"]["deleted"], false);
+    assert_eq!(edge_preview["after"]["deleted"], true);
+}
+
+async fn assert_delete_then_restore(f: &Fixture, id: Uuid, neighbor: Uuid) {
+    let replacement_edge = Uuid::new_v4();
+    f.apply(
+        "replacement-link",
+        vec![link(replacement_edge, id, neighbor)],
+    )
+    .await
+    .unwrap();
+    let linked = f.store.get_node(&f.p, id).await.unwrap();
+    let deletion = f
+        .draft(vec![
+            json!({"op":"delete_node","id":id,"expected_version":linked.version}),
+        ])
+        .await;
+    f.store.validate_draft(&f.p, deletion).await.unwrap();
+    assert!(!f.store.get_node(&f.p, id).await.unwrap().deleted);
+    f.store
+        .apply_draft(&f.p, deletion, "delete-and-unlink")
+        .await
+        .unwrap();
+    let deleted = f.store.get_node(&f.p, id).await.unwrap();
+    assert!(deleted.deleted);
+    assert_eq!(deleted.version, linked.version + 1);
+    f.apply(
+        "undelete",
+        vec![json!({"op":"restore_node","id":id,"expected_version":deleted.version,"revision":2,"include_lifecycle":true})],
+    )
+    .await
+    .unwrap();
+    let n = f.store.get_node(&f.p, id).await.unwrap();
+    assert!(!n.deleted);
+    assert_eq!(n.title, "revised");
+    assert_eq!(n.task_state, Some(TaskState::Completed));
+    assert_eq!(n.version, deleted.version + 1);
+    assert_eq!(n.content_revision, deleted.content_revision + 1);
+}
+
+fn assert_pins_resolve(context: &Context, root: Uuid) {
+    for edge in &context.edges {
+        for (node, rev) in [
+            (edge.source, edge.source_revision),
+            (edge.target, edge.target_revision),
+        ] {
+            if let Some(rev) = rev {
+                assert_historical_pin(context, root, node, rev);
+            }
+        }
+    }
+}
+
+fn assert_historical_pin(context: &Context, root: Uuid, node: Uuid, rev: i64) {
+    let pin = context
+        .pinned_revisions
+        .iter()
+        .find(|p| p["id"] == json!(node) && p["content_revision"] == rev)
+        .expect("every retained pin resolves exactly");
+    if node != root {
+        assert_ne!(pin["title"], "current changed title");
+    }
+}
+
+async fn seed_search(f: &Fixture) -> Vec<Uuid> {
+    let knowledge: Vec<_> = (0..14).map(|_| Uuid::new_v4()).collect();
+    let mut operations:Vec<_>=knowledge.iter().enumerate().map(|(index,id)|json!({"op":"create_node","id":id,"kind":"knowledge","title":format!("Authentication evidence {index}"),"body":if index==0{"Unicorn authentication evidence"}else{"Authentication evidence"}})).collect();
+    operations.extend((0..5).map(|_|json!({"op":"create_node","kind":"task","title":"Authentication task must not enter knowledge search"})));
+    f.apply("search-fixture", operations).await.unwrap();
+    f.apply(
+        "search-retirement-and-delete",
+        vec![
+            update(
+                knowledge[1],
+                1,
+                json!({"retired":true,"retirement_reason":"Superseded test finding"}),
+            ),
+            json!({"op":"delete_node","id":knowledge[2],"expected_version":1}),
+        ],
+    )
+    .await
+    .unwrap();
+    knowledge
+}
+
+async fn collect_matching_knowledge(f: &Fixture, max_items: usize) -> Vec<Uuid> {
+    let mut cursor = None;
+    let mut actual = vec![];
+    loop {
+        let page = f
+            .store
+            .search_nodes(
+                &f.p,
+                "authentication",
+                NodeFilters {
+                    kind: Some(NodeKind::Knowledge),
+                    ..Default::default()
+                },
+                ListQuery { limit: 3, cursor },
+            )
+            .await
+            .unwrap();
+        assert!(
+            page.items
+                .iter()
+                .all(|n| n.kind == NodeKind::Knowledge && !n.deleted && !n.retired)
+        );
+        actual.extend(page.items.into_iter().map(|n| n.id));
+        cursor = page.next_cursor;
+        if cursor.is_none() {
+            break;
+        }
+        assert!(actual.len() <= max_items, "pagination did not advance");
+    }
+    actual
+}
+
+async fn assert_task_unlinked(f: &Fixture, task: Uuid, dependent: Uuid, child: Uuid) {
+    assert!(f.store.get_node(&f.p, task).await.unwrap().deleted);
+    assert!(!f.store.get_node(&f.p, dependent).await.unwrap().deleted);
+    assert!(!f.store.get_node(&f.p, child).await.unwrap().deleted);
+    let live:i64=sqlx::query_scalar("SELECT count(*) FROM edges WHERE workspace_id=$1 AND (source=$2 OR target=$2) AND NOT deleted").bind(f.p.workspace_id).bind(task).fetch_one(&f.store.pool).await.unwrap();
+    assert_eq!(live, 0);
 }

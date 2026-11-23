@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Reproducible offline fixture + bounded mixed HTTP load; Python 3.10+ stdlib only."""
+
 import argparse
 import concurrent.futures
 import hashlib
@@ -19,46 +20,97 @@ import urllib.parse
 import uuid
 from collections import Counter, defaultdict
 
-WORKSPACE = '00000000-0000-4000-8000-000000000002'
-CHANGESET = '00000000-0000-4000-8000-000000000003'
+WORKSPACE = "00000000-0000-4000-8000-000000000002"
+CHANGESET = "00000000-0000-4000-8000-000000000003"
+
 
 def node_id(index):
     return str(uuid.UUID(int=index))
 
+
+def connection_environment(database_url):
+    database = urllib.parse.urlsplit(database_url)
+    if database.scheme not in ("postgres", "postgresql") or not database.hostname:
+        raise SystemExit("Benchmark DATABASE_URL must be a PostgreSQL URL with host and database")
+    env = dict(os.environ)
+    for variable in (
+        "PGHOST",
+        "PGPORT",
+        "PGUSER",
+        "PGPASSWORD",
+        "PGDATABASE",
+        "PGOPTIONS",
+        "PGSERVICE",
+    ):
+        env.pop(variable, None)
+    env.update(
+        PGHOST=database.hostname,
+        PGPORT=str(database.port or 5432),
+        PGDATABASE=urllib.parse.unquote(database.path.lstrip("/")),
+        PGOPTIONS="-c timezone=UTC",
+    )
+    add_connection_options(env, database)
+    return env
+
+
+def add_connection_options(env, database):
+    if database.username is not None:
+        env["PGUSER"] = urllib.parse.unquote(database.username)
+    if database.password is not None:
+        env["PGPASSWORD"] = urllib.parse.unquote(database.password)
+    query = urllib.parse.parse_qs(database.query)
+    for name, variable in (
+        ("sslmode", "PGSSLMODE"),
+        ("sslrootcert", "PGSSLROOTCERT"),
+        ("sslcert", "PGSSLCERT"),
+        ("sslkey", "PGSSLKEY"),
+    ):
+        if name in query:
+            env[variable] = query[name][-1]
+
+
 def database_sql(args):
     database_url = os.environ.get(args.database_url_env)
     if not database_url:
-        raise SystemExit(f'{args.database_url_env} is required')
-    database=urllib.parse.urlsplit(database_url)
-    if database.scheme not in ('postgres','postgresql') or not database.hostname:
-        raise SystemExit('Benchmark DATABASE_URL must be a PostgreSQL URL with host and database')
-    env=dict(os.environ)
-    for variable in ('PGHOST','PGPORT','PGUSER','PGPASSWORD','PGDATABASE','PGOPTIONS','PGSERVICE'):
-        env.pop(variable,None)
-    env.update(PGHOST=database.hostname,PGPORT=str(database.port or 5432),PGDATABASE=urllib.parse.unquote(database.path.lstrip('/')),PGOPTIONS='-c timezone=UTC')
-    if database.username is not None:
-        env['PGUSER']=urllib.parse.unquote(database.username)
-    if database.password is not None:
-        env['PGPASSWORD']=urllib.parse.unquote(database.password)
-    query=urllib.parse.parse_qs(database.query)
-    for name,variable in (('sslmode','PGSSLMODE'),('sslrootcert','PGSSLROOTCERT'),('sslcert','PGSSLCERT'),('sslkey','PGSSLKEY')):
-        if name in query:
-            env[variable]=query[name][-1]
+        raise SystemExit(f"{args.database_url_env} is required")
+    env = connection_environment(database_url)
+
     def sql(statement):
         try:
-            return subprocess.check_output([args.psql, '-X', '-q', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-c', statement], env=env, text=True, stderr=subprocess.PIPE).strip()
+            return subprocess.check_output(
+                [
+                    args.psql,
+                    "-X",
+                    "-q",
+                    "-A",
+                    "-t",
+                    "-v",
+                    "ON_ERROR_STOP=1",
+                    "-c",
+                    statement,
+                ],
+                env=env,
+                text=True,
+                stderr=subprocess.PIPE,
+            ).strip()
         except subprocess.CalledProcessError:
-            raise SystemExit('Benchmark database SQL failed; connection diagnostics omitted to protect credentials') from None
+            raise SystemExit(
+                "Benchmark database SQL failed; connection diagnostics omitted to protect credentials"
+            ) from None
+
     sql.environment = env
-    database = sql('SELECT current_database()')
-    if not database.startswith('aq_graph_bench'):
-        raise SystemExit('Refusing benchmark database access: dedicated database must start aq_graph_bench')
+    database = sql("SELECT current_database()")
+    if not database.startswith("aq_graph_bench"):
+        raise SystemExit(
+            "Refusing benchmark database access: dedicated database must start aq_graph_bench"
+        )
     return sql
 
 
 def database_state(sql):
     """Planner visibility estimates avoid requiring the pg_visibility extension."""
-    return json.loads(sql("""
+    return json.loads(
+        sql("""
 SELECT json_build_object(
  'sampled_at',clock_timestamp(),
  'configuration',(SELECT json_object_agg(name,json_build_object('setting',setting,'unit',unit)) FROM pg_settings WHERE name IN
@@ -80,33 +132,31 @@ SELECT json_build_object(
   'state',state,'wait_event_type',wait_event_type,'wait_event',wait_event,'query_start',query_start)),'[]'::json)
   FROM pg_stat_activity WHERE datname=current_database() AND
   (backend_type='autovacuum worker' OR query ~* '^vacuum')))
-"""))
+""")
+    )
 
 
 def maintain(args):
     sql = database_sql(args)
-    report = {'operation':'VACUUM (ANALYZE)', 'before':database_state(sql),
-              'started_epoch_seconds':time.time()}
-    pathlib.Path(args.output).write_text(json.dumps(report,indent=2)+'\n')
+    report = {
+        "operation": "VACUUM (ANALYZE)",
+        "before": database_state(sql),
+        "started_epoch_seconds": time.time(),
+    }
+    pathlib.Path(args.output).write_text(json.dumps(report, indent=2) + "\n")
     # A separate psql invocation keeps VACUUM outside any transaction block.
-    sql('VACUUM (ANALYZE)')
+    sql("VACUUM (ANALYZE)")
     report.update(finished_epoch_seconds=time.time(), after=database_state(sql))
-    pathlib.Path(args.output).write_text(json.dumps(report,indent=2)+'\n')
-    print(f'Wrote {args.output}',flush=True)
+    pathlib.Path(args.output).write_text(json.dumps(report, indent=2) + "\n")
+    print(f"Wrote {args.output}", flush=True)
 
 
-def seed(args):
-    if args.nodes < 100 or args.edges < 0 or args.edges > args.nodes * 5:
-        raise SystemExit('Use at least 100 nodes and at most 5 edges per node.')
-    token = credential(args)
-    sql = database_sql(args)
-    if sql('SELECT count(*) FROM nodes') != '0':
-        raise SystemExit('Refusing fixture writes: database already contains nodes; use a fresh benchmark database')
+def fixture_sql(args, token):
     task_count = args.nodes * 4 // 5
     root_count = max(1, task_count // 3)
     # MD5-derived UUIDs are deterministic fixture identities, never credentials.
     # Sequential node UUIDs let independent benchmark clients select identical data.
-    script = f"""
+    return f"""
 BEGIN;
 INSERT INTO workspaces(id) VALUES ('{WORKSPACE}') ON CONFLICT DO NOTHING;
 INSERT INTO credentials(workspace_id,actor_id,token_hash,capability)
@@ -121,7 +171,7 @@ SELECT lpad(to_hex(g),32,'0')::uuid,'{WORKSPACE}',CASE WHEN g<={task_count} THEN
  repeat('Authentication authorization PostgreSQL reliability evidence and migration procedure. ',CASE WHEN g%20=0 THEN 96 WHEN g%4=0 THEN 24 ELSE 6 END) || 'Record ' || g || ' current revision',
  CASE WHEN g<={task_count} THEN 'Review evidence; implement; verify expected behavior and recovery.' ELSE '' END,
  jsonb_build_array('component-'||(g%30),'priority-'||(g%4)),jsonb_build_object('benchmark:seed',42,'benchmark:index',g),
- CASE WHEN g>{task_count} THEN NULL WHEN g<={root_count*2} THEN CASE WHEN g%20=9 THEN 'draft' ELSE 'active' END WHEN g%10<6 THEN 'completed' WHEN g%10<9 THEN 'active' WHEN g%20=9 THEN 'draft' ELSE 'canceled' END,
+ CASE WHEN g>{task_count} THEN NULL WHEN g<={root_count * 2} THEN CASE WHEN g%20=9 THEN 'draft' ELSE 'active' END WHEN g%10<6 THEN 'completed' WHEN g%10<9 THEN 'active' WHEN g%20=9 THEN 'draft' ELSE 'canceled' END,
  (ARRAY['fact','decision','policy','procedure','incident','reference','note'])[1+g%7],
  'unverified',
  false,
@@ -154,7 +204,7 @@ WITH slots AS (
 )
 INSERT INTO edges(id,workspace_id,source,target,edge_type,version,deleted,created_at)
 SELECT md5('edge:'||i)::uuid,'{WORKSPACE}',
- lpad(to_hex(CASE WHEN typ='parent-child' THEN CASE WHEN s<={root_count*2} THEN 1+((s-{root_count}-1)%{root_count}) ELSE {root_count}+1+((s-{root_count*2}-1)%{root_count}) END WHEN typ='blocks' THEN least(s,t) ELSE s END),32,'0')::uuid,
+ lpad(to_hex(CASE WHEN typ='parent-child' THEN CASE WHEN s<={root_count * 2} THEN 1+((s-{root_count}-1)%{root_count}) ELSE {root_count}+1+((s-{root_count * 2}-1)%{root_count}) END WHEN typ='blocks' THEN least(s,t) ELSE s END),32,'0')::uuid,
  lpad(to_hex(CASE WHEN typ='parent-child' THEN s WHEN typ='blocks' THEN greatest(s,t) ELSE t END),32,'0')::uuid,
  typ,1,false,'2026-01-01T00:00:00Z' FROM typed WHERE s<>t;
 -- Establish a complete current relationship baseline after the synthetic graph
@@ -193,348 +243,659 @@ COMMIT;
 ANALYZE;
 SELECT json_build_object('nodes',(SELECT count(*) FROM nodes),'edges',(SELECT count(*) FROM edges),'revisions',(SELECT count(*) FROM node_revisions),'history_entries',(SELECT count(*) FROM history_entries),'edge_versions',(SELECT count(*) FROM edge_versions),'link_sets',(SELECT count(*) FROM link_sets),'link_memberships',(SELECT count(*) FROM link_set_members),'database_bytes',pg_database_size(current_database()),'node_states',(SELECT json_object_agg(state,n) FROM (SELECT COALESCE(task_state,'knowledge:unverified') state,count(*) n FROM nodes GROUP BY 1) states),'edge_types',(SELECT json_object_agg(edge_type,n) FROM (SELECT edge_type,count(*) n FROM edges GROUP BY 1) types),'table_bytes',(SELECT json_object_agg(relname,pg_total_relation_size(oid)) FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind='r'));
 """
-    started = time.monotonic()
-    result = subprocess.run([args.psql, '-X', '-q', '-A', '-t', '-v', 'ON_ERROR_STOP=1'], input=script, env=sql.environment, text=True, capture_output=True)
+
+
+def run_fixture(psql, env, script):
+    result = subprocess.run(
+        [psql, "-X", "-q", "-A", "-t", "-v", "ON_ERROR_STOP=1"],
+        input=script,
+        env=env,
+        text=True,
+        capture_output=True,
+    )
     if result.returncode:
         # Avoid exposing connection-string diagnostics from libpq.
-        raise SystemExit('Offline fixture failed. Writes are transactional, but a post-commit analyze/report failure may leave a committed fixture; inspect the isolated database before retrying.')
-    counts = json.loads(result.stdout.strip().splitlines()[-1])
+        raise SystemExit(
+            "Offline fixture failed. Writes are transactional, but a post-commit analyze/report failure may leave a committed fixture; inspect the isolated database before retrying."
+        )
+    return json.loads(result.stdout.strip().splitlines()[-1])
+
+
+def seed(args):
+    if args.nodes < 100 or not 0 <= args.edges <= args.nodes * 5:
+        raise SystemExit("Use at least 100 nodes and at most 5 edges per node.")
+    token = credential(args)
+    sql = database_sql(args)
+    if sql("SELECT count(*) FROM nodes") != "0":
+        raise SystemExit(
+            "Refusing fixture writes: database already contains nodes; use a fresh benchmark database"
+        )
+    script = fixture_sql(args, token)
+    started = time.monotonic()
+    counts = run_fixture(args.psql, sql.environment, script)
     before_maintenance = database_state(sql)
     if args.vacuum_analyze:
-        sql('VACUUM (ANALYZE)')
-    configuration=json.loads(sql("SELECT json_build_object('postgres_version',version(),'fsync',current_setting('fsync'),'synchronous_commit',current_setting('synchronous_commit'),'full_page_writes',current_setting('full_page_writes'),'track_io_timing',current_setting('track_io_timing'),'jit',current_setting('jit'),'jit_above_cost',current_setting('jit_above_cost'),'timezone',current_setting('TimeZone'),'max_connections',current_setting('max_connections'),'schema_version',(SELECT max(version) FROM _sqlx_migrations))"))
-    manifest = {'postgres_configuration':configuration,'database_state_before_optional_vacuum':before_maintenance,'database_state_after_seed':database_state(sql),'seed_vacuum_analyze':args.vacuum_analyze,'format_version':5,'baseline_revision_offset':1,'semantic_profile':'schema7 shared fields: common classifications/typed sources/unverified defaults,25percent validity windows,20percent review markers; complete relationship baselines and three-level forest','seed':42,'workspace':WORKSPACE,'nodes':args.nodes,'edges_requested':args.edges,'counts':counts,'fixture_method':'offline SQL, synthetic snapshots and relationship history; not ingestion throughput','elapsed_seconds':time.monotonic()-started}
-    pathlib.Path(args.manifest).write_text(json.dumps(manifest, indent=2)+'\n')
+        sql("VACUUM (ANALYZE)")
+    configuration = json.loads(
+        sql(
+            "SELECT json_build_object('postgres_version',version(),'fsync',current_setting('fsync'),'synchronous_commit',current_setting('synchronous_commit'),'full_page_writes',current_setting('full_page_writes'),'track_io_timing',current_setting('track_io_timing'),'jit',current_setting('jit'),'jit_above_cost',current_setting('jit_above_cost'),'timezone',current_setting('TimeZone'),'max_connections',current_setting('max_connections'),'schema_version',(SELECT max(version) FROM _sqlx_migrations))"
+        )
+    )
+    manifest = {
+        "postgres_configuration": configuration,
+        "database_state_before_optional_vacuum": before_maintenance,
+        "database_state_after_seed": database_state(sql),
+        "seed_vacuum_analyze": args.vacuum_analyze,
+        "format_version": 5,
+        "baseline_revision_offset": 1,
+        "semantic_profile": "schema7 shared fields: common classifications/typed sources/unverified defaults,25percent validity windows,20percent review markers; complete relationship baselines and three-level forest",
+        "seed": 42,
+        "workspace": WORKSPACE,
+        "nodes": args.nodes,
+        "edges_requested": args.edges,
+        "counts": counts,
+        "fixture_method": "offline SQL, synthetic snapshots and relationship history; not ingestion throughput",
+        "elapsed_seconds": time.monotonic() - started,
+    }
+    pathlib.Path(args.manifest).write_text(json.dumps(manifest, indent=2) + "\n")
     print(json.dumps(manifest, indent=2))
+
 
 def credential(args):
     if args.token_file:
         path = pathlib.Path(args.token_file)
         if path.stat().st_mode & 0o077:
-            raise SystemExit('Token file must be owner-only (chmod 600)')
+            raise SystemExit("Token file must be owner-only (chmod 600)")
         value = path.read_text().strip()
     else:
-        value = os.environ.get('AQ_GRAPH_TOKEN','').strip()
+        value = os.environ.get("AQ_GRAPH_TOKEN", "").strip()
     if not value:
-        raise SystemExit('Set AQ_GRAPH_TOKEN or --token-file; credentials never appear in reports')
+        raise SystemExit("Set AQ_GRAPH_TOKEN or --token-file; credentials never appear in reports")
     return value
+
+
+def http_success(status):
+    return isinstance(status, int) and 200 <= status < 300
+
+
+def sample(operation, response):
+    status, value, elapsed, size = response
+    code = value.get("error", {}).get("code") if isinstance(value, dict) else None
+    return {
+        "operation": operation,
+        "status": str(status),
+        "error_code": code,
+        "latency_ms": elapsed * 1000,
+        "bytes": size,
+    }
+
 
 class Worker:
     def __init__(self, args, manifest, index):
         self.args, self.manifest = args, manifest
-        self.random = random.Random(42+index)
+        self.random = random.Random(42 + index)
         self.index = index
         self.counter = 0
         self.node_versions = {}
         self.receipt = None
         self.needs_refresh = set()
         url = urllib.parse.urlsplit(args.endpoint)
-        if url.scheme not in ('http','https') or not url.hostname or url.username or url.password:
-            raise SystemExit('Endpoint must be HTTP(S) without embedded credentials')
-        cls = http.client.HTTPSConnection if url.scheme == 'https' else http.client.HTTPConnection
-        self.connection = cls(url.hostname,url.port,timeout=args.timeout)
-        self.prefix = url.path.rstrip('/')+f'/v1/workspaces/{manifest["workspace"]}'
+        valid_host = url.scheme in ("http", "https") and url.hostname
+        if not valid_host or any((url.username, url.password)):
+            raise SystemExit("Endpoint must be HTTP(S) without embedded credentials")
+        cls = http.client.HTTPSConnection if url.scheme == "https" else http.client.HTTPConnection
+        self.connection = cls(url.hostname, url.port, timeout=args.timeout)
+        self.prefix = url.path.rstrip("/") + f"/v1/workspaces/{manifest['workspace']}"
         self.token = args.token
 
     def request(self, method, path, body=None):
         encoded = json.dumps(body).encode() if body is not None else None
         started = time.perf_counter()
         try:
-            self.connection.request(method,self.prefix+path,body=encoded,headers={'Authorization':'Bearer '+self.token,'Content-Type':'application/json','X-AQ-Graph-API-Version':'1'})
+            self.connection.request(
+                method,
+                self.prefix + path,
+                body=encoded,
+                headers={
+                    "Authorization": "Bearer " + self.token,
+                    "Content-Type": "application/json",
+                    "X-AQ-Graph-API-Version": "1",
+                },
+            )
             response = self.connection.getresponse()
             raw = response.read()
-            elapsed = time.perf_counter()-started
+            elapsed = time.perf_counter() - started
             try:
                 value = json.loads(raw)
             except ValueError:
                 value = {}
-            return response.status,value,elapsed,len(raw)
-        except (OSError,http.client.HTTPException) as error:
-            elapsed = time.perf_counter()-started
+            return response.status, value, elapsed, len(raw)
+        except (OSError, http.client.HTTPException) as error:
+            elapsed = time.perf_counter() - started
             self.connection.close()
-            return 'timeout' if isinstance(error,(TimeoutError,socket.timeout)) else 'transport',{},elapsed,0
+            return (
+                "timeout" if isinstance(error, (TimeoutError, socket.timeout)) else "transport",
+                {},
+                elapsed,
+                0,
+            )
 
     def prepare(self):
-        records=[]
-        for record in (min(self.manifest['nodes'],1+self.index*2),2):
-            status,value,elapsed,size=self.request('GET','/nodes/'+node_id(record))
-            if isinstance(status,int) and 200<=status<300 and isinstance(value,dict) and 'version' in value:
-                self.node_versions[record]=value['version']
-            else:
-                self.needs_refresh.add(record)
-            records.append({'operation':'setup_version_get','status':str(status),'error_code':value.get('error',{}).get('code'),'latency_ms':elapsed*1000,'bytes':size})
-        return records
+        independent_record = min(self.manifest["nodes"], 1 + self.index * 2)
+        return [self.refresh(record, "setup_version_get") for record in (independent_record, 2)]
+
+    def refresh(self, record, operation):
+        status, value, elapsed, size = self.request("GET", "/nodes/" + node_id(record))
+        found = isinstance(value, dict) and "version" in value
+        if http_success(status) and found:
+            self.node_versions[record] = value["version"]
+        else:
+            self.needs_refresh.add(record)
+        return sample(operation, (status, value, elapsed, size))
 
     def operation(self):
         self.counter += 1
         if self.needs_refresh:
-            record=self.needs_refresh.pop()
-            status,value,elapsed,size=self.request('GET','/nodes/'+node_id(record))
-            if isinstance(status,int) and 200<=status<300 and isinstance(value,dict) and 'version' in value:
-                self.node_versions[record]=value['version']
-            else:
-                self.needs_refresh.add(record)
-            return {'operation':'version_refresh','status':str(status),'error_code':value.get('error',{}).get('code'),'latency_ms':elapsed*1000,'bytes':size}
+            return self.refresh(self.needs_refresh.pop(), "version_refresh")
         choice = self.random.randrange(100)
-        total = self.manifest['nodes']
-        index = self.random.randint(1,total)
-        path = '/nodes/'+node_id(index)
+        total = self.manifest["nodes"]
+        index = self.random.randint(1, total)
         # Exactly 80% read, 20% write in expectation. Writes include conflicts and
         # idempotent retries; these count as offered operations, not hidden setup.
+        if choice < 80:
+            kind, path = self.read_operation(choice, index, total)
+            return sample(kind, self.request("GET", path, None))
+        kind, record, body = self.write_operation(choice, total)
+        response = self.request("POST", "/mutations", body)
+        if record is not None:
+            self.refresh_after_write(record, response[0], response[1])
+        return sample(kind, response)
+
+    def read_operation(self, choice, index, total):
+        path = "/nodes/" + node_id(index)
         if choice < 25:
-            kind,method,body = 'get','GET',None
+            return "get", path
         elif choice < 40:
-            kind,method,path,body = 'ready','GET','/ready?limit=20',None
+            return "ready", "/ready?limit=20"
         elif choice < 55:
-            kind,method,path,body = 'context','GET',path+'/context?depth=1&limit=30&max_bytes=131072',None
+            return "context", path + "/context?depth=1&limit=30&max_bytes=131072"
         elif choice < 70:
-            kind,method,path,body = 'search','GET','/search?q=authentication&limit=20',None
+            return "search", "/search?q=authentication&limit=20"
         elif choice < 80:
-            kind,method,path,body = 'history','GET','/nodes/'+node_id(10*self.random.randint(1,total//10))+'/history?limit=20',None
+            return "history", "/nodes/" + node_id(
+                10 * self.random.randint(1, total // 10)
+            ) + "/history?limit=20"
+
+    def write_operation(self, choice, total):
+        key = str(uuid.uuid4())
+        if choice < 90:
+            # Disjoint per-worker records; versions are refreshed from successful
+            # mutation output. A stale initial version remains a reported error.
+            record = min(total, 1 + self.index * 2)
+            version = self.node_versions[record]
+            kind = "independent_write"
+            body = {
+                "idempotency_key": key,
+                "operations": [
+                    {
+                        "op": "update_node",
+                        "id": node_id(record),
+                        "expected_version": version,
+                        "patch": {"title": f"Benchmark worker {self.index} edit {self.counter}"},
+                    }
+                ],
+            }
+            self.receipt = body
+        elif choice < 94:
+            kind = "hot_write"
+            record = 2
+            version = self.node_versions[record]
+            body = {
+                "idempotency_key": key,
+                "operations": [
+                    {
+                        "op": "update_node",
+                        "id": node_id(record),
+                        "expected_version": version,
+                        "patch": {"title": f"Hot record {self.index}/{self.counter}"},
+                    }
+                ],
+            }
+        elif choice < 97 and self.receipt:
+            kind, body = "same_key_retry", self.receipt
+            record = None
         else:
-            method,path = 'POST','/mutations'
-            key = str(uuid.uuid4())
-            if choice < 90:
-                # Disjoint per-worker records; versions are refreshed from successful
-                # mutation output. A stale initial version remains a reported error.
-                record = min(total, 1+self.index*2)
-                version = self.node_versions[record]
-                kind = 'independent_write'
-                body = {'idempotency_key':key,'operations':[{'op':'update_node','id':node_id(record),'expected_version':version,'patch':{'title':f'Benchmark worker {self.index} edit {self.counter}'}}]}
-                self.receipt = body
-            elif choice < 94:
-                kind = 'hot_write'
-                record = 2
-                version = self.node_versions[record]
-                body = {'idempotency_key':key,'operations':[{'op':'update_node','id':node_id(record),'expected_version':version,'patch':{'title':f'Hot record {self.index}/{self.counter}'}}]}
-            elif choice < 97 and self.receipt:
-                kind,body = 'same_key_retry',self.receipt
-                record = None
+            kind, record = "dependency_write", None
+            # Opposite competing arcs on two dedicated tasks exercise invariant
+            # protection. Duplicate edges/cycles are intentionally visible.
+            a, b = (
+                (total * 4 // 5 - 1, total * 4 // 5)
+                if self.index % 2
+                else (total * 4 // 5, total * 4 // 5 - 1)
+            )
+            body = {
+                "idempotency_key": key,
+                "operations": [
+                    {
+                        "op": "add_edge",
+                        "source": node_id(a),
+                        "target": node_id(b),
+                        "edge_type": "blocks",
+                    }
+                ],
+            }
+        return kind, record, body
+
+    def refresh_after_write(self, record, status, value):
+        if http_success(status):
+            # API result is the current node, or a result containing its version.
+            results = value.get("results", [])
+            first = results[0] if results else {}
+            if isinstance(first, dict) and isinstance(first.get("version"), int):
+                self.node_versions[record] = first["version"]
             else:
-                kind,record = 'dependency_write',None
-                # Opposite competing arcs on two dedicated tasks exercise invariant
-                # protection. Duplicate edges/cycles are intentionally visible.
-                a,b = (total*4//5-1,total*4//5) if self.index%2 else (total*4//5,total*4//5-1)
-                body = {'idempotency_key':key,'operations':[{'op':'add_edge','source':node_id(a),'target':node_id(b),'edge_type':'blocks'}]}
-        status,value,elapsed,size = self.request(method,path,body)
-        if choice >= 80 and record is not None:
-            if isinstance(status,int) and 200<=status<300:
-                # API result is the current node, or a result containing its version.
-                results = value.get('results',[])
-                first = results[0] if results else {}
-                if isinstance(first,dict) and isinstance(first.get('version'),int):
-                    self.node_versions[record] = first['version']
-                else:
-                    self.needs_refresh.add(record)
-            elif status == 409:
-                # Refresh on the next measured operation. Do not guess version
-                # advancement or hide recovery HTTP traffic from request counts.
                 self.needs_refresh.add(record)
-        code = value.get('error',{}).get('code') if isinstance(value,dict) else None
-        return {'operation':kind,'status':str(status),'error_code':code,'latency_ms':elapsed*1000,'bytes':size}
+        elif status == 409:
+            # Refresh on the next measured operation. Do not guess version
+            # advancement or hide recovery HTTP traffic from request counts.
+            self.needs_refresh.add(record)
 
     def close(self):
         self.connection.close()
+
 
 def percentile(values, percent):
     if not values:
         return None
     ordered = sorted(values)
-    return ordered[max(0,math.ceil(percent/100*len(ordered))-1)]
+    return ordered[max(0, math.ceil(percent / 100 * len(ordered)) - 1)]
 
-def summarize(samples,elapsed,offered=None,dropped=0):
-    latencies = [r['latency_ms'] for r in samples]
-    successes = [r['latency_ms'] for r in samples if r['status'].startswith('2')]
-    def distribution(values):
-        return {f'p{p}_ms':percentile(values,p) for p in (50,95,99)}
+
+def distribution(values):
+    return {f"p{p}_ms": percentile(values, p) for p in (50, 95, 99)}
+
+
+def response_counts(rows):
+    return {
+        "statuses": dict(Counter(row["status"] for row in rows)),
+        "error_codes": dict(Counter(row["error_code"] for row in rows if row["error_code"])),
+    }
+
+
+def successful_latencies(rows):
+    return [row["latency_ms"] for row in rows if row["status"].startswith("2")]
+
+
+def summarize_operation(rows):
+    return {
+        "count": len(rows),
+        "errors": sum(not r["status"].startswith("2") for r in rows),
+        **response_counts(rows),
+        "successful_latency": distribution(successful_latencies(rows)),
+        **distribution([r["latency_ms"] for r in rows]),
+    }
+
+
+def group_operations(samples):
     groups = defaultdict(list)
     for sample in samples:
-        groups[sample['operation']].append(sample)
-    result = {'elapsed_seconds':elapsed,'offered':len(samples)+dropped if offered is None else offered,'completed':len(samples),'client_queue_dropped':dropped,'requests_per_second':len(samples)/elapsed,'success_per_second':len(successes)/elapsed,'errors':len(samples)-len(successes),'failed_offers':len(samples)-len(successes)+dropped,'timeouts':sum(r['status']=='timeout' for r in samples),'statuses':dict(Counter(r['status'] for r in samples)),'error_codes':dict(Counter(r['error_code'] for r in samples if r['error_code'])),'all_request_latency':distribution(latencies),'successful_request_latency':distribution(successes),'response_bytes':sum(r['bytes'] for r in samples),'operations':{}}
-    for metric in ('http_latency_ms','client_queue_ms'):
-        values=[r[metric] for r in samples if metric in r]
+        groups[sample["operation"]].append(sample)
+    return {name: summarize_operation(rows) for name, rows in groups.items()}
+
+
+def summarize(samples, elapsed, offered=None, dropped=0):
+    latencies = [r["latency_ms"] for r in samples]
+    successes = successful_latencies(samples)
+
+    result = {
+        "elapsed_seconds": elapsed,
+        "offered": len(samples) + dropped if offered is None else offered,
+        "completed": len(samples),
+        "client_queue_dropped": dropped,
+        "requests_per_second": len(samples) / elapsed,
+        "success_per_second": len(successes) / elapsed,
+        "errors": len(samples) - len(successes),
+        "failed_offers": len(samples) - len(successes) + dropped,
+        "timeouts": sum(r["status"] == "timeout" for r in samples),
+        **response_counts(samples),
+        "all_request_latency": distribution(latencies),
+        "successful_request_latency": distribution(successes),
+        "response_bytes": sum(r["bytes"] for r in samples),
+        "operations": {},
+    }
+    for metric in ("http_latency_ms", "client_queue_ms"):
+        values = [r[metric] for r in samples if metric in r]
         if values:
-            result[metric.removesuffix('_ms')]=distribution(values)
-    for name,rows in groups.items():
-        result['operations'][name] = {'count':len(rows),'errors':sum(not r['status'].startswith('2') for r in rows),'statuses':dict(Counter(r['status'] for r in rows)),'error_codes':dict(Counter(r['error_code'] for r in rows if r['error_code'])),'successful_latency':distribution([r['latency_ms'] for r in rows if r['status'].startswith('2')]),**distribution([r['latency_ms'] for r in rows])}
+            result[metric.removesuffix("_ms")] = distribution(values)
+    result["operations"] = group_operations(samples)
     return result
 
-def fixed(args,manifest,concurrency,duration):
-    clock={}
+
+def collect_fixed_results(futures):
+    samples, setup = [], []
+    for future in futures:
+        measured, warmup = future.result()
+        samples.extend(measured)
+        setup.extend(warmup)
+    return samples, setup
+
+
+def fixed(args, manifest, concurrency, duration):
+    clock = {}
+
     def start_phase():
-        clock.update(monotonic=time.monotonic(),epoch=time.time())
-    barrier = threading.Barrier(concurrency+1,action=start_phase)
+        clock.update(monotonic=time.monotonic(), epoch=time.time())
+
+    barrier = threading.Barrier(concurrency + 1, action=start_phase)
+
     def client(index):
-        worker = Worker(args,manifest,index)
-        setup=worker.prepare()
-        records=[]
+        worker = Worker(args, manifest, index)
+        setup = worker.prepare()
+        records = []
         barrier.wait()
-        deadline=clock['monotonic']+duration
-        while time.monotonic()<deadline:
+        deadline = clock["monotonic"] + duration
+        while time.monotonic() < deadline:
             records.append(worker.operation())
         worker.close()
-        return records,setup
+        return records, setup
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as pool:
-        futures=[pool.submit(client,index) for index in range(concurrency)]
+        futures = [pool.submit(client, index) for index in range(concurrency)]
         barrier.wait()
-        started=clock['monotonic']
-        started_epoch=clock['epoch']
-        results=[future.result() for future in futures]
-        samples=[r for rows,_ in results for r in rows]
-        setup=[r for _,rows in results for r in rows]
-    result=summarize(samples,time.monotonic()-started)
-    result['started_epoch_seconds']=started_epoch
-    result['finished_epoch_seconds']=time.time()
-    result['setup_requests']={'count':len(setup),'statuses':dict(Counter(r['status'] for r in setup)),'latency':{'p95_ms':percentile([r['latency_ms'] for r in setup],95)},'timing':'before measured interval; explicit version reads'}
+        started = clock["monotonic"]
+        started_epoch = clock["epoch"]
+        samples, setup = collect_fixed_results(futures)
+    result = summarize(samples, time.monotonic() - started)
+    result["started_epoch_seconds"] = started_epoch
+    result["finished_epoch_seconds"] = time.time()
+    result["setup_requests"] = {
+        "count": len(setup),
+        "statuses": dict(Counter(r["status"] for r in setup)),
+        "latency": {"p95_ms": percentile([r["latency_ms"] for r in setup], 95)},
+        "timing": "before measured interval; explicit version reads",
+    }
     return result
 
-def arrival(args,manifest):
+
+class ArrivalWorkers:
+    def __init__(self, workers):
+        self.local = threading.local()
+        self.lock = threading.Lock()
+        self.next_index = iter(range(1000000))
+        self.workers = workers
+
+    def __call__(self, scheduled):
+        if not hasattr(self.local, "worker"):
+            with self.lock:
+                self.local.worker = self.workers[next(self.next_index)]
+        sample = self.local.worker.operation()
+        completed = time.monotonic()
+        sample["http_latency_ms"] = sample["latency_ms"]
+        sample["latency_ms"] = (completed - scheduled) * 1000
+        sample["client_queue_ms"] = max(0, sample["latency_ms"] - sample["http_latency_ms"])
+        sample["_completed_at"] = completed
+        return sample
+
+
+class ArrivalQueue:
+    def __init__(self, pool, execute, capacity):
+        self.pool = pool
+        self.execute = execute
+        self.capacity = capacity
+        self.pending = set()
+
+    def offer(self, name, rate, duration):
+        phase_futures = []
+        dropped = 0
+        started = time.monotonic()
+        started_epoch = time.time()
+        offered = math.ceil(rate * duration)
+        for index in range(offered):
+            scheduled = started + index / rate
+            delay = scheduled - time.monotonic()
+            if delay > 0:
+                time.sleep(delay)
+            completed = {future for future in self.pending if future.done()}
+            self.pending -= completed
+            if len(self.pending) >= self.capacity:
+                dropped += 1
+                continue
+            future = self.pool.submit(self.execute, scheduled)
+            self.pending.add(future)
+            phase_futures.append(future)
+        # Requests may overlap the next phase; collect after all arrivals rather
+        # than inserting a recovery pause between burst and recovery.
+        remaining = started + duration - time.monotonic()
+        if remaining > 0:
+            time.sleep(remaining)
+        return (name, started, started_epoch, duration, offered, dropped, phase_futures)
+
+
+def summarize_phase(record):
+    name, started, started_epoch, duration, offered, dropped, futures = record
+    samples = [future.result() for future in futures]
+    # Include tail completion in throughput, while arrivals in the next
+    # phase remain continuous. Phase completion windows can overlap.
+    completion_window = max(
+        duration,
+        max(
+            (sample["_completed_at"] - started for sample in samples),
+            default=duration,
+        ),
+    )
+    return {
+        "name": name,
+        "started_epoch_seconds": started_epoch,
+        "arrival_finished_epoch_seconds": started_epoch + duration,
+        "completion_finished_epoch_seconds": started_epoch + completion_window,
+        "arrival_duration_seconds": duration,
+        "tail_seconds": completion_window - duration,
+        **summarize(samples, completion_window, offered, dropped),
+    }
+
+
+def prepare_pool(args, manifest):
+    workers = [Worker(args, manifest, index) for index in range(args.open_workers)]
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=min(args.open_workers, 50)
+    ) as setup_pool:
+        setup = [
+            r for rows in setup_pool.map(lambda worker: worker.prepare(), workers) for r in rows
+        ]
+
+    return workers, setup
+
+
+def arrival(args, manifest):
     # Deterministic fixed-rate arrivals, without an unbounded executor queue.
     # Queue delay is included from the scheduled arrival through completion.
-    samples=[]
-    local=threading.local()
-    lock=threading.Lock()
-    next_index=iter(range(1000000))
-    workers=[Worker(args,manifest,index) for index in range(args.open_workers)]
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(args.open_workers,50)) as setup_pool:
-        setup=[r for rows in setup_pool.map(lambda worker:worker.prepare(),workers) for r in rows]
-    def execute(scheduled):
-        if not hasattr(local,'worker'):
-            with lock:
-                local.worker=workers[next(next_index)]
-        sample=local.worker.operation()
-        completed=time.monotonic()
-        sample['http_latency_ms']=sample['latency_ms']
-        sample['latency_ms']=(completed-scheduled)*1000
-        sample['client_queue_ms']=max(0,sample['latency_ms']-sample['http_latency_ms'])
-        sample['_completed_at']=completed
-        return sample
-    snapshot=getattr(args,'snapshot',lambda label: None)
-    phases=[('sustained',args.rate,args.duration),('burst',args.rate*5,args.burst_seconds),('recovery',args.rate,args.duration)]
-    output=[]
-    observations=[]
+    samples = []
+    workers, setup = prepare_pool(args, manifest)
+    execute = ArrivalWorkers(workers)
+    snapshot = getattr(args, "snapshot", lambda label: None)
+    phases = [
+        ("sustained", args.rate, args.duration),
+        ("burst", args.rate * 5, args.burst_seconds),
+        ("recovery", args.rate, args.duration),
+    ]
+    output = []
+    observations = []
     # Observation uses its own connection/thread so phase boundaries never wait
     # for SQL or artifact writes. Sample timestamps, not labels, define overlap.
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as observer, concurrent.futures.ThreadPoolExecutor(max_workers=args.open_workers) as pool:
-        pending=set()
-        for name,rate,duration in phases:
-            observations.append(observer.submit(snapshot,name+'_arrival_boundary_requested'))
-            samples=[]
-            phase_futures=[]
-            dropped=0
-            started=time.monotonic()
-            started_epoch=time.time()
-            offered=math.ceil(rate*duration)
-            for index in range(offered):
-                scheduled=started+index/rate
-                delay=scheduled-time.monotonic()
-                if delay>0:
-                    time.sleep(delay)
-                completed={future for future in pending if future.done()}
-                pending-=completed
-                if len(pending)>=args.open_workers*2:
-                    dropped+=1
-                    continue
-                future=pool.submit(execute,scheduled)
-                pending.add(future)
-                phase_futures.append(future)
-            # Requests may overlap the next phase; collect after all arrivals rather
-            # than inserting a recovery pause between burst and recovery.
-            output.append((name,started,started_epoch,duration,offered,dropped,phase_futures))
-            remaining=started+duration-time.monotonic()
-            if remaining>0:
-                time.sleep(remaining)
-        observations.append(observer.submit(snapshot,'open_loop_after_arrivals_before_drain_requested'))
-        phases_result=[]
-        for name,started,started_epoch,duration,offered,dropped,futures in output:
-            samples=[future.result() for future in futures]
-            # Include tail completion in throughput, while arrivals in the next
-            # phase remain continuous. Phase completion windows can overlap.
-            completion_window=max(duration,max((sample['_completed_at']-started for sample in samples),default=duration))
-            phases_result.append({'name':name,'started_epoch_seconds':started_epoch,'arrival_finished_epoch_seconds':started_epoch+duration,'completion_finished_epoch_seconds':started_epoch+completion_window,'arrival_duration_seconds':duration,'tail_seconds':completion_window-duration,**summarize(samples,completion_window,offered,dropped)})
+    with (
+        concurrent.futures.ThreadPoolExecutor(max_workers=1) as observer,
+        concurrent.futures.ThreadPoolExecutor(max_workers=args.open_workers) as pool,
+    ):
+        queue = ArrivalQueue(pool, execute, args.open_workers * 2)
+        for name, rate, duration in phases:
+            observations.append(observer.submit(snapshot, name + "_arrival_boundary_requested"))
+            output.append(queue.offer(name, rate, duration))
+        observations.append(
+            observer.submit(snapshot, "open_loop_after_arrivals_before_drain_requested")
+        )
+        phases_result = [summarize_phase(record) for record in output]
     for worker in workers:
         worker.close()
     for observation in observations:
         observation.result()
-    snapshot('open_loop_after_drain')
-    return {'setup_requests':{'count':len(setup),'statuses':dict(Counter(r['status'] for r in setup)),'timing':'before scheduled arrivals'},'phases':phases_result}
+    snapshot("open_loop_after_drain")
+    return {
+        "setup_requests": {
+            "count": len(setup),
+            "statuses": dict(Counter(r["status"] for r in setup)),
+            "timing": "before scheduled arrivals",
+        },
+        "phases": phases_result,
+    }
+
+
+def proc_field(path, prefix, key):
+    for line in pathlib.Path(path).read_text().splitlines():
+        if line.startswith(prefix):
+            return {key: line.partition(":")[2].strip()}
+    return {}
+
 
 def hardware():
-    result={'platform':platform.platform(),'cpu_count':os.cpu_count(),'python':platform.python_version()}
-    for file,key in (('/sys/fs/cgroup/cpu.max','cgroup_cpu_max'),('/sys/fs/cgroup/memory.max','cgroup_memory_max')):
+    result = {
+        "platform": platform.platform(),
+        "cpu_count": os.cpu_count(),
+        "python": platform.python_version(),
+    }
+    for file, key in (
+        ("/sys/fs/cgroup/cpu.max", "cgroup_cpu_max"),
+        ("/sys/fs/cgroup/memory.max", "cgroup_memory_max"),
+    ):
         try:
-            result[key]=pathlib.Path(file).read_text().strip()
+            result[key] = pathlib.Path(file).read_text().strip()
         except OSError:
             pass
     try:
-        for line in pathlib.Path('/proc/cpuinfo').read_text().splitlines():
-            if line.startswith('model name'):
-                result['cpu_model']=line.partition(':')[2].strip()
-                break
-        for line in pathlib.Path('/proc/meminfo').read_text().splitlines():
-            if line.startswith('MemTotal:'):
-                result['host_memory_total']=line.partition(':')[2].strip()
+        result.update(proc_field("/proc/cpuinfo", "model name", "cpu_model"))
+        result.update(proc_field("/proc/meminfo", "MemTotal:", "host_memory_total"))
     except OSError:
         pass
     return result
 
+
 def run(args):
-    args.token=credential(args)
-    manifest=json.loads(pathlib.Path(args.manifest).read_text())
-    if manifest['nodes'] < 2*max(args.concurrency+[args.open_workers]):
-        raise SystemExit('Fixture needs at least twice the largest client count for disjoint independent records')
-    output={'format_version':2,'started_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'fixture':manifest,'machine':hardware(),'method':{'seed':42,'duration_seconds':args.duration,'concurrency':args.concurrency,'arrival_rate':args.rate,'burst_multiplier':5,'burst_seconds':args.burst_seconds,'open_workers':args.open_workers,'timeout_seconds':args.timeout,'read_write_ratio':'80/20 base selection in expectation; measured version_refresh reads add recovery traffic','latency':'client-observed HTTP, persistent per-thread connections; all-response and success-only distributions','cold_phase':'first application requests; OS/PostgreSQL caches are not forcibly cleared','writes':'independent updates, hot conflict, identical-payload same-key retries and competing dependency insertions; expected validation/conflict errors remain reported','service_latency':'not instrumented by this harness; do not infer service acceptance latency from HTTP client times'},'phases':[]}
-    sql=database_sql(args) if args.capture_database_state else None
-    output['method']['database_state_sampling']='fixed: synchronous boundary SQL; open-loop: asynchronous boundary SQL; sample timestamps define observation time' if sql else 'disabled'
-    output['database_states']=[]
+    args.token = credential(args)
+    manifest = json.loads(pathlib.Path(args.manifest).read_text())
+    if manifest["nodes"] < 2 * max(args.concurrency + [args.open_workers]):
+        raise SystemExit(
+            "Fixture needs at least twice the largest client count for disjoint independent records"
+        )
+    output = {
+        "format_version": 2,
+        "started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "fixture": manifest,
+        "machine": hardware(),
+        "method": {
+            "seed": 42,
+            "duration_seconds": args.duration,
+            "concurrency": args.concurrency,
+            "arrival_rate": args.rate,
+            "burst_multiplier": 5,
+            "burst_seconds": args.burst_seconds,
+            "open_workers": args.open_workers,
+            "timeout_seconds": args.timeout,
+            "read_write_ratio": "80/20 base selection in expectation; measured version_refresh reads add recovery traffic",
+            "latency": "client-observed HTTP, persistent per-thread connections; all-response and success-only distributions",
+            "cold_phase": "first application requests; OS/PostgreSQL caches are not forcibly cleared",
+            "writes": "independent updates, hot conflict, identical-payload same-key retries and competing dependency insertions; expected validation/conflict errors remain reported",
+            "service_latency": "not instrumented by this harness; do not infer service acceptance latency from HTTP client times",
+        },
+        "phases": [],
+    }
+    sql = database_sql(args) if args.capture_database_state else None
+    output["method"]["database_state_sampling"] = (
+        "fixed: synchronous boundary SQL; open-loop: asynchronous boundary SQL; sample timestamps define observation time"
+        if sql
+        else "disabled"
+    )
+    output["database_states"] = []
+
     def snapshot(label):
         if sql:
-            output['database_states'].append({'boundary':label,'state':database_state(sql)})
-            pathlib.Path(args.output).write_text(json.dumps(output,indent=2)+'\n')
-    args.snapshot=snapshot
-    for label,duration,concurrency in [('first_touch',min(5,args.duration),args.concurrency[0]),('warmup',args.warmup,args.concurrency[0])]+[(f'warm_{c}',args.duration,c) for c in args.concurrency]:
-        snapshot(label+'_before_setup')
-        print(f'Running {label}: {concurrency} clients / {duration}s',flush=True)
-        output['phases'].append({'name':label,'concurrency':concurrency,**fixed(args,manifest,concurrency,duration)})
-        snapshot(label+'_after_completion')
-        pathlib.Path(args.output).write_text(json.dumps(output,indent=2)+'\n')
-    started=time.monotonic()
-    output['open_loop']=arrival(args,manifest)
-    output['open_loop_wall_seconds']=time.monotonic()-started
-    output['finished_utc']=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
-    pathlib.Path(args.output).write_text(json.dumps(output,indent=2)+'\n')
-    print(f'Wrote {args.output}',flush=True)
+            output["database_states"].append({"boundary": label, "state": database_state(sql)})
+            pathlib.Path(args.output).write_text(json.dumps(output, indent=2) + "\n")
+
+    args.snapshot = snapshot
+    for label, duration, concurrency in [
+        ("first_touch", min(5, args.duration), args.concurrency[0]),
+        ("warmup", args.warmup, args.concurrency[0]),
+    ] + [(f"warm_{c}", args.duration, c) for c in args.concurrency]:
+        snapshot(label + "_before_setup")
+        print(f"Running {label}: {concurrency} clients / {duration}s", flush=True)
+        output["phases"].append(
+            {
+                "name": label,
+                "concurrency": concurrency,
+                **fixed(args, manifest, concurrency, duration),
+            }
+        )
+        snapshot(label + "_after_completion")
+        pathlib.Path(args.output).write_text(json.dumps(output, indent=2) + "\n")
+    started = time.monotonic()
+    output["open_loop"] = arrival(args, manifest)
+    output["open_loop_wall_seconds"] = time.monotonic() - started
+    output["finished_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    pathlib.Path(args.output).write_text(json.dumps(output, indent=2) + "\n")
+    print(f"Wrote {args.output}", flush=True)
+
+
+def invalid_load_settings(args):
+    settings = (
+        args.duration,
+        args.warmup,
+        args.rate,
+        args.burst_seconds,
+        args.timeout,
+        args.open_workers,
+        *args.concurrency,
+    )
+    return any(value <= 0 for value in settings)
+
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__)
-    sub=parser.add_subparsers(dest='command',required=True)
-    for command in ('seed','run','maintain'):
-        p=sub.add_parser(command)
-        p.add_argument('--token-file')
-        p.add_argument('--manifest',default='benchmark-fixture.json')
-        p.add_argument('--database-url-env',default='DATABASE_URL')
-        p.add_argument('--psql',default='psql')
-        if command=='maintain':
-            p.add_argument('--output',default='benchmark-maintenance.json')
-        elif command=='seed':
-            p.add_argument('--vacuum-analyze',action='store_true',help='Explicitly vacuum/analyze after seed; default leaves fresh visibility state intact')
-            p.add_argument('--nodes',type=int,default=100000)
-            p.add_argument('--edges',type=int,default=500000)
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="command", required=True)
+    for command in ("seed", "run", "maintain"):
+        p = sub.add_parser(command)
+        p.add_argument("--token-file")
+        p.add_argument("--manifest", default="benchmark-fixture.json")
+        p.add_argument("--database-url-env", default="DATABASE_URL")
+        p.add_argument("--psql", default="psql")
+        if command == "maintain":
+            p.add_argument("--output", default="benchmark-maintenance.json")
+        elif command == "seed":
+            p.add_argument(
+                "--vacuum-analyze",
+                action="store_true",
+                help="Explicitly vacuum/analyze after seed; default leaves fresh visibility state intact",
+            )
+            p.add_argument("--nodes", type=int, default=100000)
+            p.add_argument("--edges", type=int, default=500000)
         else:
-            p.add_argument('--capture-database-state',action='store_true',help='Sample database maintenance/visibility estimates at phase boundaries')
-            p.add_argument('--endpoint',default='http://127.0.0.1:8741')
-            p.add_argument('--duration',type=float,default=30)
-            p.add_argument('--warmup',type=float,default=10)
-            p.add_argument('--concurrency',type=int,nargs='+',default=[50,100,200])
-            p.add_argument('--rate',type=float,default=200)
-            p.add_argument('--burst-seconds',type=float,default=10)
-            p.add_argument('--open-workers',type=int,default=200)
-            p.add_argument('--timeout',type=float,default=12)
-            p.add_argument('--output',default='benchmark-results.json')
-    args=parser.parse_args()
-    if args.command=='run' and (args.duration<=0 or args.warmup<=0 or args.rate<=0 or args.burst_seconds<=0 or args.timeout<=0 or args.open_workers<=0 or any(c<=0 for c in args.concurrency)):
-        parser.error('durations, rates and client counts must be positive')
-    {'seed':seed,'run':run,'maintain':maintain}[args.command](args)
+            p.add_argument(
+                "--capture-database-state",
+                action="store_true",
+                help="Sample database maintenance/visibility estimates at phase boundaries",
+            )
+            p.add_argument("--endpoint", default="http://127.0.0.1:8741")
+            p.add_argument("--duration", type=float, default=30)
+            p.add_argument("--warmup", type=float, default=10)
+            p.add_argument("--concurrency", type=int, nargs="+", default=[50, 100, 200])
+            p.add_argument("--rate", type=float, default=200)
+            p.add_argument("--burst-seconds", type=float, default=10)
+            p.add_argument("--open-workers", type=int, default=200)
+            p.add_argument("--timeout", type=float, default=12)
+            p.add_argument("--output", default="benchmark-results.json")
+    args = parser.parse_args()
+    if args.command == "run" and invalid_load_settings(args):
+        parser.error("durations, rates and client counts must be positive")
+    {"seed": seed, "run": run, "maintain": maintain}[args.command](args)
 
-if __name__=='__main__':
+
+if __name__ == "__main__":
     main()

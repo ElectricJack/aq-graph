@@ -16,13 +16,19 @@ class GraphError(Exception):
         super().__init__(message)
 
 
+def parse_endpoint(endpoint):
+    url = urllib.parse.urlsplit(endpoint)
+    valid_origin = url.scheme in ("http", "https") and url.hostname
+    if not valid_origin or any((url.username, url.password, url.query, url.fragment)):
+        raise ValueError("endpoint must be HTTP(S), without embedded credentials")
+    if url.scheme == "http" and url.hostname not in ("localhost", "127.0.0.1", "::1"):
+        raise ValueError("use HTTPS for remote clients")
+    return url
+
+
 class GraphClient:
     def __init__(self, endpoint, workspace, token, timeout=12):
-        url = urllib.parse.urlsplit(endpoint)
-        if url.scheme not in ("http", "https") or not url.hostname or url.username or url.password or url.query or url.fragment:
-            raise ValueError("endpoint must be HTTP(S), without embedded credentials")
-        if url.scheme == "http" and url.hostname not in ("localhost", "127.0.0.1", "::1"):
-            raise ValueError("use HTTPS for remote clients")
+        url = parse_endpoint(endpoint)
         self._connection = (
             http.client.HTTPSConnection(url.hostname, url.port, timeout=timeout, context=ssl.create_default_context())
             if url.scheme == "https" else http.client.HTTPConnection(url.hostname, url.port, timeout=timeout)
@@ -47,6 +53,9 @@ class GraphClient:
             self.close()
             # The caller retains its idempotency key and exact payload for retries.
             raise GraphError(0, "transport", "Graph request failed; mutation outcome may be unknown") from None
+        return self._decode_response(response, data)
+
+    def _decode_response(self, response, data):
         if len(data) > 2_097_152 or response.getheader("x-aq-graph-api-version") != "1":
             self.close()
             raise GraphError(response.status, "protocol", "Incompatible or oversized graph response")

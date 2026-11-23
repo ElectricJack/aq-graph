@@ -18,26 +18,8 @@ async fn projection_backfill_and_mutations_match_source_without_changing_history
     .execute(&mut *tx)
     .await
     .unwrap();
-    for migration in [
-        include_str!("../migrations/0001_initial.sql"),
-        include_str!("../migrations/0002_workspace_credential_scope.sql"),
-        include_str!("../migrations/0003_knowledge_pagination.sql"),
-        include_str!("../migrations/0004_graph_contract.sql"),
-        include_str!("../migrations/0005_knowledge_contract.sql"),
-        include_str!("../migrations/0006_unified_revisions.sql"),
-        include_str!("../migrations/0007_shared_node_fields.sql"),
-    ] {
-        sqlx::raw_sql(migration).execute(&mut *tx).await.unwrap();
-    }
-    sqlx::raw_sql("INSERT INTO workspaces(id) VALUES('00000000-0000-0000-0000-000000000001');
-INSERT INTO nodes(id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,task_state,content_type,verification,created_at,updated_at)
-SELECT lpad(to_hex(g),32,'0')::uuid,'00000000-0000-0000-0000-000000000001','task',1,1,'Task','','','active','note','unverified',clock_timestamp(),clock_timestamp() FROM generate_series(1,5) g;
-INSERT INTO edges(id,workspace_id,source,target,edge_type,version,created_at) VALUES('00000000-0000-0000-0000-000000000010','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000003','parent-child',1,clock_timestamp());")
-        .execute(&mut *tx).await.unwrap();
-    let change = Uuid::new_v4();
-    sqlx::query("INSERT INTO change_sets(id,workspace_id,actor_id,operations,status) VALUES($1,'00000000-0000-0000-0000-000000000001','migration-test','[]','applied')").bind(change).execute(&mut *tx).await.unwrap();
-    sqlx::query("INSERT INTO node_revisions(workspace_id,node_id,revision,snapshot,actor_id,operation,change_set_id) SELECT workspace_id,id,1,to_jsonb(n)-'search_document','migration-test','created',$1 FROM nodes n").bind(change).execute(&mut *tx).await.unwrap();
-    sqlx::query("INSERT INTO history_entries(workspace_id,node_ids,entry_id,category,actor_id,operation,change_set_id,data) SELECT workspace_id,ARRAY[id],gen_random_uuid(),'revision','migration-test','created',$1,to_jsonb(n)-'search_document' FROM nodes n").bind(change).execute(&mut *tx).await.unwrap();
+    install_migrations(&mut tx, 7).await;
+    seed_backfill_fixture(&mut tx).await;
     let before: serde_json::Value = sqlx::query_scalar("SELECT jsonb_build_object('nodes',(SELECT jsonb_agg(to_jsonb(n) ORDER BY id) FROM nodes n),'revisions',(SELECT jsonb_agg(to_jsonb(r)) FROM node_revisions r),'history',(SELECT jsonb_agg(to_jsonb(h)) FROM history_entries h))").fetch_one(&mut *tx).await.unwrap();
     sqlx::raw_sql(include_str!("../migrations/0008_ready_projection.sql"))
         .execute(&mut *tx)
@@ -107,34 +89,14 @@ async fn concurrent_child_lifecycle_and_edges_serialize_without_lost_counts() {
     let mut tx = store.pool.begin().await.unwrap();
     sqlx::query("INSERT INTO edges(id,workspace_id,source,target,edge_type,version,created_at) VALUES($1,$2,$3,$4,'parent-child',1,clock_timestamp())")
         .bind(edge).bind(workspace).bind(parent).bind(child).execute(&mut *tx).await.unwrap();
-    let owner: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
-        .fetch_one(&mut *tx)
-        .await
-        .unwrap();
-    let mut competing = store.pool.acquire().await.unwrap();
-    let waiter: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
-        .fetch_one(&mut *competing)
-        .await
-        .unwrap();
-    let deletion = tokio::spawn(async move {
-        sqlx::query("UPDATE nodes SET deleted=true WHERE id=$1")
-            .bind(child)
-            .execute(&mut *competing)
-            .await
-            .unwrap();
-    });
-    wait_for_blocker(&store.pool, waiter, owner).await;
-    tx.commit().await.unwrap();
-    deletion.await.unwrap();
-    let count: i64 = sqlx::query_scalar(
-        "SELECT live_child_count FROM node_ready_projection WHERE workspace_id=$1 AND node_id=$2",
+    race_with_held_lock(
+        &store.pool,
+        tx,
+        "UPDATE nodes SET deleted=true WHERE id=$1",
+        child,
     )
-    .bind(workspace)
-    .bind(parent)
-    .fetch_one(&store.pool)
-    .await
-    .unwrap();
-    assert_eq!(count, 0);
+    .await;
+    assert_no_live_children(&store.pool, workspace, parent).await;
     // Reverse the overlap: resurrection owns the guard before edge deletion.
     let mut tx = store.pool.begin().await.unwrap();
     sqlx::query("UPDATE nodes SET deleted=false WHERE id=$1")
@@ -142,34 +104,8 @@ async fn concurrent_child_lifecycle_and_edges_serialize_without_lost_counts() {
         .execute(&mut *tx)
         .await
         .unwrap();
-    let owner: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
-        .fetch_one(&mut *tx)
-        .await
-        .unwrap();
-    let mut competing = store.pool.acquire().await.unwrap();
-    let waiter: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
-        .fetch_one(&mut *competing)
-        .await
-        .unwrap();
-    let deletion = tokio::spawn(async move {
-        sqlx::query("DELETE FROM edges WHERE id=$1")
-            .bind(edge)
-            .execute(&mut *competing)
-            .await
-            .unwrap();
-    });
-    wait_for_blocker(&store.pool, waiter, owner).await;
-    tx.commit().await.unwrap();
-    deletion.await.unwrap();
-    let count: i64 = sqlx::query_scalar(
-        "SELECT live_child_count FROM node_ready_projection WHERE workspace_id=$1 AND node_id=$2",
-    )
-    .bind(workspace)
-    .bind(parent)
-    .fetch_one(&store.pool)
-    .await
-    .unwrap();
-    assert_eq!(count, 0);
+    race_with_held_lock(&store.pool, tx, "DELETE FROM edges WHERE id=$1", edge).await;
+    assert_no_live_children(&store.pool, workspace, parent).await;
     sqlx::query("DELETE FROM nodes WHERE workspace_id=$1")
         .bind(workspace)
         .execute(&store.pool)
@@ -217,27 +153,8 @@ async fn administrative_check_and_rebuild_repair_missing_and_corrupt_rows() {
     .execute(&mut *conn)
     .await
     .unwrap();
-    for migration in [
-        include_str!("../migrations/0001_initial.sql"),
-        include_str!("../migrations/0002_workspace_credential_scope.sql"),
-        include_str!("../migrations/0003_knowledge_pagination.sql"),
-        include_str!("../migrations/0004_graph_contract.sql"),
-        include_str!("../migrations/0005_knowledge_contract.sql"),
-        include_str!("../migrations/0006_unified_revisions.sql"),
-        include_str!("../migrations/0007_shared_node_fields.sql"),
-        include_str!("../migrations/0008_ready_projection.sql"),
-    ] {
-        sqlx::raw_sql(migration).execute(&mut *conn).await.unwrap();
-    }
-    sqlx::raw_sql("INSERT INTO workspaces(id) VALUES('00000000-0000-0000-0000-000000000001');
-INSERT INTO nodes(id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,task_state,content_type,verification,created_at,updated_at)
-SELECT lpad(to_hex(g),32,'0')::uuid,'00000000-0000-0000-0000-000000000001','task',1,1,'Repair task','','','active','note','unverified',clock_timestamp(),clock_timestamp() FROM generate_series(1,3) g;
-INSERT INTO edges(id,workspace_id,source,target,edge_type,version,created_at) VALUES('00000000-0000-0000-0000-000000000010','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','parent-child',1,clock_timestamp());
-INSERT INTO change_sets(id,workspace_id,actor_id,operations,status) VALUES('00000000-0000-0000-0000-000000000020','00000000-0000-0000-0000-000000000001','repair-test','[]','applied');
-INSERT INTO node_revisions(workspace_id,node_id,revision,snapshot,actor_id,operation,change_set_id) SELECT workspace_id,id,1,to_jsonb(n)-'search_document','repair-test','created','00000000-0000-0000-0000-000000000020' FROM nodes n;
-INSERT INTO history_entries(workspace_id,node_ids,entry_id,category,actor_id,operation,change_set_id,data) SELECT workspace_id,ARRAY[id],gen_random_uuid(),'revision','repair-test','created','00000000-0000-0000-0000-000000000020',to_jsonb(n)-'search_document' FROM nodes n;
-COMMIT;")
-        .execute(&mut *conn).await.unwrap();
+    install_migrations(&mut conn, 8).await;
+    seed_rebuild_fixture(&mut conn).await;
     let snapshot = "SELECT jsonb_build_object('nodes',(SELECT jsonb_agg(to_jsonb(n) ORDER BY id) FROM nodes n),'revisions',(SELECT jsonb_agg(to_jsonb(r) ORDER BY node_id,revision) FROM node_revisions r),'history',(SELECT jsonb_agg(to_jsonb(h) ORDER BY sequence) FROM history_entries h))";
     let before: serde_json::Value = sqlx::query_scalar(snapshot)
         .fetch_one(&mut *conn)
@@ -284,4 +201,97 @@ COMMIT;")
     .execute(&mut *conn)
     .await
     .unwrap();
+}
+
+async fn install_migrations(connection: &mut sqlx::PgConnection, version: usize) {
+    for migration in [
+        include_str!("../migrations/0001_initial.sql"),
+        include_str!("../migrations/0002_workspace_credential_scope.sql"),
+        include_str!("../migrations/0003_knowledge_pagination.sql"),
+        include_str!("../migrations/0004_graph_contract.sql"),
+        include_str!("../migrations/0005_knowledge_contract.sql"),
+        include_str!("../migrations/0006_unified_revisions.sql"),
+        include_str!("../migrations/0007_shared_node_fields.sql"),
+        include_str!("../migrations/0008_ready_projection.sql"),
+    ]
+    .into_iter()
+    .take(version)
+    {
+        sqlx::raw_sql(migration)
+            .execute(&mut *connection)
+            .await
+            .unwrap();
+    }
+}
+
+async fn race_with_held_lock(
+    pool: &sqlx::PgPool,
+    mut tx: sqlx::Transaction<'_, sqlx::Postgres>,
+    statement: &'static str,
+    target: Uuid,
+) {
+    let owner: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    let mut competing = pool.acquire().await.unwrap();
+    let waiter: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+        .fetch_one(&mut *competing)
+        .await
+        .unwrap();
+    let deletion = tokio::spawn(async move {
+        sqlx::query(statement)
+            .bind(target)
+            .execute(&mut *competing)
+            .await
+            .unwrap();
+    });
+    wait_for_blocker(pool, waiter, owner).await;
+    tx.commit().await.unwrap();
+    deletion.await.unwrap();
+}
+
+async fn assert_no_live_children(pool: &sqlx::PgPool, workspace: Uuid, parent: Uuid) {
+    let count: i64 = sqlx::query_scalar(
+        "SELECT live_child_count FROM node_ready_projection WHERE workspace_id=$1 AND node_id=$2",
+    )
+    .bind(workspace)
+    .bind(parent)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(count, 0);
+}
+
+async fn seed_rebuild_fixture(connection: &mut sqlx::PgConnection) {
+    seed_tasks(connection, 3, "Repair task", Uuid::from_u128(2)).await;
+    sqlx::raw_sql("INSERT INTO change_sets(id,workspace_id,actor_id,operations,status) VALUES('00000000-0000-0000-0000-000000000020','00000000-0000-0000-0000-000000000001','repair-test','[]','applied');
+INSERT INTO node_revisions(workspace_id,node_id,revision,snapshot,actor_id,operation,change_set_id) SELECT workspace_id,id,1,to_jsonb(n)-'search_document','repair-test','created','00000000-0000-0000-0000-000000000020' FROM nodes n;
+INSERT INTO history_entries(workspace_id,node_ids,entry_id,category,actor_id,operation,change_set_id,data) SELECT workspace_id,ARRAY[id],gen_random_uuid(),'revision','repair-test','created','00000000-0000-0000-0000-000000000020',to_jsonb(n)-'search_document' FROM nodes n;
+COMMIT;")
+        .execute(&mut *connection).await.unwrap();
+}
+
+async fn seed_backfill_fixture(connection: &mut sqlx::PgConnection) {
+    seed_tasks(connection, 5, "Task", Uuid::from_u128(3)).await;
+    let change = Uuid::new_v4();
+    sqlx::query("INSERT INTO change_sets(id,workspace_id,actor_id,operations,status) VALUES($1,'00000000-0000-0000-0000-000000000001','migration-test','[]','applied')").bind(change).execute(&mut *connection).await.unwrap();
+    sqlx::query("INSERT INTO node_revisions(workspace_id,node_id,revision,snapshot,actor_id,operation,change_set_id) SELECT workspace_id,id,1,to_jsonb(n)-'search_document','migration-test','created',$1 FROM nodes n").bind(change).execute(&mut *connection).await.unwrap();
+    sqlx::query("INSERT INTO history_entries(workspace_id,node_ids,entry_id,category,actor_id,operation,change_set_id,data) SELECT workspace_id,ARRAY[id],gen_random_uuid(),'revision','migration-test','created',$1,to_jsonb(n)-'search_document' FROM nodes n").bind(change).execute(&mut *connection).await.unwrap();
+}
+
+async fn seed_tasks(connection: &mut sqlx::PgConnection, count: i32, title: &str, child: Uuid) {
+    let workspace = Uuid::from_u128(1);
+    sqlx::query("INSERT INTO workspaces(id) VALUES($1)")
+        .bind(workspace)
+        .execute(&mut *connection)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO nodes(id,workspace_id,kind,version,content_revision,title,body,acceptance_criteria,task_state,content_type,verification,created_at,updated_at)
+                 SELECT lpad(to_hex(g),32,'0')::uuid,$1,'task',1,1,$2,'','','active','note','unverified',clock_timestamp(),clock_timestamp()
+                 FROM generate_series(1,$3) g")
+        .bind(workspace).bind(title).bind(count).execute(&mut *connection).await.unwrap();
+    sqlx::query("INSERT INTO edges(id,workspace_id,source,target,edge_type,version,created_at)
+                 VALUES('00000000-0000-0000-0000-000000000010',$1,$1,$2,'parent-child',1,clock_timestamp())")
+        .bind(workspace).bind(child).execute(&mut *connection).await.unwrap();
 }
