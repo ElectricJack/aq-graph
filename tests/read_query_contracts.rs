@@ -12,6 +12,7 @@ use uuid::Uuid;
 struct Fixture {
     store: Store,
     p: Principal,
+    token: String,
     ids: Vec<Uuid>,
 }
 impl Fixture {
@@ -30,6 +31,7 @@ impl Fixture {
         let f = Self {
             store,
             p,
+            token,
             ids: (0..100).map(|_| Uuid::new_v4()).collect(),
         };
         let ops=f.ids.iter().enumerate().map(|(i,id)| {
@@ -216,7 +218,43 @@ async fn ready_pages_preserve_leaf_lifecycle_prerequisite_and_scope_rules_for_bo
             }
             assert_eq!(found, expected, "{mode} limit {limit}");
         }
+        for id in f.ids.iter().chain(&foreign.ids).copied() {
+            let exact = f.store.ready_task(&f.p, id).await.unwrap();
+            let found: Vec<_> = exact.items.into_iter().map(|node| node.id).collect();
+            let wanted: Vec<_> = expected.contains(&id).then_some(id).into_iter().collect();
+            assert_eq!(found, wanted, "{mode} {id}");
+            assert_eq!(exact.next_cursor, None);
+        }
     }
+
+    let app = aq_graph::service::router(f.store);
+    let read = |workspace: Uuid, id: Uuid| {
+        app.clone().oneshot(
+            Request::builder()
+                .uri(format!("/v1/workspaces/{workspace}/ready/{id}"))
+                .header("authorization", format!("Bearer {}", f.token))
+                .header("x-aq-graph-api-version", "1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+    };
+    let id = *expected.last().unwrap();
+    let response = read(f.p.workspace_id, id).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let page: Page<Node> = serde_json::from_slice(&body).unwrap();
+    assert_eq!(
+        page.items.iter().map(|node| node.id).collect::<Vec<_>>(),
+        [id]
+    );
+    assert!(page.next_cursor.is_none());
+    assert_eq!(
+        read(foreign.p.workspace_id, foreign.ids[81])
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::UNAUTHORIZED
+    );
 }
 
 #[tokio::test]
