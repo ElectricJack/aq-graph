@@ -51,6 +51,7 @@ pub fn router(store: Store) -> Router {
         .route("/nodes/{id}/revisions/{revision}", get(get_revision))
         .route("/nodes/{id}/diff", get(diff))
         .route("/ready", get(ready))
+        .route("/ready/{id}", get(ready_task))
         .route("/search", get(search))
         .route("/mutations", post(mutate))
         .route("/changesets", post(create_draft))
@@ -415,6 +416,13 @@ async fn ready(
     q: std::result::Result<Query<ListQuery>, QueryRejection>,
 ) -> Result<Json<Page<Node>>> {
     Ok(Json(s.store.ready(&p, parse_query(q)?).await?))
+}
+async fn ready_task(
+    State(s): State<HttpState>,
+    Extension(p): Extension<Principal>,
+    Path(path): Path<NodePath>,
+) -> Result<Json<Page<Node>>> {
+    Ok(Json(s.store.ready_task(&p, record_id(path)?).await?))
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

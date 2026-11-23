@@ -1532,6 +1532,209 @@
         }
       }
     },
+    "/v1/workspaces/{workspace}/ready/{id}": {
+      "get": {
+        "operationId": "get__v1_workspaces_workspace_ready_id",
+        "description": "Check one task against the same readiness predicate as the paginated ready list.",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A NodePage with the requested ready task or no items. The next cursor is null.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodePage"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or unsupported API version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid workspace bearer credential",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              },
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Bearer challenge"
+              }
+            }
+          },
+          "403": {
+            "description": "Capability denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "409": {
+            "description": "Stale version, unresolved references, duplicate identity, applied draft, or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "413": {
+            "description": "Request or response exceeds byte limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error; no driver details disclosed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "503": {
+            "description": "Admission, pool, lock, or request deadline exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "const": 1
+                },
+                "description": "Minimum suggested retry delay in seconds"
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/workspaces/{workspace}/ready": {
       "get": {
         "operationId": "get__v1_workspaces_workspace_ready",
