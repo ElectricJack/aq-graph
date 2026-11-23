@@ -34,19 +34,7 @@ impl Store {
         token: &str,
         mut query: TaskListQuery,
     ) -> Result<TaskList> {
-        if query.workspace_ids.is_empty()
-            || query.workspace_ids.len() > 4096
-            || query.workspace_ids.iter().any(Uuid::is_nil)
-            || !(1..=64).contains(&query.limit)
-            || query.before.is_some_and(|(_, id)| id.is_nil())
-            || query.q.as_ref().is_some_and(|text| {
-                text.trim().is_empty()
-                    || text.chars().count() > 256
-                    || text.chars().any(char::is_control)
-            })
-        {
-            return Err(Error::Validation("Invalid task list parameters".into()));
-        }
+        query.validate()?;
         query.workspace_ids.sort_unstable();
         query.workspace_ids.dedup();
         let (before_time, before_id) = query.before.unzip();
@@ -93,4 +81,30 @@ impl Store {
         page.items.truncate(usize::from(query.limit));
         Ok(page)
     }
+}
+
+impl TaskListQuery {
+    fn validate(&self) -> Result<()> {
+        let invalid = || Error::Validation("Invalid task list parameters".into());
+        if !(1..=4096).contains(&self.workspace_ids.len())
+            || self.workspace_ids.iter().any(Uuid::is_nil)
+        {
+            return Err(invalid());
+        }
+        if !(1..=64).contains(&self.limit) || self.before.is_some_and(|(_, id)| id.is_nil()) {
+            return Err(invalid());
+        }
+        if self
+            .q
+            .as_deref()
+            .is_some_and(|text| !valid_search_text(text))
+        {
+            return Err(invalid());
+        }
+        Ok(())
+    }
+}
+
+fn valid_search_text(text: &str) -> bool {
+    !text.trim().is_empty() && text.chars().count() <= 256 && !text.chars().any(char::is_control)
 }

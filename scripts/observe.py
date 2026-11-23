@@ -7,6 +7,22 @@ from pathlib import Path
 import time
 
 
+def read_process_counters(process):
+    # Fields after the closing ')' start at proc stat field 3.
+    stat = (process / "stat").read_text().rsplit(")", 1)[1].split()
+    ticks = int(stat[11]) + int(stat[12])
+    status = dict(line.split(":", 1) for line in (process / "status").read_text().splitlines() if ":" in line)
+    return ticks, status
+
+
+def read_io(process):
+    try:
+        counters = (line.split(":", 1) for line in (process / "io").read_text().splitlines())
+        return {"io": {key: int(value) for key, value in counters}}
+    except (OSError, ValueError):
+        return {}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pid", type=int, required=True)
@@ -22,10 +38,7 @@ def main():
     previous = None
     while time.monotonic() - started < args.seconds:
         try:
-            # Fields after the closing ')' start at proc stat field 3.
-            stat = (process / "stat").read_text().rsplit(")", 1)[1].split()
-            ticks = int(stat[11]) + int(stat[12])
-            status = dict(line.split(":", 1) for line in (process / "status").read_text().splitlines() if ":" in line)
+            ticks, status = read_process_counters(process)
         except FileNotFoundError:
             break
         now = time.monotonic()
@@ -37,11 +50,7 @@ def main():
             "threads": int(status["Threads"]),
             "cpu_seconds": ticks / clock_ticks,
         }
-        try:
-            io = dict(line.split(":", 1) for line in (process / "io").read_text().splitlines())
-            sample["io"] = {key: int(value) for key, value in io.items()}
-        except (OSError, ValueError):
-            pass
+        sample.update(read_io(process))
         if previous:
             sample["cpu_percent_of_one_core"] = 100 * (ticks - previous[1]) / clock_ticks / (now - previous[0])
         previous = now, ticks

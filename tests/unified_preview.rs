@@ -121,33 +121,8 @@ async fn restore_preview_includes_removed_restored_edges_and_neighbor_versions_t
         3,
         "both prerequisite owners must be reviewable"
     );
-    for (id, node, history) in &before {
-        let row = entry(&preview, "nodes", *id);
-        assert_eq!(row["before"]["version"], node["version"]);
-        assert!(
-            row["after"]["version"].as_i64().unwrap() > node["version"].as_i64().unwrap(),
-            "neighbor mutation missing: {row}"
-        );
-        assert_eq!(
-            api.node(*id).await,
-            *node,
-            "validation must roll back neighbor versions"
-        );
-        assert_eq!(
-            api.get(&format!("/nodes/{id}/history?limit=200")).await,
-            *history,
-            "validation must roll back neighbor history"
-        );
-    }
-    let restored = entry(&preview, "edges", old_edge);
-    assert_eq!(restored["before"]["deleted"], true);
-    assert_eq!(restored["after"]["deleted"], false);
-    assert_eq!(restored["before"]["version"], 2);
-    assert_eq!(restored["after"]["version"], 3);
-    let removed = entry(&preview, "edges", new_edge);
-    assert_eq!(removed["before"]["deleted"], false);
-    assert_eq!(removed["after"]["deleted"], true);
-    assert_eq!(removed["after"]["version"], 2);
+    assert_neighbor_preview(&api, &preview, &before).await;
+    assert_edge_replacement(&preview, old_edge, new_edge);
     assert_eq!(
         api.get(&format!("/nodes/{task}/revisions/{desired}")).await,
         revision_before,
@@ -183,7 +158,43 @@ async fn preview_tracks_new_nodes_and_generated_parent_edges_even_when_reparente
     let second_before = api.node(second).await;
     let draft=api.draft(vec![json!({"op":"create_node","id":child,"kind":"task","title":"new reviewed child","task_state":"active"}),json!({"op":"set_parent","id":child,"expected_version":1,"parent_id":first}),json!({"op":"set_parent","id":child,"expected_version":2,"parent_id":second})]).await;
     let preview = api.validate(draft).await;
-    let new_child = entry(&preview, "nodes", child);
+    assert_reparent_preview(&preview, child, [first, second]);
+    for (id, before) in [(first, first_before), (second, second_before)] {
+        let row = entry(&preview, "nodes", id);
+        assert!(row["after"]["version"].as_i64().unwrap() > before["version"].as_i64().unwrap());
+        assert_eq!(api.node(id).await, before);
+        assert!(
+            api.get(&format!("/nodes/{id}/context")).await["edges"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+    }
+    assert_eq!(
+        api.request("GET", &format!("/nodes/{child}"), None).await.0,
+        StatusCode::NOT_FOUND,
+        "validation-created node must not leak into live graph"
+    );
+    assert!(
+        preview.get("_parent_children").is_none() && preview.get("_prior_parent_ids").is_none(),
+        "internal discovery metadata must not enter API output"
+    );
+}
+
+fn assert_edge_replacement(preview: &Value, old_edge: Uuid, new_edge: Uuid) {
+    let restored = entry(preview, "edges", old_edge);
+    assert_eq!(restored["before"]["deleted"], true);
+    assert_eq!(restored["after"]["deleted"], false);
+    assert_eq!(restored["before"]["version"], 2);
+    assert_eq!(restored["after"]["version"], 3);
+    let removed = entry(preview, "edges", new_edge);
+    assert_eq!(removed["before"]["deleted"], false);
+    assert_eq!(removed["after"]["deleted"], true);
+    assert_eq!(removed["after"]["version"], 2);
+}
+
+fn assert_reparent_preview(preview: &Value, child: Uuid, [first, second]: [Uuid; 2]) {
+    let new_child = entry(preview, "nodes", child);
     assert!(new_child["before"].is_null());
     assert_eq!(new_child["after"]["id"], json!(child));
     assert_eq!(new_child["after"]["version"], 3);
@@ -208,24 +219,25 @@ async fn preview_tracks_new_nodes_and_generated_parent_edges_even_when_reparente
             .iter()
             .any(|row| row["after"]["source"] == json!(second) && row["after"]["deleted"] == false)
     );
-    for (id, before) in [(first, first_before), (second, second_before)] {
-        let row = entry(&preview, "nodes", id);
-        assert!(row["after"]["version"].as_i64().unwrap() > before["version"].as_i64().unwrap());
-        assert_eq!(api.node(id).await, before);
+}
+
+async fn assert_neighbor_preview(api: &Api, preview: &Value, before: &[(Uuid, Value, Value)]) {
+    for (id, node, history) in before {
+        let row = entry(preview, "nodes", *id);
+        assert_eq!(row["before"]["version"], node["version"]);
         assert!(
-            api.get(&format!("/nodes/{id}/context")).await["edges"]
-                .as_array()
-                .unwrap()
-                .is_empty()
+            row["after"]["version"].as_i64().unwrap() > node["version"].as_i64().unwrap(),
+            "neighbor mutation missing: {row}"
+        );
+        assert_eq!(
+            api.node(*id).await,
+            *node,
+            "validation must roll back neighbor versions"
+        );
+        assert_eq!(
+            api.get(&format!("/nodes/{id}/history?limit=200")).await,
+            *history,
+            "validation must roll back neighbor history"
         );
     }
-    assert_eq!(
-        api.request("GET", &format!("/nodes/{child}"), None).await.0,
-        StatusCode::NOT_FOUND,
-        "validation-created node must not leak into live graph"
-    );
-    assert!(
-        preview.get("_parent_children").is_none() && preview.get("_prior_parent_ids").is_none(),
-        "internal discovery metadata must not enter API output"
-    );
 }

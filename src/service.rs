@@ -160,95 +160,92 @@ async fn guard(State(state): State<HttpState>, request: Request<Body>, next: Nex
         .unwrap_or_else(|| "<unmatched>".into());
     let mut response = match state.admission.clone().try_acquire_owned() {
         Err(_) => Error::Overloaded.into_response(),
-        Ok(_permit) => {
-            if request
-                .headers()
-                .get("x-aq-graph-api-version")
-                .is_some_and(|v| v != "1")
-            {
-                api_error(
-                    StatusCode::BAD_REQUEST,
-                    "unsupported_api_version",
-                    "Supported API version is 1",
-                )
-            } else {
-                match tokio::time::timeout(REQUEST_TIMEOUT, async {
-                    let (parts, body) = request.into_parts();
-                    let bytes = match to_bytes(body, MAX_REQUEST_BYTES).await {
-                        Ok(bytes) => bytes,
-                        Err(_) => {
-                            return api_error(
-                                StatusCode::PAYLOAD_TOO_LARGE,
-                                "body_too_large",
-                                "Request exceeds 1048576 bytes",
-                            );
-                        }
-                    };
-                    let response = next
-                        .run(Request::from_parts(parts, Body::from(bytes)))
-                        .await;
-                    // Framework extractors (for example invalid UTF-8 in a path)
-                    // can reject before a handler. Keep those errors in the same
-                    // public envelope and never expose framework diagnostics.
-                    if (response.status().is_client_error() || response.status().is_server_error())
-                        && !response
-                            .headers()
-                            .get("content-type")
-                            .is_some_and(|value| value.as_bytes().starts_with(b"application/json"))
-                    {
-                        return match response.status() {
-                            StatusCode::BAD_REQUEST
-                            | StatusCode::UNPROCESSABLE_ENTITY
-                            | StatusCode::UNSUPPORTED_MEDIA_TYPE => api_error(
-                                StatusCode::BAD_REQUEST,
-                                "validation",
-                                "Invalid request path or fields",
-                            ),
-                            StatusCode::NOT_FOUND => Error::NotFound.into_response(),
-                            StatusCode::METHOD_NOT_ALLOWED => api_error(
-                                StatusCode::METHOD_NOT_ALLOWED,
-                                "method_not_allowed",
-                                "Method not allowed",
-                            ),
-                            StatusCode::PAYLOAD_TOO_LARGE => api_error(
-                                StatusCode::PAYLOAD_TOO_LARGE,
-                                "body_too_large",
-                                "Request exceeds server limit",
-                            ),
-                            _ => api_error(
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                                "internal",
-                                "Internal service error",
-                            ),
-                        };
-                    }
-                    let (parts, body) = response.into_parts();
-                    match to_bytes(body, MAX_RESPONSE_BYTES).await {
-                        Ok(bytes) => Response::from_parts(parts, Body::from(bytes)),
-                        Err(_) => api_error(
-                            StatusCode::PAYLOAD_TOO_LARGE,
-                            "response_too_large",
-                            "Response exceeds server limit; request a smaller page",
-                        ),
-                    }
-                })
-                .await
-                {
-                    Ok(response) => response,
-                    Err(_) => api_error(
-                        StatusCode::SERVICE_UNAVAILABLE,
-                        "timeout",
-                        "Request deadline exceeded; retry mutations with the same idempotency key",
-                    ),
-                }
-            }
-        }
+        Ok(_permit) => handle_admitted_request(request, next).await,
     };
     response
         .headers_mut()
         .insert("x-aq-graph-api-version", HeaderValue::from_static("1"));
     tracing::info!(method=%method, route=%route, status=response.status().as_u16(), duration_ms=started.elapsed().as_secs_f64()*1000.0,"request completed");
     response
+}
+
+async fn handle_admitted_request(request: Request<Body>, next: Next) -> Response {
+    if request
+        .headers()
+        .get("x-aq-graph-api-version")
+        .is_some_and(|v| v != "1")
+    {
+        return api_error(
+            StatusCode::BAD_REQUEST,
+            "unsupported_api_version",
+            "Supported API version is 1",
+        );
+    }
+    match tokio::time::timeout(REQUEST_TIMEOUT, handle_bounded_request(request, next)).await {
+        Ok(response) => response,
+        Err(_) => api_error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "timeout",
+            "Request deadline exceeded; retry mutations with the same idempotency key",
+        ),
+    }
+}
+
+async fn handle_bounded_request(request: Request<Body>, next: Next) -> Response {
+    let (parts, body) = request.into_parts();
+    let Ok(bytes) = to_bytes(body, MAX_REQUEST_BYTES).await else {
+        return api_error(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "body_too_large",
+            "Request exceeds 1048576 bytes",
+        );
+    };
+    let response = next
+        .run(Request::from_parts(parts, Body::from(bytes)))
+        .await;
+    let status = response.status();
+    let rejected = status.is_client_error() || status.is_server_error();
+    let json = response
+        .headers()
+        .get("content-type")
+        .is_some_and(|value| value.as_bytes().starts_with(b"application/json"));
+    if rejected && !json {
+        return framework_rejection(status);
+    }
+    let (parts, body) = response.into_parts();
+    match to_bytes(body, MAX_RESPONSE_BYTES).await {
+        Ok(bytes) => Response::from_parts(parts, Body::from(bytes)),
+        Err(_) => api_error(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "response_too_large",
+            "Response exceeds server limit; request a smaller page",
+        ),
+    }
+}
+
+// Framework extractors may reject before a handler. Keep their diagnostics private.
+fn framework_rejection(status: StatusCode) -> Response {
+    match status {
+        StatusCode::BAD_REQUEST
+        | StatusCode::UNPROCESSABLE_ENTITY
+        | StatusCode::UNSUPPORTED_MEDIA_TYPE => api_error(
+            StatusCode::BAD_REQUEST,
+            "validation",
+            "Invalid request path or fields",
+        ),
+        StatusCode::NOT_FOUND => Error::NotFound.into_response(),
+        StatusCode::METHOD_NOT_ALLOWED => {
+            api_error(status, "method_not_allowed", "Method not allowed")
+        }
+        StatusCode::PAYLOAD_TOO_LARGE => {
+            api_error(status, "body_too_large", "Request exceeds server limit")
+        }
+        _ => api_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal",
+            "Internal service error",
+        ),
+    }
 }
 
 async fn authenticate(
@@ -300,7 +297,9 @@ fn parse_json<T>(input: std::result::Result<Json<T>, JsonRejection>) -> Result<T
         })
     })
 }
-fn parse_query<T>(input: std::result::Result<Query<T>, QueryRejection>) -> Result<T> {
+type ApiQuery<T> = std::result::Result<Query<T>, QueryRejection>;
+
+fn parse_query<T>(input: ApiQuery<T>) -> Result<T> {
     input
         .map(|Query(value)| value)
         .map_err(|_| Error::Validation("Invalid query parameters".into()))
@@ -309,6 +308,8 @@ fn parse_query<T>(input: std::result::Result<Query<T>, QueryRejection>) -> Resul
 struct NodePath {
     id: String,
 }
+type NodeRoute = (State<HttpState>, Extension<Principal>, Path<NodePath>);
+
 fn record_id(path: NodePath) -> Result<Uuid> {
     Uuid::parse_str(&path.id).map_err(|_| Error::Validation("Invalid record UUID".into()))
 }
@@ -374,24 +375,18 @@ impl NodesQuery {
 async fn list_nodes(
     State(s): State<HttpState>,
     Extension(p): Extension<Principal>,
-    q: std::result::Result<Query<NodesQuery>, QueryRejection>,
+    q: ApiQuery<NodesQuery>,
 ) -> Result<Json<Page<Node>>> {
     let q = parse_query(q)?;
     let page = q.page();
     Ok(Json(s.store.list_filtered(&p, q.filters(), page).await?))
 }
-async fn get_node(
-    State(s): State<HttpState>,
-    Extension(p): Extension<Principal>,
-    Path(path): Path<NodePath>,
-) -> Result<Json<Node>> {
+async fn get_node((State(s), Extension(p), Path(path)): NodeRoute) -> Result<Json<Node>> {
     Ok(Json(s.store.get_node(&p, record_id(path)?).await?))
 }
 async fn context(
-    State(s): State<HttpState>,
-    Extension(p): Extension<Principal>,
-    Path(path): Path<NodePath>,
-    q: std::result::Result<Query<ContextQuery>, QueryRejection>,
+    (State(s), Extension(p), Path(path)): NodeRoute,
+    q: ApiQuery<ContextQuery>,
 ) -> Result<Json<Context>> {
     Ok(Json(
         s.store
@@ -400,10 +395,8 @@ async fn context(
     ))
 }
 async fn tree(
-    State(s): State<HttpState>,
-    Extension(p): Extension<Principal>,
-    Path(path): Path<NodePath>,
-    q: std::result::Result<Query<ContextQuery>, QueryRejection>,
+    (State(s), Extension(p), Path(path)): NodeRoute,
+    q: ApiQuery<ContextQuery>,
 ) -> Result<Json<Value>> {
     Ok(Json(
         s.store.tree(&p, record_id(path)?, parse_query(q)?).await?,
@@ -412,7 +405,7 @@ async fn tree(
 async fn ready(
     State(s): State<HttpState>,
     Extension(p): Extension<Principal>,
-    q: std::result::Result<Query<ListQuery>, QueryRejection>,
+    q: ApiQuery<ListQuery>,
 ) -> Result<Json<Page<Node>>> {
     Ok(Json(s.store.ready(&p, parse_query(q)?).await?))
 }
@@ -433,7 +426,7 @@ struct SearchQuery {
 async fn search(
     State(s): State<HttpState>,
     Extension(p): Extension<Principal>,
-    q: std::result::Result<Query<SearchQuery>, QueryRejection>,
+    q: ApiQuery<SearchQuery>,
 ) -> Result<Json<Page<Node>>> {
     let q = parse_query(q)?;
     let filters = NodeFilters {
@@ -458,10 +451,8 @@ async fn search(
     ))
 }
 async fn history(
-    State(s): State<HttpState>,
-    Extension(p): Extension<Principal>,
-    Path(path): Path<NodePath>,
-    q: std::result::Result<Query<ListQuery>, QueryRejection>,
+    (State(s), Extension(p), Path(path)): NodeRoute,
+    q: ApiQuery<ListQuery>,
 ) -> Result<Json<Value>> {
     Ok(Json(
         s.store
@@ -495,10 +486,8 @@ struct DiffQuery {
     to: i64,
 }
 async fn diff(
-    State(s): State<HttpState>,
-    Extension(p): Extension<Principal>,
-    Path(path): Path<NodePath>,
-    q: std::result::Result<Query<DiffQuery>, QueryRejection>,
+    (State(s), Extension(p), Path(path)): NodeRoute,
+    q: ApiQuery<DiffQuery>,
 ) -> Result<Json<Value>> {
     let q = parse_query(q)?;
     Ok(Json(
@@ -519,18 +508,10 @@ async fn create_draft(
 ) -> Result<Json<Value>> {
     Ok(Json(s.store.create_draft(&p, parse_json(body)?).await?))
 }
-async fn get_draft(
-    State(s): State<HttpState>,
-    Extension(p): Extension<Principal>,
-    Path(path): Path<NodePath>,
-) -> Result<Json<Value>> {
+async fn get_draft((State(s), Extension(p), Path(path)): NodeRoute) -> Result<Json<Value>> {
     Ok(Json(s.store.get_draft(&p, record_id(path)?).await?))
 }
-async fn validate_draft(
-    State(s): State<HttpState>,
-    Extension(p): Extension<Principal>,
-    Path(path): Path<NodePath>,
-) -> Result<Json<Value>> {
+async fn validate_draft((State(s), Extension(p), Path(path)): NodeRoute) -> Result<Json<Value>> {
     Ok(Json(s.store.validate_draft(&p, record_id(path)?).await?))
 }
 #[derive(Deserialize)]
@@ -539,9 +520,7 @@ struct ApplyRequest {
     idempotency_key: String,
 }
 async fn apply_draft(
-    State(s): State<HttpState>,
-    Extension(p): Extension<Principal>,
-    Path(path): Path<NodePath>,
+    (State(s), Extension(p), Path(path)): NodeRoute,
     body: std::result::Result<Json<ApplyRequest>, JsonRejection>,
 ) -> Result<Json<MutationResult>> {
     let req = parse_json(body)?;

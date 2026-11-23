@@ -14,23 +14,62 @@ async fn upgrade_from_previous_schema_preserves_data() {
         .unwrap();
     let mut tx = pool.begin().await.unwrap();
     let schema = format!("release_upgrade_{}", Uuid::new_v4().simple());
-    sqlx::raw_sql(&format!(
-        "CREATE SCHEMA {schema}; SET LOCAL search_path TO {schema},pg_catalog; SET LOCAL statement_timeout='10s';"
-    ))
-    .execute(&mut *tx)
-    .await
-    .unwrap();
-    for migration in [
-        include_str!("../migrations/0001_initial.sql"),
-        include_str!("../migrations/0002_workspace_credential_scope.sql"),
-        include_str!("../migrations/0003_knowledge_pagination.sql"),
-        include_str!("../migrations/0004_graph_contract.sql"),
-        include_str!("../migrations/0005_knowledge_contract.sql"),
-        include_str!("../migrations/0006_unified_revisions.sql"),
-        include_str!("../migrations/0007_shared_node_fields.sql"),
-    ] {
-        sqlx::raw_sql(migration).execute(&mut *tx).await.unwrap();
+    install_schema_seven(&mut tx, &schema).await;
+    seed_schema_seven(&mut tx).await;
+
+    // Full rows include CAS versions, timestamps, summaries, provenance, search
+    // vectors, tombstones and immutable relationships, rather than just counts.
+    let tables = [
+        "workspaces",
+        "credentials",
+        "nodes",
+        "edges",
+        "node_revisions",
+        "edge_versions",
+        "link_sets",
+        "link_set_members",
+        "history_entries",
+        "change_sets",
+        "idempotency_receipts",
+    ];
+    let mut before = Vec::new();
+    for table in tables {
+        let rows: Vec<Value> = sqlx::query_scalar(&format!(
+            "SELECT to_jsonb(t) FROM {table} t ORDER BY to_jsonb(t)::text"
+        ))
+        .fetch_all(&mut *tx)
+        .await
+        .unwrap();
+        before.push(rows);
     }
+
+    sqlx::raw_sql(include_str!("../migrations/0008_ready_projection.sql"))
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+
+    for (table, expected) in tables.into_iter().zip(before) {
+        let after: Vec<Value> = sqlx::query_scalar(&format!(
+            "SELECT to_jsonb(t) FROM {table} t ORDER BY to_jsonb(t)::text"
+        ))
+        .fetch_all(&mut *tx)
+        .await
+        .unwrap();
+        assert_eq!(after, expected, "upgrade changed durable table {table}");
+    }
+    assert_projection(&mut tx).await;
+    tx.rollback().await.unwrap();
+    let remains: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname=$1)")
+            .bind(schema)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(!remains, "the entire private schema must be rolled back");
+    pool.close().await;
+}
+
+async fn seed_schema_seven(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>) {
     sqlx::raw_sql(
         r#"
 INSERT INTO workspaces(id) VALUES
@@ -85,54 +124,16 @@ INSERT INTO idempotency_receipts(workspace_id,actor_id,operation,key,payload_has
 SELECT id,'original-author','apply','upgrade-replay',repeat('a',64),'{"preserve":"receipt"}' FROM workspaces;
 "#,
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     .unwrap();
+}
 
-    // Full rows include CAS versions, timestamps, summaries, provenance, search
-    // vectors, tombstones and immutable relationships, rather than just counts.
-    let tables = [
-        "workspaces",
-        "credentials",
-        "nodes",
-        "edges",
-        "node_revisions",
-        "edge_versions",
-        "link_sets",
-        "link_set_members",
-        "history_entries",
-        "change_sets",
-        "idempotency_receipts",
-    ];
-    let mut before = Vec::new();
-    for table in tables {
-        let rows: Vec<Value> = sqlx::query_scalar(&format!(
-            "SELECT to_jsonb(t) FROM {table} t ORDER BY to_jsonb(t)::text"
-        ))
-        .fetch_all(&mut *tx)
-        .await
-        .unwrap();
-        before.push(rows);
-    }
-
-    sqlx::raw_sql(include_str!("../migrations/0008_ready_projection.sql"))
-        .execute(&mut *tx)
-        .await
-        .unwrap();
-
-    for (table, expected) in tables.into_iter().zip(before) {
-        let after: Vec<Value> = sqlx::query_scalar(&format!(
-            "SELECT to_jsonb(t) FROM {table} t ORDER BY to_jsonb(t)::text"
-        ))
-        .fetch_all(&mut *tx)
-        .await
-        .unwrap();
-        assert_eq!(after, expected, "upgrade changed durable table {table}");
-    }
+async fn assert_projection(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>) {
     let projection: Vec<Value> = sqlx::query_scalar(
         "SELECT jsonb_build_array(node_id,live_child_count,eligible,guard) FROM node_ready_projection ORDER BY node_id",
     )
-    .fetch_all(&mut *tx)
+    .fetch_all(&mut **tx)
     .await
     .unwrap();
     let expected: Vec<Value> = (1..=12)
@@ -149,22 +150,33 @@ SELECT id,'original-author','apply','upgrade-replay',repeat('a',64),'{"preserve"
     let candidates: Vec<Uuid> = sqlx::query_scalar(
         "SELECT node_id FROM node_ready_projection WHERE eligible AND live_child_count=0 ORDER BY node_id",
     )
-    .fetch_all(&mut *tx)
+    .fetch_all(&mut **tx)
     .await
     .unwrap();
     assert_eq!(candidates, [2, 10, 11, 12].map(Uuid::from_u128));
     let discrepancies = sqlx::raw_sql(include_str!("../scripts/check-ready-projection.sql"))
-        .fetch_all(&mut *tx)
+        .fetch_all(&mut **tx)
         .await
         .unwrap();
     assert!(discrepancies.is_empty());
-    tx.rollback().await.unwrap();
-    let remains: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname=$1)")
-            .bind(schema)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    assert!(!remains, "the entire private schema must be rolled back");
-    pool.close().await;
+}
+
+async fn install_schema_seven(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, schema: &str) {
+    sqlx::raw_sql(&format!(
+        "CREATE SCHEMA {schema}; SET LOCAL search_path TO {schema},pg_catalog; SET LOCAL statement_timeout='10s';"
+    ))
+    .execute(&mut **tx)
+    .await
+    .unwrap();
+    for migration in [
+        include_str!("../migrations/0001_initial.sql"),
+        include_str!("../migrations/0002_workspace_credential_scope.sql"),
+        include_str!("../migrations/0003_knowledge_pagination.sql"),
+        include_str!("../migrations/0004_graph_contract.sql"),
+        include_str!("../migrations/0005_knowledge_contract.sql"),
+        include_str!("../migrations/0006_unified_revisions.sql"),
+        include_str!("../migrations/0007_shared_node_fields.sql"),
+    ] {
+        sqlx::raw_sql(migration).execute(&mut **tx).await.unwrap();
+    }
 }

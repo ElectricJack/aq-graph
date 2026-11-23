@@ -13,33 +13,45 @@ fn related(nodes: &mut BTreeSet<Uuid>, edges: &mut BTreeSet<Uuid>, edge: &Edge) 
     edges.insert(edge.id);
 }
 
-pub(super) async fn before(tx: &mut Tx<'_>, workspace: Uuid, ops: &[Mutation]) -> Result<Value> {
-    let mut nodes = BTreeSet::new();
-    let mut edges = BTreeSet::new();
-    let mut removals = BTreeSet::new();
-    let mut parents = BTreeSet::new();
-    let mut restores = vec![];
-    let mut planned = BTreeMap::new();
-    for op in ops {
+#[derive(Default)]
+struct AffectedRecords {
+    nodes: BTreeSet<Uuid>,
+    edges: BTreeSet<Uuid>,
+    parents: BTreeSet<Uuid>,
+    removals: BTreeSet<Uuid>,
+    planned: BTreeMap<Uuid, (Uuid, Uuid)>,
+    restores: Vec<(Uuid, i64)>,
+}
+
+impl AffectedRecords {
+    fn include_edge_rows(&mut self, rows: Vec<Value>) -> Result<()> {
+        for row in rows {
+            let edge: Edge = decode(row)?;
+            related(&mut self.nodes, &mut self.edges, &edge);
+        }
+        Ok(())
+    }
+
+    fn include_mutation(&mut self, op: &Mutation) -> Result<()> {
         match op {
             Mutation::CreateNode { id, .. } => {
-                nodes.insert(required_id(*id)?);
+                self.nodes.insert(required_id(*id)?);
             }
             Mutation::UpdateNode { id, .. }
             | Mutation::DeleteNode { id, .. }
             | Mutation::VerifyKnowledge { id, .. }
             | Mutation::VerifyNode { id, .. }
             | Mutation::SetSummary { id, .. } => {
-                nodes.insert(*id);
+                self.nodes.insert(*id);
             }
             Mutation::RestoreNode { id, revision, .. } => {
-                nodes.insert(*id);
-                restores.push((*id, *revision));
+                self.nodes.insert(*id);
+                self.restores.push((*id, *revision));
             }
             Mutation::SetParent { id, parent_id, .. } => {
-                nodes.insert(*id);
-                nodes.extend(*parent_id);
-                parents.insert(*id);
+                self.nodes.insert(*id);
+                self.nodes.extend(*parent_id);
+                self.parents.insert(*id);
             }
             Mutation::AddEdge {
                 id,
@@ -49,21 +61,26 @@ pub(super) async fn before(tx: &mut Tx<'_>, workspace: Uuid, ops: &[Mutation]) -
                 ..
             } => {
                 let id = required_id(*id)?;
-                edges.insert(id);
-                nodes.insert(*source);
+                self.edges.insert(id);
+                self.nodes.insert(*source);
                 if structural(*edge_type) {
-                    nodes.insert(*target);
+                    self.nodes.insert(*target);
                 }
-                planned.insert(id, (*source, *target));
+                self.planned.insert(id, (*source, *target));
             }
             Mutation::RemoveEdge { id, .. } => {
-                edges.insert(*id);
-                removals.insert(*id);
+                self.edges.insert(*id);
+                self.removals.insert(*id);
             }
         }
+        Ok(())
     }
-    if !removals.is_empty() {
-        let ids: Vec<_> = removals.iter().copied().collect();
+
+    async fn collect_removed_edges(&mut self, tx: &mut Tx<'_>, workspace: Uuid) -> Result<()> {
+        if self.removals.is_empty() {
+            return Ok(());
+        }
+        let ids: Vec<_> = self.removals.iter().copied().collect();
         let values = sqlx::query_scalar::<_, Value>(
             "SELECT to_jsonb(e) FROM edges e WHERE workspace_id=$1 AND id=ANY($2)",
         )
@@ -71,47 +88,53 @@ pub(super) async fn before(tx: &mut Tx<'_>, workspace: Uuid, ops: &[Mutation]) -
         .bind(ids)
         .fetch_all(&mut **tx)
         .await?;
-        for value in values {
-            let edge: Edge = decode(value)?;
-            related(&mut nodes, &mut edges, &edge);
-        }
+        self.include_edge_rows(values)?;
         // A removed edge may first be created by an earlier operation in this
         // same draft. Its endpoints still belong in the reviewable before set.
-        for id in removals {
-            if let Some((source, target)) = planned.get(&id) {
-                nodes.extend([*source, *target]);
+        for id in &self.removals {
+            if let Some((source, target)) = self.planned.get(id) {
+                self.nodes.extend([*source, *target]);
             }
         }
+        Ok(())
     }
-    let parent_children: Vec<_> = parents.iter().copied().collect();
-    let mut prior_parent_ids = vec![];
-    if !parents.is_empty() {
-        prior_parent_ids=sqlx::query_scalar::<_,Uuid>("SELECT id FROM edges WHERE workspace_id=$1 AND target=ANY($2) AND edge_type='parent-child' ORDER BY id LIMIT 20001").bind(workspace).bind(&parent_children).fetch_all(&mut **tx).await?;
-        if prior_parent_ids.len() > 20000 {
-            return Err(Error::Validation(
+    async fn collect_parents(
+        &mut self,
+        tx: &mut Tx<'_>,
+        workspace: Uuid,
+    ) -> Result<(Vec<Uuid>, Vec<Uuid>)> {
+        let parent_children: Vec<_> = self.parents.iter().copied().collect();
+        let mut prior_parent_ids = vec![];
+        if !self.parents.is_empty() {
+            prior_parent_ids=sqlx::query_scalar::<_,Uuid>("SELECT id FROM edges WHERE workspace_id=$1 AND target=ANY($2) AND edge_type='parent-child' ORDER BY id LIMIT 20001").bind(workspace).bind(&parent_children).fetch_all(&mut **tx).await?;
+            if prior_parent_ids.len() > 20000 {
+                return Err(Error::Validation(
                 "parent relationship history is too large for draft preview; use a smaller draft"
                     .into(),
             ));
+            }
+
+            let values=sqlx::query_scalar::<_,Value>("SELECT to_jsonb(e) FROM edges e WHERE workspace_id=$1 AND target=ANY($2) AND edge_type='parent-child' AND NOT deleted").bind(workspace).bind(&parent_children).fetch_all(&mut **tx).await?;
+            self.include_edge_rows(values)?;
         }
-        let ids: Vec<_> = parents.into_iter().collect();
-        let values=sqlx::query_scalar::<_,Value>("SELECT to_jsonb(e) FROM edges e WHERE workspace_id=$1 AND target=ANY($2) AND edge_type='parent-child' AND NOT deleted").bind(workspace).bind(ids).fetch_all(&mut **tx).await?;
-        for value in values {
-            let edge: Edge = decode(value)?;
-            related(&mut nodes, &mut edges, &edge);
-        }
+        Ok((parent_children, prior_parent_ids))
     }
-    if !restores.is_empty() {
-        let ids: Vec<_> = restores.iter().map(|(id, _)| *id).collect();
-        let values=sqlx::query_scalar::<_,Value>("SELECT to_jsonb(e) FROM edges e WHERE workspace_id=$1 AND NOT deleted AND (source=ANY($2) OR (target=ANY($2) AND edge_type IN ('blocks','parent-child')))").bind(workspace).bind(ids).fetch_all(&mut **tx).await?;
-        for value in values {
-            let edge: Edge = decode(value)?;
-            related(&mut nodes, &mut edges, &edge);
+    async fn collect_restored_edges(&mut self, tx: &mut Tx<'_>, workspace: Uuid) -> Result<()> {
+        if self.restores.is_empty() {
+            return Ok(());
         }
-        for (id, revision) in restores {
+        let ids: Vec<_> = self.restores.iter().map(|(id, _)| *id).collect();
+        let values=sqlx::query_scalar::<_,Value>("SELECT to_jsonb(e) FROM edges e WHERE workspace_id=$1 AND NOT deleted AND (source=ANY($2) OR (target=ANY($2) AND edge_type IN ('blocks','parent-child')))").bind(workspace).bind(ids).fetch_all(&mut **tx).await?;
+        self.include_edge_rows(values)?;
+        self.collect_historical_links(tx, workspace).await?;
+        Ok(())
+    }
+    async fn collect_historical_links(&mut self, tx: &mut Tx<'_>, workspace: Uuid) -> Result<()> {
+        for (id, revision) in self.restores.iter().copied() {
             match revision_links::load_links(tx, workspace, id, revision).await {
                 Ok(historical) => {
                     for edge in historical {
-                        related(&mut nodes, &mut edges, &edge);
+                        related(&mut self.nodes, &mut self.edges, &edge);
                     }
                 }
                 // Execution remains authoritative for invalid, newly-created,
@@ -120,31 +143,21 @@ pub(super) async fn before(tx: &mut Tx<'_>, workspace: Uuid, ops: &[Mutation]) -
                 Err(error) => return Err(error),
             }
         }
+        Ok(())
     }
-    let node_ids: Vec<_> = nodes.iter().copied().collect();
-    let edge_ids: Vec<_> = edges.iter().copied().collect();
-    let node_rows = sqlx::query_scalar::<_, Value>(
-        "SELECT to_jsonb(n)-'search_document' FROM nodes n WHERE workspace_id=$1 AND id=ANY($2)",
-    )
-    .bind(workspace)
-    .bind(&node_ids)
-    .fetch_all(&mut **tx)
-    .await?;
-    let edge_rows = sqlx::query_scalar::<_, Value>(
-        "SELECT to_jsonb(e) FROM edges e WHERE workspace_id=$1 AND id=ANY($2)",
-    )
-    .bind(workspace)
-    .bind(&edge_ids)
-    .fetch_all(&mut **tx)
-    .await?;
-    let node_rows: BTreeMap<Uuid, Value> = node_rows
-        .into_iter()
-        .map(|v| Ok((decode(v["id"].clone())?, v)))
-        .collect::<Result<_>>()?;
-    let edge_rows: BTreeMap<Uuid, Value> = edge_rows
-        .into_iter()
-        .map(|v| Ok((decode(v["id"].clone())?, v)))
-        .collect::<Result<_>>()?;
+}
+
+pub(super) async fn before(tx: &mut Tx<'_>, workspace: Uuid, ops: &[Mutation]) -> Result<Value> {
+    let mut affected = AffectedRecords::default();
+    for op in ops {
+        affected.include_mutation(op)?;
+    }
+    affected.collect_removed_edges(tx, workspace).await?;
+    let (parent_children, prior_parent_ids) = affected.collect_parents(tx, workspace).await?;
+    affected.collect_restored_edges(tx, workspace).await?;
+    let node_ids: Vec<_> = affected.nodes.iter().copied().collect();
+    let edge_ids: Vec<_> = affected.edges.iter().copied().collect();
+    let (node_rows, edge_rows) = read_rows(tx, workspace, &node_ids, &edge_ids).await?;
     let nodes: Vec<_> = node_ids
         .into_iter()
         .map(|id| json!({"id":id,"before":node_rows.get(&id).cloned().unwrap_or(Value::Null)}))
@@ -164,16 +177,8 @@ pub(super) async fn after(
     _change: Uuid,
     preview: Value,
 ) -> Result<Value> {
-    let mut nodes = BTreeMap::<Uuid, Value>::new();
-    let mut edges = BTreeMap::<Uuid, Value>::new();
-    for (category, items) in [("nodes", &mut nodes), ("edges", &mut edges)] {
-        for entry in preview[category]
-            .as_array()
-            .ok_or_else(|| Error::Internal("invalid preview".into()))?
-        {
-            items.insert(decode(entry["id"].clone())?, entry["before"].clone());
-        }
-    }
+    let nodes = before_values(&preview["nodes"])?;
+    let mut edges = before_values(&preview["edges"])?;
     let parent_children: Vec<Uuid> = decode(preview["_parent_children"].clone())?;
     let prior_parent_ids: Vec<Uuid> = decode(preview["_prior_parent_ids"].clone())?;
     // SetParent allocates its edge during execution. Compare identity sets to
@@ -191,18 +196,32 @@ pub(super) async fn after(
     }
     let node_ids: Vec<_> = nodes.keys().copied().collect();
     let edge_ids: Vec<_> = edges.keys().copied().collect();
+    let (node_rows, edge_rows) = read_rows(tx, workspace, &node_ids, &edge_ids).await?;
+    let nodes:Vec<_>=nodes.into_iter().map(|(id,before)|json!({"id":id,"before":before,"after":node_rows.get(&id).cloned().unwrap_or(Value::Null)})).collect();
+    let edges:Vec<_>=edges.into_iter().map(|(id,before)|json!({"id":id,"before":before,"after":edge_rows.get(&id).cloned().unwrap_or(Value::Null)})).collect();
+    let preview = json!({"nodes":nodes,"edges":edges});
+    check_response(&preview)?;
+    Ok(preview)
+}
+
+async fn read_rows(
+    tx: &mut Tx<'_>,
+    workspace: Uuid,
+    node_ids: &[Uuid],
+    edge_ids: &[Uuid],
+) -> Result<(BTreeMap<Uuid, Value>, BTreeMap<Uuid, Value>)> {
     let node_rows = sqlx::query_scalar::<_, Value>(
         "SELECT to_jsonb(n)-'search_document' FROM nodes n WHERE workspace_id=$1 AND id=ANY($2)",
     )
     .bind(workspace)
-    .bind(&node_ids)
+    .bind(node_ids)
     .fetch_all(&mut **tx)
     .await?;
     let edge_rows = sqlx::query_scalar::<_, Value>(
         "SELECT to_jsonb(e) FROM edges e WHERE workspace_id=$1 AND id=ANY($2)",
     )
     .bind(workspace)
-    .bind(&edge_ids)
+    .bind(edge_ids)
     .fetch_all(&mut **tx)
     .await?;
     let node_rows: BTreeMap<Uuid, Value> = node_rows
@@ -213,9 +232,15 @@ pub(super) async fn after(
         .into_iter()
         .map(|v| Ok((decode(v["id"].clone())?, v)))
         .collect::<Result<_>>()?;
-    let nodes:Vec<_>=nodes.into_iter().map(|(id,before)|json!({"id":id,"before":before,"after":node_rows.get(&id).cloned().unwrap_or(Value::Null)})).collect();
-    let edges:Vec<_>=edges.into_iter().map(|(id,before)|json!({"id":id,"before":before,"after":edge_rows.get(&id).cloned().unwrap_or(Value::Null)})).collect();
-    let preview = json!({"nodes":nodes,"edges":edges});
-    check_response(&preview)?;
-    Ok(preview)
+    Ok((node_rows, edge_rows))
+}
+
+fn before_values(entries: &Value) -> Result<BTreeMap<Uuid, Value>> {
+    let entries = entries
+        .as_array()
+        .ok_or_else(|| Error::Internal("invalid preview".into()))?;
+    entries
+        .iter()
+        .map(|entry| Ok((decode(entry["id"].clone())?, entry["before"].clone())))
+        .collect()
 }
