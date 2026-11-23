@@ -97,6 +97,14 @@ pub(super) struct Reparent<'a> {
     pub parent_id: Option<Uuid>,
 }
 impl Reparent<'_> {
+    fn journal(&self) -> Journal<'_> {
+        Journal {
+            principal: self.principal,
+            change: self.change,
+            reason: self.reason,
+        }
+    }
+
     pub(super) async fn apply(&self, tx: &mut Tx<'_>) -> Result<Value> {
         let (id, parent_id) = (self.id, self.parent_id);
         let p = self.principal;
@@ -123,18 +131,9 @@ impl Reparent<'_> {
         let mut changed = vec![id];
         changed.extend(old_parent);
         changed.extend(parent_id);
-        checkpoint_nodes(tx, p, self.change, changed, "reparented", self.reason).await?;
+        self.journal().checkpoint(tx, changed, "reparented").await?;
         let child = load_node(tx, p.workspace_id, id).await?;
-        history_entry(
-            tx,
-            p,
-            self.change,
-            vec![id],
-            "lifecycle",
-            "reparented",
-            self.reason,
-            json!({"from_parent":old_parent,"to_parent":parent_id,"version":child.version}),
-        )
+        self.journal().record(tx, HistoryEvent { nodes: vec![id], category: "lifecycle", operation: "reparented", data: json!({"from_parent":old_parent,"to_parent":parent_id,"version":child.version}) })
         .await?;
         encode(&child)
     }
@@ -167,17 +166,17 @@ impl Reparent<'_> {
             .bind(e.version)
             .execute(&mut **tx)
             .await?;
-        history_entry(
-            tx,
-            self.principal,
-            self.change,
-            vec![e.source, e.target],
-            "edge",
-            "removed",
-            self.reason,
-            encode(&e)?,
-        )
-        .await?;
+        self.journal()
+            .record(
+                tx,
+                HistoryEvent {
+                    nodes: vec![e.source, e.target],
+                    category: "edge",
+                    operation: "removed",
+                    data: encode(&e)?,
+                },
+            )
+            .await?;
         Ok(())
     }
     async fn attach(&self, tx: &mut Tx<'_>, parent: Uuid) -> Result<()> {
@@ -192,17 +191,17 @@ impl Reparent<'_> {
             json!({"id":Uuid::new_v4(),"workspace_id":self.principal.workspace_id,"source":parent,"target":self.id,"edge_type":"parent-child","source_revision":null,"target_revision":null,"description":null,"version":1,"deleted":false,"created_at":server_time()}),
         )?;
         sqlx::query("INSERT INTO edges(id,workspace_id,source,target,edge_type,source_revision,target_revision,version,deleted,created_at) VALUES($1,$2,$3,$4,'parent-child',NULL,NULL,1,false,$5)").bind(e.id).bind(self.principal.workspace_id).bind(parent).bind(self.id).bind(e.created_at).execute(&mut **tx).await?;
-        history_entry(
-            tx,
-            self.principal,
-            self.change,
-            vec![parent, self.id],
-            "edge",
-            "added",
-            self.reason,
-            encode(&e)?,
-        )
-        .await?;
+        self.journal()
+            .record(
+                tx,
+                HistoryEvent {
+                    nodes: vec![parent, self.id],
+                    category: "edge",
+                    operation: "added",
+                    data: encode(&e)?,
+                },
+            )
+            .await?;
         Ok(())
     }
 }

@@ -4,7 +4,7 @@ use aq_graph::{service, store::Store};
 use axum::{
     Router,
     body::{Body, to_bytes},
-    http::{Request, StatusCode},
+    http::{Method, Request, StatusCode},
 };
 use serde_json::{Value, json};
 use tower::ServiceExt;
@@ -37,40 +37,79 @@ impl Client {
             token,
         }
     }
-    async fn request(&self, method: &str, path: &str, body: Option<Value>) -> (StatusCode, Value) {
-        self.as_token(method, path, body, Some(&self.token)).await
-    }
-    async fn as_token(
+    async fn request(
         &self,
-        method: &str,
+        method: Method,
         path: &str,
         body: Option<Value>,
-        token: Option<&str>,
     ) -> (StatusCode, Value) {
-        let path = format!("/v1/workspaces/{}{path}", self.workspace);
+        self.as_token(Some(&self.token))
+            .request(method, path, body)
+            .await
+    }
+    fn as_token<'a>(&'a self, token: Option<&'a str>) -> Session<'a> {
+        Session {
+            client: self,
+            token,
+        }
+    }
+    async fn mutation(&self, key: &str, operations: Vec<Value>) -> (StatusCode, Value) {
+        self.request(
+            Method::POST,
+            "/mutations",
+            Some(json!({"idempotency_key":key,"operations":operations})),
+        )
+        .await
+    }
+    async fn create_task(&self, id: Uuid, state: &str, title: &str) -> Value {
+        self.create(
+            id,
+            json!({"op":"create_node","id":id,"kind":"task","title":title,"task_state":state}),
+        )
+        .await
+    }
+    async fn create_knowledge(&self, id: Uuid, title: &str) -> Value {
+        self.create(id, json!({"op":"create_node","id":id,"kind":"knowledge","title":title,"body":"authentication security evidence","knowledge_type":"decision"})).await
+    }
+    async fn create(&self, id: Uuid, op: Value) -> Value {
+        let (status, result) = self.mutation(&Uuid::new_v4().to_string(), vec![op]).await;
+        assert_eq!(status, StatusCode::OK, "{result}");
+        let (status, node) = self
+            .request(Method::GET, &format!("/nodes/{id}"), None)
+            .await;
+        assert_eq!(status, StatusCode::OK, "{node}");
+        node
+    }
+}
+struct Session<'a> {
+    client: &'a Client,
+    token: Option<&'a str>,
+}
+impl Session<'_> {
+    async fn request(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<Value>,
+    ) -> (StatusCode, Value) {
+        let path = format!("/v1/workspaces/{}{path}", self.client.workspace);
         self.raw(
             method,
             &path,
             body.map(|v| v.to_string()).unwrap_or_default(),
-            token,
         )
         .await
     }
-    async fn raw(
-        &self,
-        method: &str,
-        path: &str,
-        body: String,
-        token: Option<&str>,
-    ) -> (StatusCode, Value) {
+    async fn raw(&self, method: Method, path: &str, body: String) -> (StatusCode, Value) {
         let mut request = Request::builder()
             .method(method)
             .uri(path)
             .header("content-type", "application/json");
-        if let Some(token) = token {
+        if let Some(token) = self.token {
             request = request.header("authorization", format!("Bearer {token}"));
         }
         let response = self
+            .client
             .app
             .clone()
             .oneshot(request.body(Body::from(body)).unwrap())
@@ -89,26 +128,6 @@ impl Client {
         });
         (status, value)
     }
-    async fn mutation(&self, key: &str, operations: Vec<Value>) -> (StatusCode, Value) {
-        self.request(
-            "POST",
-            "/mutations",
-            Some(json!({"idempotency_key":key,"operations":operations})),
-        )
-        .await
-    }
-    async fn create(&self, id: Uuid, kind: &str, state: &str, title: &str) -> Value {
-        let op = if kind == "task" {
-            json!({"op":"create_node","id":id,"kind":"task","title":title,"task_state":state})
-        } else {
-            json!({"op":"create_node","id":id,"kind":"knowledge","title":title,"body":"authentication security evidence","knowledge_type":"decision"})
-        };
-        let (status, result) = self.mutation(&Uuid::new_v4().to_string(), vec![op]).await;
-        assert_eq!(status, StatusCode::OK, "{result}");
-        let (status, node) = self.request("GET", &format!("/nodes/{id}"), None).await;
-        assert_eq!(status, StatusCode::OK, "{node}");
-        node
-    }
 }
 fn patch(id: Uuid, version: i64, content: Value) -> Value {
     json!({"op":"update_node","id":id,"expected_version":version,"patch":content})
@@ -124,16 +143,23 @@ fn items(value: &Value) -> &Vec<Value> {
 async fn authentication_workspace_capability_and_protocol_errors() {
     let c = Client::new().await;
     assert_eq!(
-        c.as_token("GET", "/nodes", None, None).await.0,
+        c.as_token(None)
+            .request(Method::GET, "/nodes", None)
+            .await
+            .0,
         StatusCode::UNAUTHORIZED
     );
     assert_eq!(
-        c.as_token("GET", "/nodes", None, Some("invalid")).await.0,
+        c.as_token(Some("invalid"))
+            .request(Method::GET, "/nodes", None)
+            .await
+            .0,
         StatusCode::UNAUTHORIZED
     );
     let foreign = format!("/v1/workspaces/{}/nodes", Uuid::new_v4());
     assert_eq!(
-        c.raw("GET", &foreign, String::new(), Some(&c.token))
+        c.as_token(Some(&c.token))
+            .raw(Method::GET, &foreign, String::new())
             .await
             .0,
         StatusCode::UNAUTHORIZED
@@ -141,10 +167,10 @@ async fn authentication_workspace_capability_and_protocol_errors() {
     let foreign_client = Client::new().await;
     let foreign_node = Uuid::new_v4();
     foreign_client
-        .create(foreign_node, "task", "active", "private")
+        .create_task(foreign_node, "active", "private")
         .await;
     let (status, error) = c
-        .request("GET", &format!("/nodes/{foreign_node}"), None)
+        .request(Method::GET, &format!("/nodes/{foreign_node}"), None)
         .await;
     assert_eq!(
         status,
@@ -152,89 +178,24 @@ async fn authentication_workspace_capability_and_protocol_errors() {
         "foreign record identity must not escape scope: {error}"
     );
     let (status, error) = c
-        .request("DELETE", "/credentials/contract-test", None)
+        .request(Method::DELETE, "/credentials/contract-test", None)
         .await;
     assert_eq!(
         status,
         StatusCode::CONFLICT,
         "last administrator must remain: {error}"
     );
-    let reader = format!("reader-{}", Uuid::new_v4());
-    assert_eq!(
-        c.request(
-            "POST",
-            "/credentials",
-            Some(json!({"actor_id":"reader","token":reader,"capability":"read"}))
-        )
-        .await
-        .0,
-        StatusCode::OK
-    );
-    let (status,error)=c.as_token("POST","/mutations",Some(json!({"idempotency_key":"denied","operations":[{"op":"create_node","kind":"task","title":"denied"}]})),Some(&reader)).await;
-    assert_eq!(status, StatusCode::FORBIDDEN, "{error}");
-    assert_eq!(error["error"]["code"], "forbidden");
-    assert_eq!(
-        c.as_token("GET", "/nodes", None, Some(&reader)).await.0,
-        StatusCode::OK
-    );
-    assert_eq!(
-        c.request("DELETE", "/credentials/reader", None).await.0,
-        StatusCode::OK
-    );
-    assert_eq!(
-        c.as_token("GET", "/nodes", None, Some(&reader)).await.0,
-        StatusCode::UNAUTHORIZED
-    );
-    for path in [
-        "/nodes/not-a-uuid",
-        "/nodes/%FF",
-        "/nodes?limit=not-a-number",
-        "/nodes?limit=201",
-    ] {
-        let (status, value) = c.request("GET", path, None).await;
-        assert_eq!(status, StatusCode::BAD_REQUEST, "{value}");
-        assert!(value["error"]["code"].is_string());
-    }
-    let path = format!("/v1/workspaces/{}/mutations", c.workspace);
-    assert_eq!(
-        c.raw("POST", &path, "{".into(), Some(&c.token)).await.0,
-        StatusCode::BAD_REQUEST
-    );
-    assert_eq!(
-        c.raw(
-            "POST",
-            &path,
-            "x".repeat(service::MAX_REQUEST_BYTES + 1),
-            Some(&c.token)
-        )
-        .await
-        .0,
-        StatusCode::PAYLOAD_TOO_LARGE
-    );
-    let (status, error) = c.raw("GET", "/missing", String::new(), None).await;
-    assert_eq!(status, StatusCode::NOT_FOUND);
-    assert_eq!(error["error"]["code"], "not_found");
+    assert_revocable_reader(&c).await;
+    assert_invalid_routes(&c).await;
 }
 
 #[tokio::test]
 async fn selective_history_version_conflicts_noops_and_content_restore() {
     let c = Client::new().await;
     let id = Uuid::new_v4();
-    let node = c.create(id, "task", "draft", "original").await;
+    let node = c.create_task(id, "draft", "original").await;
     let v = node["version"].as_i64().unwrap();
-    let (_, before) = c
-        .request("GET", &format!("/nodes/{id}/history"), None)
-        .await;
-    assert_eq!(
-        c.mutation("noop", vec![patch(id, v, json!({"title":"original"}))])
-            .await
-            .0,
-        StatusCode::OK
-    );
-    let (_, noop) = c
-        .request("GET", &format!("/nodes/{id}/history"), None)
-        .await;
-    assert_eq!(before, noop, "no-op edit must not create history");
+    assert_noop_history(&c, id, v).await;
     assert_eq!(
         c.mutation(
             "activate",
@@ -244,7 +205,7 @@ async fn selective_history_version_conflicts_noops_and_content_restore() {
         .0,
         StatusCode::OK
     );
-    let (_, active) = c.request("GET", &format!("/nodes/{id}"), None).await;
+    let (_, active) = c.request(Method::GET, &format!("/nodes/{id}"), None).await;
     assert_eq!(
         active["content_revision"].as_i64().unwrap(),
         node["content_revision"].as_i64().unwrap() + 1,
@@ -269,28 +230,11 @@ async fn selective_history_version_conflicts_noops_and_content_restore() {
         .0,
         StatusCode::OK
     );
-    let (_, current) = c.request("GET", &format!("/nodes/{id}"), None).await;
-    let (_, history) = c
-        .request("GET", &format!("/nodes/{id}/history"), None)
-        .await;
-    let revisions = items(&history)
-        .iter()
-        .filter(|e| e["category"] == "revision")
-        .count();
-    let events = items(&history)
-        .iter()
-        .filter(|e| e["category"] == "lifecycle")
-        .count();
-    assert_eq!(revisions, 3, "{history}");
-    assert!(events >= 2, "{history}");
-    assert!(
-        items(&history)
-            .iter()
-            .all(|e| e["actor_id"] == "contract-test" && e["change_set_id"].is_string())
-    );
+    let (_, current) = c.request(Method::GET, &format!("/nodes/{id}"), None).await;
+    assert_revision_events(&c, id).await;
     let (_, diff) = c
         .request(
-            "GET",
+            Method::GET,
             &format!(
                 "/nodes/{id}/diff?from={}&to={}",
                 node["content_revision"], current["content_revision"]
@@ -306,32 +250,7 @@ async fn selective_history_version_conflicts_noops_and_content_restore() {
             .any(|d| d["field"] == "title"),
         "{diff}"
     );
-    let restore = json!({"op":"restore_node","id":id,"expected_version":current["version"],"revision":node["content_revision"]});
-    let (status, result) = c.mutation("restore", vec![restore]).await;
-    assert_eq!(status, StatusCode::OK, "{result}");
-    let (_, restored) = c.request("GET", &format!("/nodes/{id}"), None).await;
-    assert_eq!(restored["title"], "original");
-    assert_eq!(restored["task_state"], "completed");
-    assert!(
-        restored["content_revision"].as_i64().unwrap()
-            > current["content_revision"].as_i64().unwrap()
-    );
-    let (_, page) = c
-        .request("GET", &format!("/nodes/{id}/history?limit=1"), None)
-        .await;
-    assert_eq!(items(&page).len(), 1);
-    assert!(page["next_cursor"].is_string());
-    let (_, page2) = c
-        .request(
-            "GET",
-            &format!(
-                "/nodes/{id}/history?limit=1&cursor={}",
-                page["next_cursor"].as_str().unwrap()
-            ),
-            None,
-        )
-        .await;
-    assert_ne!(items(&page)[0]["entry_id"], items(&page2)[0]["entry_id"]);
+    assert_content_restored(&c, id, &node, &current).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -367,7 +286,7 @@ async fn concurrent_idempotency_and_same_record_edit_conflict() {
         }
     }
     let (_, history) = c
-        .request("GET", &format!("/nodes/{id}/history"), None)
+        .request(Method::GET, &format!("/nodes/{id}/history"), None)
         .await;
     assert_eq!(
         items(&history)
@@ -383,7 +302,7 @@ async fn concurrent_idempotency_and_same_record_edit_conflict() {
         )
         .await;
     assert_eq!(status, StatusCode::CONFLICT);
-    let (_, node) = c.request("GET", &format!("/nodes/{id}"), None).await;
+    let (_, node) = c.request(Method::GET, &format!("/nodes/{id}"), None).await;
     let v = node["version"].as_i64().unwrap();
     let (a, b) = tokio::join!(
         c.mutation("edit-a", vec![patch(id, v, json!({"title":"a"}))]),
@@ -403,8 +322,8 @@ async fn competing_cycle_insertions_and_readiness_semantics() {
     let c = Client::new().await;
     let a = Uuid::new_v4();
     let b = Uuid::new_v4();
-    c.create(a, "task", "active", "a").await;
-    c.create(b, "task", "active", "b").await;
+    c.create_task(a, "active", "a").await;
+    c.create_task(b, "active", "b").await;
     let (first, second) = tokio::join!(
         c.mutation("a-b", vec![edge(a, b, "blocks")]),
         c.mutation("b-a", vec![edge(b, a, "blocks")])
@@ -426,61 +345,11 @@ async fn competing_cycle_insertions_and_readiness_semantics() {
         loser == StatusCode::CONFLICT || loser == StatusCode::BAD_REQUEST,
         "{first:?} {second:?}"
     );
-    let (_, ready) = c.request("GET", "/ready", None).await;
+    let (_, ready) = c.request(Method::GET, "/ready", None).await;
     assert_eq!(items(&ready).len(), 1, "{ready}");
     let prerequisite = if first.0 == StatusCode::OK { a } else { b };
-    let (_, node) = c
-        .request("GET", &format!("/nodes/{prerequisite}"), None)
-        .await;
-    assert_eq!(
-        c.mutation(
-            "cancel",
-            vec![patch(
-                prerequisite,
-                node["version"].as_i64().unwrap(),
-                json!({"task_state":"canceled"})
-            )]
-        )
-        .await
-        .0,
-        StatusCode::OK
-    );
-    let (_, ready) = c.request("GET", "/ready", None).await;
-    assert!(
-        items(&ready).is_empty(),
-        "canceled prerequisite remains unresolved"
-    );
-    let (_, node) = c
-        .request("GET", &format!("/nodes/{prerequisite}"), None)
-        .await;
-    assert_eq!(
-        c.mutation(
-            "complete",
-            vec![patch(
-                prerequisite,
-                node["version"].as_i64().unwrap(),
-                json!({"task_state":"completed"})
-            )]
-        )
-        .await
-        .0,
-        StatusCode::OK
-    );
-    let (_, ready) = c.request("GET", "/ready", None).await;
-    assert_eq!(items(&ready).len(), 1);
-    let x = Uuid::new_v4();
-    let y = Uuid::new_v4();
-    c.create(x, "task", "active", "x").await;
-    c.create(y, "task", "active", "y").await;
-    let (a, b) = tokio::join!(
-        c.mutation("parent-a", vec![edge(x, y, "parent-child")]),
-        c.mutation("parent-b", vec![edge(y, x, "parent-child")])
-    );
-    assert_eq!(
-        [a.0, b.0].iter().filter(|s| **s == StatusCode::OK).count(),
-        1,
-        "{a:?} {b:?}"
-    );
+    assert_prerequisite_lifecycle(&c, prerequisite).await;
+    assert_competing_parent_edges(&c).await;
 }
 
 #[tokio::test]
@@ -489,96 +358,55 @@ async fn draft_validation_rollback_atomic_apply_stale_and_restart() {
     let id = Uuid::new_v4();
     let proposal = json!({"name":"reviewed plan","idempotency_key":"draft-create","operations":[{"op":"create_node","id":id,"kind":"task","title":"proposed","task_state":"active"}]});
     let (status, draft) = c
-        .request("POST", "/changesets", Some(proposal.clone()))
+        .request(Method::POST, "/changesets", Some(proposal.clone()))
         .await;
     assert_eq!(status, StatusCode::OK, "{draft}");
     let draft_id = draft["id"].as_str().unwrap();
     assert_eq!(
-        c.request("GET", &format!("/nodes/{id}"), None).await.0,
+        c.request(Method::GET, &format!("/nodes/{id}"), None)
+            .await
+            .0,
         StatusCode::NOT_FOUND
     );
     let (status, validation) = c
-        .request("POST", &format!("/changesets/{draft_id}/validate"), None)
+        .request(
+            Method::POST,
+            &format!("/changesets/{draft_id}/validate"),
+            None,
+        )
         .await;
     assert_eq!(status, StatusCode::OK, "{validation}");
     assert_eq!(validation["valid"], true);
     assert_eq!(
-        c.request("GET", &format!("/nodes/{id}"), None).await.0,
+        c.request(Method::GET, &format!("/nodes/{id}"), None)
+            .await
+            .0,
         StatusCode::NOT_FOUND,
         "validation must roll back live records and their history"
     );
     let path = format!("/changesets/{draft_id}/apply");
     let (status, result) = c
-        .request("POST", &path, Some(json!({"idempotency_key":"apply"})))
+        .request(
+            Method::POST,
+            &path,
+            Some(json!({"idempotency_key":"apply"})),
+        )
         .await;
     assert_eq!(status, StatusCode::OK, "{result}");
     assert_eq!(
-        c.request("POST", &path, Some(json!({"idempotency_key":"apply"})))
-            .await
-            .1,
+        c.request(
+            Method::POST,
+            &path,
+            Some(json!({"idempotency_key":"apply"}))
+        )
+        .await
+        .1,
         result
     );
-    let (_, node) = c.request("GET", &format!("/nodes/{id}"), None).await;
-    let bad = Uuid::new_v4();
-    let (status, result) = c
-        .mutation(
-            "rollback-batch",
-            vec![
-                json!({"op":"create_node","id":bad,"kind":"task","title":"must rollback"}),
-                patch(id, 9999, json!({"title":"stale"})),
-            ],
-        )
-        .await;
-    assert_eq!(status, StatusCode::CONFLICT, "{result}");
-    assert_eq!(
-        c.request("GET", &format!("/nodes/{bad}"), None).await.0,
-        StatusCode::NOT_FOUND
-    );
-    let stale = json!({"name":"stale","idempotency_key":"stale-draft","operations":[patch(id,node["version"].as_i64().unwrap(),json!({"title":"draft title"}))]});
-    let (_, draft) = c.request("POST", "/changesets", Some(stale)).await;
-    let draft_id = draft["id"].as_str().unwrap();
-    c.mutation(
-        "intervening",
-        vec![patch(
-            id,
-            node["version"].as_i64().unwrap(),
-            json!({"title":"newer"}),
-        )],
-    )
-    .await;
-    assert_eq!(
-        c.request(
-            "POST",
-            &format!("/changesets/{draft_id}/apply"),
-            Some(json!({"idempotency_key":"stale-apply"}))
-        )
-        .await
-        .0,
-        StatusCode::CONFLICT
-    );
-    // Construct a fresh store/router: credentials, receipts, and current records survive process state loss.
-    let store = Store::connect(&std::env::var("AQ_GRAPH_TEST_DATABASE_URL").unwrap(), 2)
-        .await
-        .unwrap();
-    let restarted = Client {
-        app: service::router(store),
-        workspace: c.workspace,
-        token: c.token.clone(),
-    };
-    assert_eq!(
-        restarted
-            .request("GET", &format!("/nodes/{id}"), None)
-            .await
-            .1["title"],
-        "newer"
-    );
-    assert_eq!(
-        restarted
-            .request("POST", &path, Some(json!({"idempotency_key":"apply"})))
-            .await
-            .0,
-        StatusCode::OK
-    );
+    let (_, node) = c.request(Method::GET, &format!("/nodes/{id}"), None).await;
+    assert_atomic_rollback(&c, id).await;
+    assert_stale_draft(&c, id, &node).await;
+    assert_restart_keeps_applied(&c, id, &path).await;
 }
 
 #[tokio::test]
@@ -586,9 +414,9 @@ async fn pinned_revisions_deletion_search_and_bounded_context() {
     let c = Client::new().await;
     let task = Uuid::new_v4();
     let knowledge = Uuid::new_v4();
-    let task_node = c.create(task, "task", "active", "implementation").await;
+    let task_node = c.create_task(task, "active", "implementation").await;
     let original = c
-        .create(knowledge, "knowledge", "", "authentication decision")
+        .create_knowledge(knowledge, "authentication decision")
         .await;
     let unavailable = json!({"op":"add_edge","source":task,"target":knowledge,"edge_type":"references","target_revision":999999});
     let (status, error) = c.mutation("unavailable-pin", vec![unavailable]).await;
@@ -613,7 +441,7 @@ async fn pinned_revisions_deletion_search_and_bounded_context() {
         StatusCode::OK
     );
     let (_, context) = c
-        .request("GET", &format!("/nodes/{task}/context"), None)
+        .request(Method::GET, &format!("/nodes/{task}/context"), None)
         .await;
     assert!(
         context["pinned_revisions"]
@@ -624,10 +452,213 @@ async fn pinned_revisions_deletion_search_and_bounded_context() {
         "{context}"
     );
     let (_, matches) = c
-        .request("GET", "/search?q=authentication&limit=1", None)
+        .request(Method::GET, "/search?q=authentication&limit=1", None)
         .await;
     assert_eq!(items(&matches).len(), 1, "{matches}");
-    let (_, current) = c.request("GET", &format!("/nodes/{knowledge}"), None).await;
+    assert_referenced_delete(&c, knowledge, &context).await;
+    assert_context_limits(&c, task).await;
+    let final_task = c
+        .request(Method::GET, &format!("/nodes/{task}"), None)
+        .await
+        .1;
+    assert_eq!(
+        final_task["version"].as_i64().unwrap(),
+        task_node["version"].as_i64().unwrap() + 6,
+        "each add/remove records a source revision"
+    );
+    assert_eq!(
+        final_task["title"], task_node["title"],
+        "relationship revisions preserve node content"
+    );
+}
+
+async fn assert_revocable_reader(c: &Client) {
+    let reader = format!("reader-{}", Uuid::new_v4());
+    assert_eq!(
+        c.request(
+            Method::POST,
+            "/credentials",
+            Some(json!({"actor_id":"reader","token":reader,"capability":"read"}))
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    let (status,error)=c.as_token(Some(&reader)).request(Method::POST, "/mutations", Some(json!({"idempotency_key":"denied","operations":[{"op":"create_node","kind":"task","title":"denied"}]}))).await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{error}");
+    assert_eq!(error["error"]["code"], "forbidden");
+    assert_eq!(
+        c.as_token(Some(&reader))
+            .request(Method::GET, "/nodes", None)
+            .await
+            .0,
+        StatusCode::OK
+    );
+    assert_eq!(
+        c.request(Method::DELETE, "/credentials/reader", None)
+            .await
+            .0,
+        StatusCode::OK
+    );
+    assert_eq!(
+        c.as_token(Some(&reader))
+            .request(Method::GET, "/nodes", None)
+            .await
+            .0,
+        StatusCode::UNAUTHORIZED
+    );
+}
+
+async fn assert_invalid_routes(c: &Client) {
+    for path in [
+        "/nodes/not-a-uuid",
+        "/nodes/%FF",
+        "/nodes?limit=not-a-number",
+        "/nodes?limit=201",
+    ] {
+        let (status, value) = c.request(Method::GET, path, None).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{value}");
+        assert!(value["error"]["code"].is_string());
+    }
+    let path = format!("/v1/workspaces/{}/mutations", c.workspace);
+    assert_eq!(
+        c.as_token(Some(&c.token))
+            .raw(Method::POST, &path, "{".into())
+            .await
+            .0,
+        StatusCode::BAD_REQUEST
+    );
+    assert_eq!(
+        c.as_token(Some(&c.token))
+            .raw(
+                Method::POST,
+                &path,
+                "x".repeat(service::MAX_REQUEST_BYTES + 1)
+            )
+            .await
+            .0,
+        StatusCode::PAYLOAD_TOO_LARGE
+    );
+    let (status, error) = c
+        .as_token(None)
+        .raw(Method::GET, "/missing", String::new())
+        .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert_eq!(error["error"]["code"], "not_found");
+}
+
+async fn assert_noop_history(c: &Client, id: Uuid, v: i64) {
+    let (_, before) = c
+        .request(Method::GET, &format!("/nodes/{id}/history"), None)
+        .await;
+    assert_eq!(
+        c.mutation("noop", vec![patch(id, v, json!({"title":"original"}))])
+            .await
+            .0,
+        StatusCode::OK
+    );
+    let (_, noop) = c
+        .request(Method::GET, &format!("/nodes/{id}/history"), None)
+        .await;
+    assert_eq!(before, noop, "no-op edit must not create history");
+}
+
+async fn assert_revision_events(c: &Client, id: Uuid) {
+    let (_, history) = c
+        .request(Method::GET, &format!("/nodes/{id}/history"), None)
+        .await;
+    let revisions = items(&history)
+        .iter()
+        .filter(|e| e["category"] == "revision")
+        .count();
+    let events = items(&history)
+        .iter()
+        .filter(|e| e["category"] == "lifecycle")
+        .count();
+    assert_eq!(revisions, 3, "{history}");
+    assert!(events >= 2, "{history}");
+    assert!(
+        items(&history)
+            .iter()
+            .all(|e| e["actor_id"] == "contract-test" && e["change_set_id"].is_string())
+    );
+}
+
+async fn assert_content_restored(c: &Client, id: Uuid, node: &Value, current: &Value) {
+    let restore = json!({"op":"restore_node","id":id,"expected_version":current["version"],"revision":node["content_revision"]});
+    let (status, result) = c.mutation("restore", vec![restore]).await;
+    assert_eq!(status, StatusCode::OK, "{result}");
+    let (_, restored) = c.request(Method::GET, &format!("/nodes/{id}"), None).await;
+    assert_eq!(restored["title"], "original");
+    assert_eq!(restored["task_state"], "completed");
+    assert!(
+        restored["content_revision"].as_i64().unwrap()
+            > current["content_revision"].as_i64().unwrap()
+    );
+    let (_, page) = c
+        .request(Method::GET, &format!("/nodes/{id}/history?limit=1"), None)
+        .await;
+    assert_eq!(items(&page).len(), 1);
+    assert!(page["next_cursor"].is_string());
+    let (_, page2) = c
+        .request(
+            Method::GET,
+            &format!(
+                "/nodes/{id}/history?limit=1&cursor={}",
+                page["next_cursor"].as_str().unwrap()
+            ),
+            None,
+        )
+        .await;
+    assert_ne!(items(&page)[0]["entry_id"], items(&page2)[0]["entry_id"]);
+}
+
+async fn assert_competing_parent_edges(c: &Client) {
+    let x = Uuid::new_v4();
+    let y = Uuid::new_v4();
+    c.create_task(x, "active", "x").await;
+    c.create_task(y, "active", "y").await;
+    let (a, b) = tokio::join!(
+        c.mutation("parent-a", vec![edge(x, y, "parent-child")]),
+        c.mutation("parent-b", vec![edge(y, x, "parent-child")])
+    );
+    assert_eq!(
+        [a.0, b.0].iter().filter(|s| **s == StatusCode::OK).count(),
+        1,
+        "{a:?} {b:?}"
+    );
+}
+
+async fn assert_restart_keeps_applied(c: &Client, id: Uuid, path: &str) {
+    // Construct a fresh store/router: credentials, receipts, and current records survive process state loss.
+    let store = Store::connect(&std::env::var("AQ_GRAPH_TEST_DATABASE_URL").unwrap(), 2)
+        .await
+        .unwrap();
+    let restarted = Client {
+        app: service::router(store),
+        workspace: c.workspace,
+        token: c.token.clone(),
+    };
+    assert_eq!(
+        restarted
+            .request(Method::GET, &format!("/nodes/{id}"), None)
+            .await
+            .1["title"],
+        "newer"
+    );
+    assert_eq!(
+        restarted
+            .request(Method::POST, path, Some(json!({"idempotency_key":"apply"})))
+            .await
+            .0,
+        StatusCode::OK
+    );
+}
+
+async fn assert_referenced_delete(c: &Client, knowledge: Uuid, context: &Value) {
+    let (_, current) = c
+        .request(Method::GET, &format!("/nodes/{knowledge}"), None)
+        .await;
     let (status, _) = c
         .mutation(
             "bad-delete",
@@ -650,24 +681,31 @@ async fn pinned_revisions_deletion_search_and_bounded_context() {
         )
         .await;
     assert_eq!(status, StatusCode::OK, "{result}");
-    let (_, deleted) = c.request("GET", &format!("/nodes/{knowledge}"), None).await;
+    let (_, deleted) = c
+        .request(Method::GET, &format!("/nodes/{knowledge}"), None)
+        .await;
     assert_eq!(deleted["deleted"], true);
-    let (_, matches) = c.request("GET", "/search?q=authentication", None).await;
+    let (_, matches) = c
+        .request(Method::GET, "/search?q=authentication", None)
+        .await;
     assert!(items(&matches).is_empty());
     let (_, history) = c
-        .request("GET", &format!("/nodes/{knowledge}/history"), None)
+        .request(Method::GET, &format!("/nodes/{knowledge}/history"), None)
         .await;
     assert!(!items(&history).is_empty());
+}
+
+async fn assert_context_limits(c: &Client, task: Uuid) {
     for i in 0..4 {
         let linked = Uuid::new_v4();
-        c.create(linked, "task", "active", &format!("linked {i}"))
+        c.create_task(linked, "active", &format!("linked {i}"))
             .await;
         c.mutation(&format!("link-{i}"), vec![edge(task, linked, "references")])
             .await;
     }
     let (_, small) = c
         .request(
-            "GET",
+            Method::GET,
             &format!("/nodes/{task}/context?limit=1&depth=2"),
             None,
         )
@@ -675,21 +713,106 @@ async fn pinned_revisions_deletion_search_and_bounded_context() {
     assert_eq!(small["truncated"], true, "{small}");
     assert!(small["nodes"].as_array().unwrap().len() <= 1);
     let (status, error) = c
-        .request("GET", &format!("/nodes/{task}/context?depth=99"), None)
+        .request(
+            Method::GET,
+            &format!("/nodes/{task}/context?depth=99"),
+            None,
+        )
         .await;
     assert_eq!(status, StatusCode::BAD_REQUEST, "{error}");
     let (status, error) = c
-        .request("GET", &format!("/nodes/{task}/context?max_bytes=1"), None)
+        .request(
+            Method::GET,
+            &format!("/nodes/{task}/context?max_bytes=1"),
+            None,
+        )
         .await;
     assert_eq!(status, StatusCode::BAD_REQUEST, "{error}");
-    let final_task = c.request("GET", &format!("/nodes/{task}"), None).await.1;
+}
+
+async fn assert_atomic_rollback(c: &Client, id: Uuid) {
+    let bad = Uuid::new_v4();
+    let (status, result) = c
+        .mutation(
+            "rollback-batch",
+            vec![
+                json!({"op":"create_node","id":bad,"kind":"task","title":"must rollback"}),
+                patch(id, 9999, json!({"title":"stale"})),
+            ],
+        )
+        .await;
+    assert_eq!(status, StatusCode::CONFLICT, "{result}");
     assert_eq!(
-        final_task["version"].as_i64().unwrap(),
-        task_node["version"].as_i64().unwrap() + 6,
-        "each add/remove records a source revision"
+        c.request(Method::GET, &format!("/nodes/{bad}"), None)
+            .await
+            .0,
+        StatusCode::NOT_FOUND
     );
+}
+
+async fn assert_stale_draft(c: &Client, id: Uuid, node: &Value) {
+    let stale = json!({"name":"stale","idempotency_key":"stale-draft","operations":[patch(id,node["version"].as_i64().unwrap(),json!({"title":"draft title"}))]});
+    let (_, draft) = c.request(Method::POST, "/changesets", Some(stale)).await;
+    let draft_id = draft["id"].as_str().unwrap();
+    c.mutation(
+        "intervening",
+        vec![patch(
+            id,
+            node["version"].as_i64().unwrap(),
+            json!({"title":"newer"}),
+        )],
+    )
+    .await;
     assert_eq!(
-        final_task["title"], task_node["title"],
-        "relationship revisions preserve node content"
+        c.request(
+            Method::POST,
+            &format!("/changesets/{draft_id}/apply"),
+            Some(json!({"idempotency_key":"stale-apply"}))
+        )
+        .await
+        .0,
+        StatusCode::CONFLICT
     );
+}
+
+async fn assert_prerequisite_lifecycle(c: &Client, prerequisite: Uuid) {
+    let (_, node) = c
+        .request(Method::GET, &format!("/nodes/{prerequisite}"), None)
+        .await;
+    assert_eq!(
+        c.mutation(
+            "cancel",
+            vec![patch(
+                prerequisite,
+                node["version"].as_i64().unwrap(),
+                json!({"task_state":"canceled"})
+            )]
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    let (_, ready) = c.request(Method::GET, "/ready", None).await;
+    assert!(
+        items(&ready).is_empty(),
+        "canceled prerequisite remains unresolved"
+    );
+    let (_, node) = c
+        .request(Method::GET, &format!("/nodes/{prerequisite}"), None)
+        .await;
+    assert_eq!(
+        c.mutation(
+            "complete",
+            vec![patch(
+                prerequisite,
+                node["version"].as_i64().unwrap(),
+                json!({"task_state":"completed"})
+            )]
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    let (_, ready) = c.request(Method::GET, "/ready", None).await;
+    assert_eq!(items(&ready).len(), 1);
 }

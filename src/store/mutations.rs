@@ -48,6 +48,14 @@ struct PendingEdge<'a> {
 }
 
 impl<'a> MutationBatch<'a> {
+    fn journal(&self) -> Journal<'_> {
+        Journal {
+            principal: self.principal,
+            change: self.change,
+            reason: self.reason,
+        }
+    }
+
     pub(super) fn new(
         principal: &'a Principal,
         change: Uuid,
@@ -266,19 +274,19 @@ impl<'a> MutationBatch<'a> {
     async fn persist_creation(&self, tx: &mut Tx<'_>, n: Node) -> Result<Value> {
         knowledge_rules::validate_create(&n)?;
         save_node(tx, &n, true).await?;
-        revision(tx, self.principal, self.change, &n, "created", self.reason).await?;
+        self.journal().revision(tx, &n, "created").await?;
         if let Some(state) = n.task_state {
-            history_entry(
-                tx,
-                self.principal,
-                self.change,
-                vec![n.id],
-                "lifecycle",
-                "created",
-                self.reason,
-                json!({"from":null,"to":state,"version":n.version}),
-            )
-            .await?;
+            self.journal()
+                .record(
+                    tx,
+                    HistoryEvent {
+                        nodes: vec![n.id],
+                        category: "lifecycle",
+                        operation: "created",
+                        data: json!({"from":null,"to":state,"version":n.version}),
+                    },
+                )
+                .await?;
         }
         encode(&n)
     }
@@ -307,7 +315,7 @@ impl<'a> MutationBatch<'a> {
             ));
         }
         knowledge_rules::authorize_edit(&self.authority, before)?;
-        if before.retired && !retirement_metadata_only(patch) {
+        if before.retired && !patch.retirement_metadata_only() {
             return Err(Error::Forbidden);
         }
         self.authorize_retirement(tx, patch).await?;
@@ -319,8 +327,7 @@ impl<'a> MutationBatch<'a> {
         Ok(())
     }
     async fn authorize_retirement(&self, tx: &mut Tx<'_>, patch: &NodePatch) -> Result<()> {
-        let retirement_change = patch.retired.is_some() || patch.retirement_reason.is_some();
-        if retirement_change || !patch.successor_id.is_keep() {
+        if patch.changes_retirement() {
             self.authority.require_admin()?;
             if !self.preview {
                 live_authority(tx, self.principal, true).await?;
@@ -357,19 +364,10 @@ impl<'a> MutationBatch<'a> {
         }
         save_node(tx, &n, false).await?;
         if content {
-            revision(tx, self.principal, self.change, &n, "updated", self.reason).await?;
+            self.journal().revision(tx, &n, "updated").await?;
         }
         if lifecycle {
-            history_entry(
-                tx,
-                self.principal,
-                self.change,
-                vec![n.id],
-                "lifecycle",
-                "transitioned",
-                self.reason,
-                json!({"from":before.task_state,"to":n.task_state,"version":n.version}),
-            )
+            self.journal().record(tx, HistoryEvent { nodes: vec![n.id], category: "lifecycle", operation: "transitioned", data: json!({"from":before.task_state,"to":n.task_state,"version":n.version}) })
             .await?;
         }
         encode(&n)
@@ -388,20 +386,20 @@ impl<'a> MutationBatch<'a> {
             n.content_revision += 1;
             n.updated_at = server_time();
             save_node(tx, &n, false).await?;
-            revision(tx, self.principal, self.change, &n, "deleted", self.reason).await?;
-            history_entry(
-                tx,
-                self.principal,
-                self.change,
-                vec![n.id],
-                "lifecycle",
-                "deleted",
-                self.reason,
-                json!({"deleted":true,"version":n.version}),
-            )
-            .await?;
+            self.journal().revision(tx, &n, "deleted").await?;
+            self.journal()
+                .record(
+                    tx,
+                    HistoryEvent {
+                        nodes: vec![n.id],
+                        category: "lifecycle",
+                        operation: "deleted",
+                        data: json!({"deleted":true,"version":n.version}),
+                    },
+                )
+                .await?;
             if n.kind == NodeKind::Task {
-                remove_task_links(tx, self.principal, self.change, n.id, self.reason).await?;
+                self.journal().remove_task_links(tx, n.id).await?;
             }
             self.deleted_nodes.push(n.id);
         }
@@ -421,26 +419,20 @@ impl<'a> MutationBatch<'a> {
         edge.validate_pins(tx, self.principal.workspace_id).await?;
         let e = edge.materialize(self.principal.workspace_id);
         sqlx::query("INSERT INTO edges(id,workspace_id,source,target,edge_type,source_revision,target_revision,version,deleted,created_at,description) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)").bind(e.id).bind(e.workspace_id).bind(e.source).bind(e.target).bind(tag(&e.edge_type)?).bind(e.source_revision).bind(e.target_revision).bind(e.version).bind(e.deleted).bind(e.created_at).bind(&e.description).execute(&mut **tx).await?;
-        history_entry(
-            tx,
-            self.principal,
-            self.change,
-            vec![e.source, e.target],
-            "edge",
-            "added",
-            self.reason,
-            encode(&e)?,
-        )
-        .await?;
-        checkpoint_nodes(
-            tx,
-            self.principal,
-            self.change,
-            relationship_nodes(&e),
-            "links_changed",
-            self.reason,
-        )
-        .await?;
+        self.journal()
+            .record(
+                tx,
+                HistoryEvent {
+                    nodes: vec![e.source, e.target],
+                    category: "edge",
+                    operation: "added",
+                    data: encode(&e)?,
+                },
+            )
+            .await?;
+        self.journal()
+            .checkpoint(tx, relationship_nodes(&e), "links_changed")
+            .await?;
         encode(&e)
     }
     async fn validate_edge_target(
@@ -491,7 +483,7 @@ impl<'a> MutationBatch<'a> {
         n.content_revision += 1;
         n.updated_at = server_time();
         save_node(tx, &n, false).await?;
-        revision(tx, self.principal, self.change, &n, "verified", self.reason).await?;
+        self.journal().revision(tx, &n, "verified").await?;
         encode(&n)
     }
     async fn set_summary(
@@ -518,15 +510,7 @@ impl<'a> MutationBatch<'a> {
         n.updated_at = server_time();
         knowledge_rules::validate_summary(&n)?;
         save_node(tx, &n, false).await?;
-        revision(
-            tx,
-            self.principal,
-            self.change,
-            &n,
-            "summary_changed",
-            self.reason,
-        )
-        .await?;
+        self.journal().revision(tx, &n, "summary_changed").await?;
         encode(&n)
     }
     async fn remove_edge(&self, tx: &mut Tx<'_>, target: ExpectedVersion) -> Result<Value> {
@@ -550,26 +534,20 @@ impl<'a> MutationBatch<'a> {
                 .bind(e.version)
                 .execute(&mut **tx)
                 .await?;
-            history_entry(
-                tx,
-                self.principal,
-                self.change,
-                vec![e.source, e.target],
-                "edge",
-                "removed",
-                self.reason,
-                encode(&e)?,
-            )
-            .await?;
-            checkpoint_nodes(
-                tx,
-                self.principal,
-                self.change,
-                relationship_nodes(&e),
-                "links_changed",
-                self.reason,
-            )
-            .await?;
+            self.journal()
+                .record(
+                    tx,
+                    HistoryEvent {
+                        nodes: vec![e.source, e.target],
+                        category: "edge",
+                        operation: "removed",
+                        data: encode(&e)?,
+                    },
+                )
+                .await?;
+            self.journal()
+                .checkpoint(tx, relationship_nodes(&e), "links_changed")
+                .await?;
         }
         encode(&e)
     }

@@ -38,6 +38,14 @@ impl LinkChanges {
 }
 
 impl Restore<'_> {
+    fn journal(&self) -> Journal<'_> {
+        Journal {
+            principal: self.principal,
+            change: self.change,
+            reason: self.reason,
+        }
+    }
+
     pub(super) async fn apply(&self, tx: &mut Tx<'_>) -> Result<Node> {
         let before = load_node_write(tx, self.principal.workspace_id, self.id).await?;
         expected(before.version, self.expected_version)?;
@@ -73,20 +81,12 @@ impl Restore<'_> {
         before: &Node,
         changed: Vec<Uuid>,
     ) -> Result<Node> {
-        checkpoint_nodes(
-            tx,
-            self.principal,
-            self.change,
-            changed,
-            "restored",
-            self.reason,
-        )
-        .await?;
+        self.journal().checkpoint(tx, changed, "restored").await?;
         let n = load_node(tx, self.principal.workspace_id, self.id).await?;
         if (before.task_state, before.retired, before.deleted)
             != (n.task_state, n.retired, n.deleted)
         {
-            history_entry(tx,self.principal,self.change,vec![self.id],"lifecycle","restored",self.reason,json!({"from_revision":self.revision,"version":n.version,"task_state":n.task_state,"retired":n.retired,"deleted":n.deleted})).await?;
+            self.journal().record(tx, HistoryEvent { nodes: vec![self.id], category: "lifecycle", operation: "restored", data: json!({"from_revision":self.revision,"version":n.version,"task_state":n.task_state,"retired":n.retired,"deleted":n.deleted}) }).await?;
         }
         Ok(n)
     }
@@ -178,17 +178,17 @@ impl Restore<'_> {
             .bind(e.version)
             .execute(&mut **tx)
             .await?;
-        history_entry(
-            tx,
-            self.principal,
-            self.change,
-            vec![e.source, e.target],
-            "edge",
-            "removed",
-            self.reason,
-            encode(&e)?,
-        )
-        .await?;
+        self.journal()
+            .record(
+                tx,
+                HistoryEvent {
+                    nodes: vec![e.source, e.target],
+                    category: "edge",
+                    operation: "removed",
+                    data: encode(&e)?,
+                },
+            )
+            .await?;
         Ok(relationship_nodes(&e))
     }
     async fn restore_edge(&self, tx: &mut Tx<'_>, mut e: Edge) -> Result<Vec<Uuid>> {
@@ -215,17 +215,17 @@ impl Restore<'_> {
         e.deleted = false;
         e.created_at = head.created_at;
         sqlx::query("UPDATE edges SET source=$3,target=$4,edge_type=$5,source_revision=$6,target_revision=$7,description=$8,version=$9,deleted=false WHERE workspace_id=$1 AND id=$2").bind(self.principal.workspace_id).bind(e.id).bind(e.source).bind(e.target).bind(tag(&e.edge_type)?).bind(e.source_revision).bind(e.target_revision).bind(&e.description).bind(e.version).execute(&mut **tx).await?;
-        history_entry(
-            tx,
-            self.principal,
-            self.change,
-            vec![e.source, e.target],
-            "edge",
-            "restored",
-            self.reason,
-            encode(&e)?,
-        )
-        .await?;
+        self.journal()
+            .record(
+                tx,
+                HistoryEvent {
+                    nodes: vec![e.source, e.target],
+                    category: "edge",
+                    operation: "restored",
+                    data: encode(&e)?,
+                },
+            )
+            .await?;
         Ok(relationship_nodes(&e))
     }
     async fn check_lifecycle(&self, tx: &mut Tx<'_>, n: &Node) -> Result<()> {

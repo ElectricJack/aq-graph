@@ -2,167 +2,17 @@
 //! External source descriptors are attributed evidence references, never proof of
 //! remote retention, access rights, truth, or an Agent Q review's approval.
 use crate::domain::*;
-use chrono::DateTime;
 use serde_json::Value;
-use std::collections::HashSet;
-use uuid::Uuid;
+mod evidence;
+use evidence::merge_evidence;
+pub use evidence::validate_sources;
 
 fn invalid(message: &str) -> Error {
     Error::Validation(message.into())
 }
-fn text<'a>(value: &'a Value, field: &str) -> Result<&'a str> {
-    value
-        .get(field)
-        .and_then(Value::as_str)
-        .filter(|s| !s.trim().is_empty())
-        .ok_or_else(|| invalid("Evidence descriptor requires nonempty string fields"))
-}
-fn hex(value: &str, lengths: &[usize]) -> bool {
-    lengths.contains(&value.len())
-        && value
-            .bytes()
-            .all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
-}
-
-/// Check v1-compatible portable descriptor shapes, without dereferencing URLs,
-/// repositories, paths, or any AQ database identity supplied by a caller.
-pub fn validate_sources(sources: &[Value]) -> Result<()> {
-    if sources.len() > 64
-        || serde_json::to_vec(sources)
-            .map_err(|_| invalid("Invalid evidence JSON"))?
-            .len()
-            > 16_384
-    {
-        return Err(invalid(
-            "Evidence permits at most 64 descriptors and 16384 bytes",
-        ));
-    }
-    let mut ids = HashSet::new();
-    for source in sources {
-        let map = source
-            .as_object()
-            .ok_or_else(|| invalid("Evidence descriptors must be objects"))?;
-        let source_id = text(source, "source_id")?;
-        if source_id.len() > 128 || !ids.insert(source_id) {
-            return Err(invalid(
-                "Evidence source_id must be unique and contain 1..128 bytes",
-            ));
-        }
-        let kind = text(source, "kind")?;
-        let (required, allowed) = descriptor_fields(kind)?;
-        check_descriptor_fields(source, map, required, allowed)?;
-        check_evidence_ids(source, kind)?;
-        if kind == "url" {
-            check_observed_url(source)?;
-        }
-    }
-    Ok(())
-}
-
-fn descriptor_fields(kind: &str) -> Result<(&'static [&'static str], &'static [&'static str])> {
-    Ok(match kind {
-        "task" => (&["task_id"], &["task_id", "attempt_id", "session_id"]),
-        "review" => (
-            &["review_id", "revision", "sha256"],
-            &["review_id", "revision", "sha256"],
-        ),
-        "git" => (
-            &["repository", "commit", "path"],
-            &["repository", "commit", "path", "blob_sha256"],
-        ),
-        "artifact" => (&["artifact_id", "sha256"], &["artifact_id", "sha256"]),
-        "url" => (
-            &["url", "observed_at", "retained"],
-            &["url", "observed_at", "retained", "artifact_id", "sha256"],
-        ),
-        "legacy" => (
-            &["snapshot_id", "store", "key", "sha256"],
-            &["snapshot_id", "store", "key", "sha256"],
-        ),
-        _ => return Err(invalid("Unsupported evidence descriptor kind")),
-    })
-}
-
-fn check_descriptor_fields(
-    source: &Value,
-    map: &serde_json::Map<String, Value>,
-    required: &[&str],
-    allowed: &[&str],
-) -> Result<()> {
-    if map
-        .keys()
-        .any(|k| !["source_id", "kind"].contains(&k.as_str()) && !allowed.contains(&k.as_str()))
-    {
-        return Err(invalid("Evidence fields must match the descriptor kind"));
-    }
-    for field in allowed {
-        let value = map.get(*field).filter(|v| !v.is_null());
-        match value {
-            Some(value) => validate_descriptor_value(source, field, value)?,
-            None if required.contains(field) => {
-                return Err(invalid("Evidence descriptor is missing a required field"));
-            }
-            None => {}
-        }
-    }
-    Ok(())
-}
-
-fn validate_descriptor_value(source: &Value, field: &str, value: &Value) -> Result<()> {
-    match field {
-        "revision" if value.as_i64().is_some_and(|v| v > 0) => {}
-        "revision" => {
-            return Err(invalid(
-                "Evidence review revision must be a positive integer",
-            ));
-        }
-        "retained" if value.is_boolean() => {}
-        "retained" => return Err(invalid("Evidence retained field must be boolean")),
-        _ => {
-            text(source, field)?;
-        }
-    }
-    Ok(())
-}
-
-fn check_evidence_ids(source: &Value, kind: &str) -> Result<()> {
-    for field in ["sha256", "blob_sha256"] {
-        if let Some(value) = source.get(field).filter(|v| !v.is_null())
-            && !value.as_str().is_some_and(|s| hex(s, &[64]))
-        {
-            return Err(invalid(
-                "Evidence SHA-256 must contain 64 lowercase hexadecimal characters",
-            ));
-        }
-    }
-    if kind == "git" && !hex(text(source, "commit")?, &[40, 64]) {
-        return Err(invalid(
-            "Git evidence requires a full hexadecimal commit identity",
-        ));
-    }
-    if let Some(artifact) = source.get("artifact_id").filter(|v| !v.is_null())
-        && artifact
-            .as_str()
-            .and_then(|s| Uuid::parse_str(s).ok())
-            .is_none()
-    {
-        return Err(invalid("Evidence artifact_id must be a UUID"));
-    }
-    Ok(())
-}
-
-fn check_observed_url(source: &Value) -> Result<()> {
-    let url = reqwest::Url::parse(text(source, "url")?)
-        .map_err(|_| invalid("Evidence URL must be absolute HTTP or HTTPS"))?;
-    if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
-        return Err(invalid("Evidence URL must be absolute HTTP or HTTPS"));
-    }
-    DateTime::parse_from_rfc3339(text(source, "observed_at")?)
-        .map_err(|_| invalid("Evidence observed_at must be RFC3339 with timezone"))?;
-    if source["retained"] == true && source.get("artifact_id").is_none_or(Value::is_null) {
-        return Err(invalid(
-            "Retained URL evidence requires an artifact reference",
-        ));
+fn require_workspace(p: &Principal, n: &Node) -> Result<()> {
+    if p.workspace_id != n.workspace_id {
+        return Err(Error::NotFound);
     }
     Ok(())
 }
@@ -171,9 +21,7 @@ fn check_observed_url(source: &Value) -> Result<()> {
 /// knowledge-specific creator and protected-revision checks.
 pub fn authorize_edit(p: &Principal, n: &Node) -> Result<()> {
     p.require_write()?;
-    if p.workspace_id != n.workspace_id {
-        return Err(Error::NotFound);
-    }
+    require_workspace(p, n)?;
     if p.capability == Capability::Admin {
         return Ok(());
     }
@@ -201,22 +49,8 @@ pub fn verify(
     reason: Option<&str>,
 ) -> Result<()> {
     p.require_admin()?;
-    if p.workspace_id != n.workspace_id {
-        return Err(Error::NotFound);
-    }
-    if n.deleted || n.retired {
-        return Err(invalid("Verification requires a live nonretired node"));
-    }
-    if verification == Verification::Unverified || evidence.is_empty() {
-        return Err(invalid(
-            "Verification requires verified/disputed status and named evidence",
-        ));
-    }
-    if reason.is_none_or(|reason| reason.trim().is_empty() || reason.len() > 4096) {
-        return Err(invalid(
-            "Verification requires a nonempty reason of at most 4096 bytes",
-        ));
-    }
+    require_workspace(p, n)?;
+    validate_assertion(n, verification, evidence, reason)?;
     validate_sources(evidence)?;
     n.provenance = merge_evidence(&n.provenance, evidence)?;
     n.verification = Some(verification);
@@ -225,21 +59,26 @@ pub fn verify(
     Ok(())
 }
 
-fn merge_evidence(previous: &[Value], evidence: &[Value]) -> Result<Vec<Value>> {
-    // Merge evidence by stable source_id while preserving all previous sources.
-    let mut sources = previous.to_vec();
-    for evidence in evidence {
-        if let Some(existing) = sources
-            .iter_mut()
-            .find(|source| source["source_id"] == evidence["source_id"])
-        {
-            *existing = evidence.clone();
-        } else {
-            sources.push(evidence.clone());
-        }
+fn validate_assertion(
+    n: &Node,
+    verification: Verification,
+    evidence: &[Value],
+    reason: Option<&str>,
+) -> Result<()> {
+    if n.deleted || n.retired {
+        return Err(invalid("Verification requires a live nonretired node"));
     }
-    validate_sources(&sources)?;
-    Ok(sources)
+    if verification == Verification::Unverified || evidence.is_empty() {
+        return Err(invalid(
+            "Verification requires verified/disputed status and named evidence",
+        ));
+    }
+    if reason.is_none_or(invalid_reason) {
+        return Err(invalid(
+            "Verification requires a nonempty reason of at most 4096 bytes",
+        ));
+    }
+    Ok(())
 }
 
 pub fn validate_retirement(n: &Node) -> Result<()> {
@@ -253,8 +92,12 @@ pub fn validate_retirement(n: &Node) -> Result<()> {
     validate_retirement_reason(n.retired, n.retirement_reason.as_deref())
 }
 
+fn invalid_reason(reason: &str) -> bool {
+    reason.trim().is_empty() || reason.len() > 4096
+}
+
 fn validate_retirement_reason(retired: bool, reason: Option<&str>) -> Result<()> {
-    if reason.is_some_and(|reason| reason.trim().is_empty() || reason.len() > 4096) {
+    if reason.is_some_and(invalid_reason) {
         return Err(invalid("Retirement reason must contain 1..4096 bytes"));
     }
     if !retired && reason.is_some() {
@@ -351,6 +194,7 @@ fn validate_task_fields(n: &Node) -> Result<()> {
 mod shared_policy_tests {
     use super::*;
     use serde_json::json;
+    use uuid::Uuid;
     fn node(kind: NodeKind) -> Node {
         serde_json::from_value(json!({"id":Uuid::new_v4(),"workspace_id":Uuid::nil(),"kind":kind,"version":1,"content_revision":1,"title":"shared record","body":"","acceptance_criteria":"","labels":[],"metadata":{},"task_state":if kind==NodeKind::Task{Some(TaskState::Active)}else{None},"content_type":"note","verification":"unverified","retired":false,"provenance":[],"deleted":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","created_by":"creator"})).unwrap()
     }

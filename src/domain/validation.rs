@@ -64,10 +64,7 @@ fn validate_operation(op: &Mutation) -> Result<()> {
             summary,
             ..
         } => {
-            validate_version(*source_revision)?;
-            if let Some(summary) = summary {
-                validate_summary_text(summary)?;
-            }
+            validate_summary_input(*source_revision, summary.as_deref())?;
         }
         Mutation::RestoreNode { revision, .. } => validate_version(*revision)?,
         Mutation::AddEdge {
@@ -86,6 +83,14 @@ fn validate_operation(op: &Mutation) -> Result<()> {
                 description.as_deref(),
             )?;
         }
+    }
+    Ok(())
+}
+
+fn validate_summary_input(source_revision: i64, summary: Option<&str>) -> Result<()> {
+    validate_version(source_revision)?;
+    if let Some(text) = summary {
+        validate_summary_text(text)?;
     }
     Ok(())
 }

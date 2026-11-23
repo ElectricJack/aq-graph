@@ -3,6 +3,17 @@ use crate::domain::*;
 use crate::knowledge_rules;
 mod compat_graph;
 mod context;
+mod journal;
+use journal::{ChangeSet, HistoryEvent, Journal};
+mod credentials;
+mod patch;
+mod policy;
+use credentials::live_authority;
+use patch::patch_node;
+use policy::{requires_admin, touches_knowledge};
+mod drafts;
+mod receipts;
+use receipts::Receipt;
 mod mutations;
 use mutations::MutationBatch;
 mod preview;
@@ -41,18 +52,6 @@ fn tag<T: Serialize>(v: &T) -> Result<String> {
         .as_str()
         .map(str::to_owned)
         .ok_or_else(|| Error::Internal("invalid enum".into()))
-}
-fn can_write(p: &Principal) -> Result<()> {
-    match p.capability {
-        Capability::Write | Capability::Admin => Ok(()),
-        _ => Err(Error::Forbidden),
-    }
-}
-fn admin(p: &Principal) -> Result<()> {
-    match p.capability {
-        Capability::Admin => Ok(()),
-        _ => Err(Error::Forbidden),
-    }
 }
 fn retryable(e: &Error) -> bool {
     match e {
@@ -141,92 +140,6 @@ impl Store {
             .await
             .map_err(|e| Error::Internal(format!("migration failed: {e}")))
     }
-    pub async fn bootstrap(&self, workspace: Uuid, actor: &str, token: &str) -> Result<()> {
-        validate_credential(actor, token)?;
-        let mut tx = self.pool.begin().await?;
-        // Initialization only: never replace credentials on an existing workspace.
-        let inserted = sqlx::query("INSERT INTO workspaces(id) VALUES($1) ON CONFLICT DO NOTHING")
-            .bind(workspace)
-            .execute(&mut *tx)
-            .await?
-            .rows_affected();
-        if inserted == 0 {
-            let existing=sqlx::query("SELECT actor_id,capability FROM credentials WHERE workspace_id=$1 AND token_hash=$2").bind(workspace).bind(hash(token.as_bytes())).fetch_optional(&mut *tx).await?;
-            if !existing.is_some_and(|r| {
-                r.get::<String, _>("actor_id") == actor
-                    && r.get::<String, _>("capability") == "admin"
-            }) {
-                return Err(Error::Conflict(
-                    "workspace exists; bootstrap cannot replace its credentials".into(),
-                ));
-            }
-        } else {
-            sqlx::query("INSERT INTO credentials(workspace_id,actor_id,token_hash,capability) VALUES($1,$2,$3,'admin')").bind(workspace).bind(actor).bind(hash(token.as_bytes())).execute(&mut *tx).await?;
-        }
-        tx.commit().await?;
-        Ok(())
-    }
-    pub async fn authenticate(&self, token: &str, workspace: Uuid) -> Result<Principal> {
-        let row = sqlx::query(
-            "SELECT actor_id,capability FROM credentials WHERE workspace_id=$1 AND token_hash=$2",
-        )
-        .bind(workspace)
-        .bind(hash(token.as_bytes()))
-        .fetch_optional(&self.pool)
-        .await?
-        .ok_or(Error::Unauthorized)?;
-        Ok(Principal {
-            actor_id: row.get("actor_id"),
-            workspace_id: workspace,
-            capability: decode(json!(row.get::<String, _>("capability")))?,
-        })
-    }
-    pub async fn grant(
-        &self,
-        p: &Principal,
-        actor: &str,
-        token: &str,
-        capability: Capability,
-    ) -> Result<()> {
-        admin(p)?;
-        validate_credential(actor, token)?;
-        retry_write(|| self.grant_once(p, actor, token, capability)).await
-    }
-    async fn grant_once(
-        &self,
-        p: &Principal,
-        actor: &str,
-        token: &str,
-        capability: Capability,
-    ) -> Result<()> {
-        let mut tx = self.write_tx().await?;
-        live_authority(&mut tx, p, true).await?;
-        sqlx::query("INSERT INTO credentials(workspace_id,actor_id,token_hash,capability) VALUES($1,$2,$3,$4) ON CONFLICT(workspace_id,actor_id) DO UPDATE SET token_hash=EXCLUDED.token_hash,capability=EXCLUDED.capability").bind(p.workspace_id).bind(actor).bind(hash(token.as_bytes())).bind(tag(&capability)?).execute(&mut *tx).await.map_err(|e|normalize_db(e.into()))?;
-        // Administrators cannot accidentally lock out their entire workspace.
-        ensure_admin(&mut tx, p.workspace_id).await?;
-        tx.commit().await?;
-        Ok(())
-    }
-    pub async fn revoke(&self, p: &Principal, actor: &str) -> Result<()> {
-        admin(p)?;
-        retry_write(|| self.revoke_once(p, actor)).await
-    }
-    async fn revoke_once(&self, p: &Principal, actor: &str) -> Result<()> {
-        let mut tx = self.write_tx().await?;
-        live_authority(&mut tx, p, true).await?;
-        let n = sqlx::query("DELETE FROM credentials WHERE workspace_id=$1 AND actor_id=$2")
-            .bind(p.workspace_id)
-            .bind(actor)
-            .execute(&mut *tx)
-            .await?
-            .rows_affected();
-        if n == 0 {
-            return Err(Error::NotFound);
-        }
-        ensure_admin(&mut tx, p.workspace_id).await?;
-        tx.commit().await?;
-        Ok(())
-    }
     async fn write_tx(&self) -> Result<Tx<'_>> {
         self.write_tx_with(true).await
     }
@@ -273,15 +186,7 @@ impl Store {
         Ok(tx)
     }
     pub async fn get_node(&self, p: &Principal, id: Uuid) -> Result<Node> {
-        let v = sqlx::query_scalar::<_, Value>(
-            "SELECT to_jsonb(n)-'search_document' FROM nodes n WHERE workspace_id=$1 AND id=$2",
-        )
-        .bind(p.workspace_id)
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?
-        .ok_or(Error::NotFound)?;
-        decode(v)
+        fetch_record(&self.pool, NODE_BY_ID, p.workspace_id, id).await
     }
     pub async fn list_nodes(
         &self,
@@ -410,25 +315,12 @@ AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id
         )
     }
     pub async fn mutate(&self, p: &Principal, req: MutationRequest) -> Result<MutationResult> {
-        can_write(p)?;
+        p.require_write()?;
         req.validate()?;
         check_operations(&req.operations)?;
         let payload =
             hash(&serde_json::to_vec(&req).map_err(|e| Error::Validation(e.to_string()))?);
-        for attempt in 0..MAX_ATTEMPTS {
-            let outcome =
-                tokio::time::timeout(Duration::from_secs(6), self.mutate_once(p, &req, &payload))
-                    .await
-                    .map_err(|_| Error::Overloaded)?;
-            match outcome {
-                Err(ref e) if retryable(e) && attempt + 1 < MAX_ATTEMPTS => {
-                    tokio::time::sleep(retry_delay(attempt)).await
-                }
-                Err(ref e) if retryable(e) => return Err(Error::Overloaded),
-                v => return v.map_err(normalize_db),
-            }
-        }
-        Err(Error::Overloaded)
+        retry_write(|| self.mutate_once(p, &req, &payload)).await
     }
     async fn mutate_once(
         &self,
@@ -439,25 +331,31 @@ AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id
         let mut tx = self.mutation_tx(&req.operations).await?;
         live_authority(&mut tx, p, p.capability == Capability::Admin).await?;
         if requires_admin(&mut tx, p, &req.operations).await? {
-            admin(p)?;
+            p.require_admin()?;
             live_authority(&mut tx, p, true).await?;
         }
-        if let Some(v) = receipt(&mut tx, p, "mutate", &req.idempotency_key, payload).await? {
-            return decode(v);
-        }
-        lock_receipt(&mut tx, p, "mutate", &req.idempotency_key).await?;
-        if let Some(v) = receipt(&mut tx, p, "mutate", &req.idempotency_key, payload).await? {
+        let receipt = Receipt {
+            principal: p,
+            operation: "mutate",
+            key: &req.idempotency_key,
+            payload,
+        };
+        if let Some(v) = receipt.load_or_reserve(&mut tx).await? {
             return decode(v);
         }
         let id = Uuid::new_v4();
-        insert_changeset(
+        Journal {
+            principal: p,
+            change: id,
+            reason: req.reason.as_deref(),
+        }
+        .insert(
             &mut tx,
-            p,
-            id,
-            None,
-            req.reason.as_deref(),
-            &req.operations,
-            "applied",
+            ChangeSet {
+                name: None,
+                operations: &req.operations,
+                status: "applied",
+            },
         )
         .await?;
         let results = MutationBatch::new(p, id, req.reason.as_deref(), false)
@@ -469,177 +367,9 @@ AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id
         };
         check_response(&response)?;
         save_result(&mut tx, id, &response).await?;
-        save_receipt(
-            &mut tx,
-            p,
-            "mutate",
-            &req.idempotency_key,
-            payload,
-            encode(&response)?,
-        )
-        .await?;
+        receipt.save(&mut tx, encode(&response)?).await?;
         tx.commit().await?;
         Ok(response)
-    }
-    pub async fn create_draft(&self, p: &Principal, req: DraftRequest) -> Result<Value> {
-        can_write(p)?;
-        check_key(&req.idempotency_key)?;
-        check_operations(&req.operations)?;
-        if req.name.trim().is_empty() || req.name.len() > 200 {
-            return Err(Error::Validation(
-                "draft name must contain 1..200 bytes".into(),
-            ));
-        }
-        let payload =
-            hash(&serde_json::to_vec(&req).map_err(|e| Error::Validation(e.to_string()))?);
-        for attempt in 0..MAX_ATTEMPTS {
-            let outcome: Result<Value> = tokio::time::timeout(Duration::from_secs(6), async {
-                let mut tx = self.write_tx_with(false).await?;
-                live_authority(&mut tx, p, p.capability == Capability::Admin).await?;
-                if let Some(v) =
-                    receipt(&mut tx, p, "create_draft", &req.idempotency_key, &payload).await?
-                {
-                    return Ok(v);
-                }
-                lock_receipt(&mut tx, p, "create_draft", &req.idempotency_key).await?;
-                if let Some(v) =
-                    receipt(&mut tx, p, "create_draft", &req.idempotency_key, &payload).await?
-                {
-                    return Ok(v);
-                }
-                let id = Uuid::new_v4();
-                // Assign proposed identities once so preview and application resolve identical nodes.
-                let operations = assign_ids(&req.operations)?;
-                insert_changeset(
-                    &mut tx,
-                    p,
-                    id,
-                    Some(&req.name),
-                    req.reason.as_deref(),
-                    &operations,
-                    "draft",
-                )
-                .await?;
-                let result = load_draft(&mut tx, p.workspace_id, id).await?;
-                check_response(&result)?;
-                save_receipt(
-                    &mut tx,
-                    p,
-                    "create_draft",
-                    &req.idempotency_key,
-                    &payload,
-                    result.clone(),
-                )
-                .await?;
-                tx.commit().await?;
-                Ok(result)
-            })
-            .await
-            .map_err(|_| Error::Overloaded)?;
-            match outcome {
-                Err(ref e) if retryable(e) && attempt + 1 < MAX_ATTEMPTS => {
-                    tokio::time::sleep(retry_delay(attempt)).await
-                }
-                Err(ref e) if retryable(e) => return Err(Error::Overloaded),
-                v => return v.map_err(normalize_db),
-            }
-        }
-        Err(Error::Overloaded)
-    }
-    pub async fn get_draft(&self, p: &Principal, id: Uuid) -> Result<Value> {
-        let mut tx = self.pool.begin().await?;
-        load_draft(&mut tx, p.workspace_id, id).await
-    }
-    pub async fn validate_draft(&self, p: &Principal, id: Uuid) -> Result<Value> {
-        can_write(p)?;
-        for attempt in 0..MAX_ATTEMPTS {
-            let outcome: Result<Value> = tokio::time::timeout(Duration::from_secs(6), async {
-                let mut tx = self.write_tx().await?;
-                live_authority(&mut tx, p, p.capability == Capability::Admin).await?;
-                let draft = load_draft(&mut tx, p.workspace_id, id).await?;
-                if draft["status"] != "draft" {
-                    return Err(Error::Conflict(
-                        "change set has already been applied".into(),
-                    ));
-                }
-                let operations: Vec<Mutation> = decode(draft["operations"].clone())?;
-                let before = preview::before(&mut tx, p.workspace_id, &operations).await?;
-                let results = MutationBatch::new(p, id, draft["reason"].as_str(), true)
-                    .run(&mut tx, &operations)
-                    .await?;
-                let preview = preview::after(&mut tx, p.workspace_id, id, before).await?;
-                tx.rollback().await?;
-                Ok(json!({"valid":true,"change_set_id":id,"results":results,"preview":preview}))
-            })
-            .await
-            .map_err(|_| Error::Overloaded)?;
-            match outcome {
-                Err(ref e) if retryable(e) && attempt + 1 < MAX_ATTEMPTS => {
-                    tokio::time::sleep(retry_delay(attempt)).await
-                }
-                Err(ref e) if retryable(e) => return Err(Error::Overloaded),
-                v => return v.map_err(normalize_db),
-            }
-        }
-        Err(Error::Overloaded)
-    }
-    pub async fn apply_draft(&self, p: &Principal, id: Uuid, key: &str) -> Result<MutationResult> {
-        can_write(p)?;
-        check_key(key)?;
-        let operation = "apply_draft";
-        let payload = hash(id.as_bytes());
-        for attempt in 0..MAX_ATTEMPTS {
-            let outcome: Result<MutationResult> =
-                tokio::time::timeout(Duration::from_secs(6), async {
-                    let mut tx = self.write_tx().await?;
-                    live_authority(&mut tx, p, p.capability == Capability::Admin).await?;
-                    let policy_draft = load_draft(&mut tx, p.workspace_id, id).await?;
-                    let policy_operations: Vec<Mutation> =
-                        decode(policy_draft["operations"].clone())?;
-                    if touches_knowledge(&mut tx, p, &policy_operations).await?
-                        || requires_admin(&mut tx, p, &policy_operations).await?
-                    {
-                        admin(p)?;
-                        live_authority(&mut tx, p, true).await?;
-                    }
-                    if let Some(v) = receipt(&mut tx, p, operation, key, &payload).await? {
-                        return decode(v);
-                    }
-                    lock_receipt(&mut tx, p, operation, key).await?;
-                    if let Some(v) = receipt(&mut tx, p, operation, key, &payload).await? {
-                        return decode(v);
-                    }
-                    let draft = load_draft(&mut tx, p.workspace_id, id).await?;
-                    if draft["status"] != "draft" {
-                        return Err(Error::Conflict(
-                            "change set has already been applied".into(),
-                        ));
-                    }
-                    let operations: Vec<Mutation> = decode(draft["operations"].clone())?;
-                    let results = MutationBatch::new(p, id, draft["reason"].as_str(), false)
-                        .run(&mut tx, &operations)
-                        .await?;
-                    let response = MutationResult {
-                        change_set_id: id,
-                        results,
-                    };
-                    check_response(&response)?;
-                    save_result(&mut tx, id, &response).await?;
-                    save_receipt(&mut tx, p, operation, key, &payload, encode(&response)?).await?;
-                    tx.commit().await?;
-                    Ok(response)
-                })
-                .await
-                .map_err(|_| Error::Overloaded)?;
-            match outcome {
-                Err(ref e) if retryable(e) && attempt + 1 < MAX_ATTEMPTS => {
-                    tokio::time::sleep(retry_delay(attempt)).await
-                }
-                Err(ref e) if retryable(e) => return Err(Error::Overloaded),
-                v => return v.map_err(normalize_db),
-            }
-        }
-        Err(Error::Overloaded)
     }
 }
 const DURABLE_FIELDS: &[&str] = &[
@@ -664,42 +394,6 @@ const DURABLE_FIELDS: &[&str] = &[
     "task_state",
     "deleted",
 ];
-fn validate_credential(actor: &str, token: &str) -> Result<()> {
-    if actor.trim().is_empty() || actor.len() > 200 || token.len() < 32 || token.len() > 4096 {
-        return Err(Error::Validation(
-            "actor must contain 1..200 bytes and credential 32..4096 bytes".into(),
-        ));
-    }
-    Ok(())
-}
-async fn live_authority(tx: &mut Tx<'_>, p: &Principal, need_admin: bool) -> Result<()> {
-    let cap = sqlx::query_scalar::<_, String>(
-        "SELECT capability FROM credentials WHERE workspace_id=$1 AND actor_id=$2",
-    )
-    .bind(p.workspace_id)
-    .bind(&p.actor_id)
-    .fetch_optional(&mut **tx)
-    .await?
-    .ok_or(Error::Unauthorized)?;
-    if (need_admin && cap != "admin") || (!need_admin && cap == "read") {
-        return Err(Error::Forbidden);
-    }
-    Ok(())
-}
-async fn ensure_admin(tx: &mut Tx<'_>, workspace: Uuid) -> Result<()> {
-    let yes = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM credentials WHERE workspace_id=$1 AND capability='admin')",
-    )
-    .bind(workspace)
-    .fetch_one(&mut **tx)
-    .await?;
-    if !yes {
-        return Err(Error::Conflict(
-            "workspace must retain at least one administrator".into(),
-        ));
-    }
-    Ok(())
-}
 fn node_page(vs: Vec<Value>, n: i64) -> Result<Page<Node>> {
     let more = vs.len() > n as usize;
     let items: Vec<Node> = vs
@@ -714,31 +408,36 @@ fn node_page(vs: Vec<Value>, n: i64) -> Result<Page<Node>> {
     };
     Ok(Page { items, next_cursor })
 }
+const NODE_BY_ID: &str =
+    "SELECT to_jsonb(n)-'search_document' FROM nodes n WHERE workspace_id=$1 AND id=$2";
+async fn fetch_record<'a, T: DeserializeOwned>(
+    db: impl sqlx::Executor<'a, Database = Postgres>,
+    sql: &'static str,
+    workspace: Uuid,
+    id: Uuid,
+) -> Result<T> {
+    let record = sqlx::query_scalar::<_, Value>(sql)
+        .bind(workspace)
+        .bind(id)
+        .fetch_optional(db)
+        .await?
+        .ok_or(Error::NotFound)?;
+    decode(record)
+}
 async fn load_node(tx: &mut Tx<'_>, workspace: Uuid, id: Uuid) -> Result<Node> {
-    let v = sqlx::query_scalar::<_, Value>(
-        "SELECT to_jsonb(n)-'search_document' FROM nodes n WHERE workspace_id=$1 AND id=$2",
-    )
-    .bind(workspace)
-    .bind(id)
-    .fetch_optional(&mut **tx)
-    .await?
-    .ok_or(Error::NotFound)?;
-    decode(v)
+    fetch_record(&mut **tx, NODE_BY_ID, workspace, id).await
 }
 async fn load_node_write(tx: &mut Tx<'_>, workspace: Uuid, id: Uuid) -> Result<Node> {
-    let v=sqlx::query_scalar::<_,Value>("SELECT to_jsonb(n)-'search_document' FROM nodes n WHERE workspace_id=$1 AND id=$2 FOR UPDATE").bind(workspace).bind(id).fetch_optional(&mut **tx).await?.ok_or(Error::NotFound)?;
-    decode(v)
+    fetch_record(&mut **tx, "SELECT to_jsonb(n)-'search_document' FROM nodes n WHERE workspace_id=$1 AND id=$2 FOR UPDATE", workspace, id).await
 }
 async fn load_edge(tx: &mut Tx<'_>, workspace: Uuid, id: Uuid) -> Result<Edge> {
-    let v = sqlx::query_scalar::<_, Value>(
+    fetch_record(
+        &mut **tx,
         "SELECT to_jsonb(e) FROM edges e WHERE workspace_id=$1 AND id=$2",
+        workspace,
+        id,
     )
-    .bind(workspace)
-    .bind(id)
-    .fetch_optional(&mut **tx)
-    .await?
-    .ok_or(Error::NotFound)?;
-    decode(v)
+    .await
 }
 async fn load_revision(tx: &mut Tx<'_>, workspace: Uuid, id: Uuid, revision: i64) -> Result<Value> {
     sqlx::query_scalar::<_, Value>(
@@ -761,47 +460,7 @@ async fn save_node(tx: &mut Tx<'_>, n: &Node, create: bool) -> Result<()> {
     }
     Ok(())
 }
-#[allow(clippy::too_many_arguments)]
-async fn history_entry(
-    tx: &mut Tx<'_>,
-    p: &Principal,
-    change: Uuid,
-    nodes: Vec<Uuid>,
-    category: &str,
-    operation: &str,
-    reason: Option<&str>,
-    data: Value,
-) -> Result<()> {
-    if category == "edge" {
-        let e: Edge = decode(data.clone())?;
-        sqlx::query("INSERT INTO edge_versions(workspace_id,id,version,snapshot) SELECT workspace_id,id,version,to_jsonb(e) FROM edges e WHERE workspace_id=$1 AND id=$2 AND version=$3 ON CONFLICT(workspace_id,id,version) DO NOTHING").bind(p.workspace_id).bind(e.id).bind(e.version).execute(&mut **tx).await?;
-    }
-    sqlx::query("INSERT INTO history_entries(workspace_id,node_ids,entry_id,category,actor_id,operation,reason,change_set_id,data) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)").bind(p.workspace_id).bind(nodes).bind(Uuid::new_v4()).bind(category).bind(&p.actor_id).bind(operation).bind(reason).bind(change).bind(data).execute(&mut **tx).await?;
-    Ok(())
-}
-async fn revision(
-    tx: &mut Tx<'_>,
-    p: &Principal,
-    change: Uuid,
-    n: &Node,
-    operation: &str,
-    reason: Option<&str>,
-) -> Result<()> {
-    let snapshot = encode(n)?;
-    let link_set = revision_links::capture_links(tx, p, n.id).await?;
-    sqlx::query("INSERT INTO node_revisions(workspace_id,node_id,revision,snapshot,actor_id,operation,reason,change_set_id,link_set_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)").bind(p.workspace_id).bind(n.id).bind(n.content_revision).bind(&snapshot).bind(&p.actor_id).bind(operation).bind(reason).bind(change).bind(link_set).execute(&mut **tx).await?;
-    history_entry(
-        tx,
-        p,
-        change,
-        vec![n.id],
-        "revision",
-        operation,
-        reason,
-        snapshot,
-    )
-    .await
-}
+
 fn expected(actual: i64, wanted: i64) -> Result<()> {
     if actual != wanted {
         Err(Error::Conflict(format!(
@@ -816,182 +475,7 @@ fn durable_changed(a: &Node, b: &Node) -> Result<bool> {
     let b = encode(b)?;
     Ok(DURABLE_FIELDS.iter().any(|f| a[f] != b[f]))
 }
-fn retirement_metadata_only(patch: &NodePatch) -> bool {
-    patch.title.is_none()
-        && patch.body.is_none()
-        && patch.acceptance_criteria.is_none()
-        && patch.labels.is_none()
-        && patch.metadata.is_none()
-        && patch.task_state.is_none()
-        && patch.content_type.is_none()
-        && patch.verification.is_none()
-        && patch.provenance.is_none()
-        && patch.valid_from.is_keep()
-        && patch.valid_until.is_keep()
-        && patch.review_at.is_keep()
-        && patch.retired != Some(false)
-}
-fn patch_node(n: &mut Node, patch: &NodePatch) -> Result<()> {
-    if n.kind == NodeKind::Knowledge
-        && (patch.task_state.is_some() || patch.acceptance_criteria.is_some())
-    {
-        return Err(Error::Validation(
-            "task fields cannot be set on knowledge".into(),
-        ));
-    }
-    if let Some(v) = &patch.title {
-        n.title = v.clone();
-    }
-    if let Some(v) = &patch.body {
-        n.body = v.clone();
-    }
-    if let Some(v) = &patch.acceptance_criteria {
-        n.acceptance_criteria = v.clone();
-    }
-    if let Some(v) = &patch.labels {
-        n.labels = v.clone();
-    }
-    if let Some(v) = &patch.metadata {
-        n.metadata = v.clone();
-    }
-    if let Some(v) = patch.task_state {
-        n.task_state = Some(v);
-    }
-    if let Some(v) = patch.content_type {
-        n.content_type = Some(v);
-    }
-    if patch.verification.is_some() {
-        return Err(Error::Validation(
-            "use verify_node to change verification".into(),
-        ));
-    }
-    if let Some(v) = &patch.retirement_reason {
-        n.retirement_reason = Some(v.clone());
-    }
-    if let Some(v) = patch.retired {
-        n.retired = v;
-    }
-    if let Some(v) = &patch.provenance {
-        n.provenance = v.clone();
-    }
-    patch.valid_from.apply_to(&mut n.valid_from);
-    patch.valid_until.apply_to(&mut n.valid_until);
-    patch.review_at.apply_to(&mut n.review_at);
-    patch.successor_id.apply_to(&mut n.successor_id);
-    Ok(())
-}
-async fn requires_admin(tx: &mut Tx<'_>, p: &Principal, ops: &[Mutation]) -> Result<bool> {
-    for op in ops {
-        match op {
-            Mutation::VerifyKnowledge { .. } | Mutation::VerifyNode { .. } => return Ok(true),
-            Mutation::UpdateNode { patch, .. }
-                if patch.retired.is_some()
-                    || patch.retirement_reason.is_some()
-                    || !patch.successor_id.is_keep() =>
-            {
-                return Ok(true);
-            }
-            Mutation::RestoreNode {
-                id,
-                include_lifecycle,
-                ..
-            } => {
-                if *include_lifecycle {
-                    return Ok(true);
-                }
-                let created_kind = ops.iter().find_map(|op| match op {
-                    Mutation::CreateNode {
-                        id: Some(created_id),
-                        kind,
-                        ..
-                    } if created_id == id => Some(*kind),
-                    _ => None,
-                });
-                let kind = match created_kind {
-                    Some(kind) => kind,
-                    None => load_node(tx, p.workspace_id, *id).await?.kind,
-                };
-                if kind == NodeKind::Knowledge {
-                    return Ok(true);
-                }
-            }
-            _ => {}
-        }
-    }
-    Ok(false)
-}
-async fn touches_knowledge(tx: &mut Tx<'_>, p: &Principal, ops: &[Mutation]) -> Result<bool> {
-    let mut created = std::collections::HashMap::new();
-    for op in ops {
-        if let Mutation::CreateNode {
-            id: Some(id), kind, ..
-        } = op
-        {
-            created.insert(*id, *kind);
-        }
-    }
-    for op in ops {
-        let id = match op {
-            Mutation::CreateNode {
-                kind: NodeKind::Knowledge,
-                ..
-            }
-            | Mutation::VerifyKnowledge { .. }
-            | Mutation::VerifyNode { .. } => return Ok(true),
-            Mutation::CreateNode { .. } | Mutation::SetParent { .. } => continue,
-            Mutation::UpdateNode { id, .. }
-            | Mutation::DeleteNode { id, .. }
-            | Mutation::RestoreNode { id, .. }
-            | Mutation::SetSummary { id, .. } => *id,
-            Mutation::AddEdge { source, .. } => *source,
-            Mutation::RemoveEdge { id, .. } => {
-                let created_source = ops.iter().find_map(|op| match op {
-                    Mutation::AddEdge {
-                        id: Some(created_id),
-                        source,
-                        ..
-                    } if created_id == id => Some(*source),
-                    _ => None,
-                });
-                match created_source {
-                    Some(source) => source,
-                    None => load_edge(tx, p.workspace_id, *id).await?.source,
-                }
-            }
-        };
-        let kind = match created.get(&id) {
-            Some(kind) => *kind,
-            None => load_node(tx, p.workspace_id, id).await?.kind,
-        };
-        if kind == NodeKind::Knowledge {
-            return Ok(true);
-        }
-    }
-    Ok(false)
-}
-async fn checkpoint_nodes(
-    tx: &mut Tx<'_>,
-    p: &Principal,
-    change: Uuid,
-    ids: Vec<Uuid>,
-    operation: &str,
-    reason: Option<&str>,
-) -> Result<()> {
-    let mut ids = ids;
-    ids.sort_unstable();
-    ids.dedup();
-    for id in ids {
-        let mut n = load_node_write(tx, p.workspace_id, id).await?;
-        knowledge_rules::reset_verification(&mut n);
-        knowledge_rules::clear_summary(&mut n);
-        n.version += 1;
-        n.content_revision += 1;
-        n.updated_at = server_time();
-        save_node(tx, &n, false).await?;
-        revision(tx, p, change, &n, operation, reason).await?;
-    }
-    Ok(())
-}
+
 fn relationship_nodes(e: &Edge) -> Vec<Uuid> {
     if matches!(e.edge_type, EdgeType::Blocks | EdgeType::ParentChild) {
         vec![e.source, e.target]
@@ -999,85 +483,10 @@ fn relationship_nodes(e: &Edge) -> Vec<Uuid> {
         vec![e.source]
     }
 }
-async fn lock_receipt(tx: &mut Tx<'_>, p: &Principal, operation: &str, key: &str) -> Result<()> {
-    // Reserving the unique receipt is also a transaction-scoped key lock. An
-    // overlapping SERIALIZABLE contender retries with a fresh snapshot after commit.
-    sqlx::query("INSERT INTO idempotency_receipts(workspace_id,actor_id,operation,key,payload_hash,result) VALUES($1,$2,$3,$4,'','null') ON CONFLICT(workspace_id,actor_id,operation,key) DO UPDATE SET key=EXCLUDED.key").bind(p.workspace_id).bind(&p.actor_id).bind(operation).bind(key).execute(&mut **tx).await?;
-    Ok(())
-}
-async fn receipt(
-    tx: &mut Tx<'_>,
-    p: &Principal,
-    operation: &str,
-    key: &str,
-    payload: &str,
-) -> Result<Option<Value>> {
-    let row=sqlx::query("SELECT payload_hash,result FROM idempotency_receipts WHERE workspace_id=$1 AND actor_id=$2 AND operation=$3 AND key=$4").bind(p.workspace_id).bind(&p.actor_id).bind(operation).bind(key).fetch_optional(&mut **tx).await?;
-    let Some(row) = row else {
-        return Ok(None);
-    };
-    let old: String = row.get("payload_hash");
-    if old.is_empty() {
-        return Ok(None);
-    }
-    if old != payload {
-        return Err(Error::Conflict(
-            "idempotency key was used with a different payload".into(),
-        ));
-    }
-    Ok(Some(row.get("result")))
-}
-async fn save_receipt(
-    tx: &mut Tx<'_>,
-    p: &Principal,
-    operation: &str,
-    key: &str,
-    payload: &str,
-    result: Value,
-) -> Result<()> {
-    sqlx::query("UPDATE idempotency_receipts SET payload_hash=$5,result=$6 WHERE workspace_id=$1 AND actor_id=$2 AND operation=$3 AND key=$4").bind(p.workspace_id).bind(&p.actor_id).bind(operation).bind(key).bind(payload).bind(result).execute(&mut **tx).await?;
-    Ok(())
-}
-async fn insert_changeset(
-    tx: &mut Tx<'_>,
-    p: &Principal,
-    id: Uuid,
-    name: Option<&str>,
-    reason: Option<&str>,
-    ops: &[Mutation],
-    status: &str,
-) -> Result<()> {
-    if reason.is_some_and(|v| v.len() > 4096) {
-        return Err(Error::Validation("reason exceeds 4096 bytes".into()));
-    }
-    sqlx::query("INSERT INTO change_sets(id,workspace_id,actor_id,name,reason,operations,status) VALUES($1,$2,$3,$4,$5,$6,$7)").bind(id).bind(p.workspace_id).bind(&p.actor_id).bind(name).bind(reason).bind(encode(&ops)?).bind(status).execute(&mut **tx).await?;
-    Ok(())
-}
+
 async fn save_result(tx: &mut Tx<'_>, id: Uuid, result: &MutationResult) -> Result<()> {
     sqlx::query("UPDATE change_sets SET status='applied',result=$2,applied_at=clock_timestamp() WHERE id=$1").bind(id).bind(encode(result)?).execute(&mut **tx).await?;
     Ok(())
-}
-async fn load_draft(tx: &mut Tx<'_>, workspace: Uuid, id: Uuid) -> Result<Value> {
-    sqlx::query_scalar::<_, Value>(
-        "SELECT to_jsonb(c) FROM change_sets c WHERE workspace_id=$1 AND id=$2",
-    )
-    .bind(workspace)
-    .bind(id)
-    .fetch_optional(&mut **tx)
-    .await?
-    .ok_or(Error::NotFound)
-}
-fn assign_ids(ops: &[Mutation]) -> Result<Vec<Mutation>> {
-    let mut value = encode(&ops)?;
-    for op in value
-        .as_array_mut()
-        .ok_or_else(|| Error::Internal("invalid operations".into()))?
-    {
-        if matches!(op["op"].as_str(), Some("create_node" | "add_edge")) && op["id"].is_null() {
-            op["id"] = json!(Uuid::new_v4());
-        }
-    }
-    decode(value)
 }
 fn check_response<T: Serialize>(response: &T) -> Result<()> {
     if serde_json::to_vec(response)
@@ -1115,60 +524,4 @@ where
 fn retry_delay(attempt: usize) -> Duration {
     let jitter = u64::from(Uuid::new_v4().as_bytes()[0]) % 17;
     Duration::from_millis((16_u64 << attempt.min(4)) + jitter)
-}
-
-/// Deleting a task also removes every incident relationship atomically. Other
-/// tasks survive, including children and tasks that depended on this one.
-async fn remove_task_links(
-    tx: &mut Tx<'_>,
-    p: &Principal,
-    change: Uuid,
-    task: Uuid,
-    reason: Option<&str>,
-) -> Result<()> {
-    let pointers = sqlx::query_scalar::<_, Value>("SELECT to_jsonb(n) FROM nodes n WHERE workspace_id=$1 AND successor_id=$2 ORDER BY id FOR UPDATE")
-        .bind(p.workspace_id).bind(task).fetch_all(&mut **tx).await?;
-    for row in pointers {
-        let mut n: Node = decode(row)?;
-        n.successor_id = None;
-        n.version += 1;
-        n.content_revision += 1;
-        n.updated_at = server_time();
-        knowledge_rules::reset_verification(&mut n);
-        knowledge_rules::clear_summary(&mut n);
-        save_node(tx, &n, false).await?;
-        revision(tx, p, change, &n, "successor_removed", reason).await?;
-    }
-    let rows = sqlx::query_scalar::<_, Value>("SELECT to_jsonb(e) FROM edges e WHERE workspace_id=$1 AND (source=$2 OR target=$2) AND NOT deleted ORDER BY id FOR UPDATE")
-        .bind(p.workspace_id).bind(task).fetch_all(&mut **tx).await?;
-    for row in rows {
-        let mut e: Edge = decode(row)?;
-        e.deleted = true;
-        e.version += 1;
-        sqlx::query("UPDATE edges SET deleted=true,version=$3 WHERE workspace_id=$1 AND id=$2")
-            .bind(p.workspace_id)
-            .bind(e.id)
-            .bind(e.version)
-            .execute(&mut **tx)
-            .await?;
-        history_entry(
-            tx,
-            p,
-            change,
-            vec![e.source, e.target],
-            "edge",
-            "removed",
-            reason,
-            encode(&e)?,
-        )
-        .await?;
-        // The deleted node already has its deletion revision; only checkpoint
-        // surviving endpoints, so its returned receipt version stays exact.
-        let survivors = relationship_nodes(&e)
-            .into_iter()
-            .filter(|id| *id != task)
-            .collect();
-        checkpoint_nodes(tx, p, change, survivors, "links_changed", reason).await?;
-    }
-    Ok(())
 }
