@@ -8,7 +8,7 @@ use axum::{
         DefaultBodyLimit, Extension, Path, Query, State,
         rejection::{JsonRejection, QueryRejection},
     },
-    http::{HeaderValue, Request, StatusCode},
+    http::{HeaderMap, HeaderValue, Request, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{delete, get, post},
@@ -54,6 +54,7 @@ pub fn router(store: Store) -> Router {
         .route("/ready/{id}", get(ready_task))
         .route("/search", get(search))
         .route("/mutations", post(mutate))
+        .route("/mutations/receipt", post(mutation_receipt))
         .route("/changesets", post(create_draft))
         .route("/changesets/{id}", get(get_draft))
         .route("/changesets/{id}/validate", post(validate_draft))
@@ -516,9 +517,29 @@ async fn diff(
 async fn mutate(
     State(s): State<HttpState>,
     Extension(p): Extension<Principal>,
+    headers: HeaderMap,
     body: std::result::Result<Json<MutationRequest>, JsonRejection>,
 ) -> Result<Json<MutationResult>> {
+    require_expected_actor(&p, &headers)?;
     Ok(Json(s.store.mutate(&p, parse_json(body)?).await?))
+}
+async fn mutation_receipt(
+    State(s): State<HttpState>,
+    Extension(p): Extension<Principal>,
+    headers: HeaderMap,
+    body: std::result::Result<Json<MutationRequest>, JsonRejection>,
+) -> Result<Json<Option<MutationResult>>> {
+    require_expected_actor(&p, &headers)?;
+    Ok(Json(s.store.mutation_receipt(&p, parse_json(body)?).await?))
+}
+fn require_expected_actor(p: &Principal, headers: &HeaderMap) -> Result<()> {
+    if headers
+        .get("X-AQ-Graph-Expected-Actor")
+        .is_some_and(|value| value.as_bytes() != p.actor_id.as_bytes())
+    {
+        return Err(Error::Forbidden);
+    }
+    Ok(())
 }
 async fn create_draft(
     State(s): State<HttpState>,

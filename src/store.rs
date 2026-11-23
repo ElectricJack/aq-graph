@@ -623,10 +623,7 @@ AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id
     }
     pub async fn mutate(&self, p: &Principal, req: MutationRequest) -> Result<MutationResult> {
         can_write(p)?;
-        req.validate()?;
-        check_operations(&req.operations)?;
-        let payload =
-            hash(&serde_json::to_vec(&req).map_err(|e| Error::Validation(e.to_string()))?);
+        let payload = mutation_fingerprint(&req)?;
         for attempt in 0..MAX_ATTEMPTS {
             let outcome =
                 tokio::time::timeout(Duration::from_secs(6), self.mutate_once(p, &req, &payload))
@@ -642,6 +639,29 @@ AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id
         }
         Err(Error::Overloaded)
     }
+
+    /// Look up a committed mutation without reserving its key or executing it.
+    /// An absent receipt is a snapshot and does not rule out an in-flight write.
+    pub async fn mutation_receipt(
+        &self,
+        p: &Principal,
+        req: MutationRequest,
+    ) -> Result<Option<MutationResult>> {
+        can_write(p)?;
+        let payload = mutation_fingerprint(&req)?;
+        let mut tx = self.pool.begin().await?;
+        sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+            .execute(&mut *tx)
+            .await?;
+        authorize_mutation(&mut tx, p, &req.operations).await?;
+        let result = receipt(&mut tx, p, "mutate", &req.idempotency_key, &payload)
+            .await?
+            .map(decode)
+            .transpose()?;
+        tx.commit().await?;
+        Ok(result)
+    }
+
     async fn mutate_once(
         &self,
         p: &Principal,
@@ -649,11 +669,7 @@ AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id
         payload: &str,
     ) -> Result<MutationResult> {
         let mut tx = self.mutation_tx(&req.operations).await?;
-        live_authority(&mut tx, p, p.capability == Capability::Admin).await?;
-        if requires_admin(&mut tx, p, &req.operations).await? {
-            admin(p)?;
-            live_authority(&mut tx, p, true).await?;
-        }
+        authorize_mutation(&mut tx, p, &req.operations).await?;
         if let Some(v) = receipt(&mut tx, p, "mutate", &req.idempotency_key, payload).await? {
             return decode(v);
         }
@@ -900,6 +916,20 @@ async fn live_authority(tx: &mut Tx<'_>, p: &Principal, need_admin: bool) -> Res
     .ok_or(Error::Unauthorized)?;
     if (need_admin && cap != "admin") || (!need_admin && cap == "read") {
         return Err(Error::Forbidden);
+    }
+    Ok(())
+}
+fn mutation_fingerprint(req: &MutationRequest) -> Result<String> {
+    req.validate()?;
+    check_operations(&req.operations)?;
+    let payload = serde_json::to_vec(req).map_err(|e| Error::Validation(e.to_string()))?;
+    Ok(hash(&payload))
+}
+async fn authorize_mutation(tx: &mut Tx<'_>, p: &Principal, ops: &[Mutation]) -> Result<()> {
+    live_authority(tx, p, p.capability == Capability::Admin).await?;
+    if requires_admin(tx, p, ops).await? {
+        admin(p)?;
+        live_authority(tx, p, true).await?;
     }
     Ok(())
 }

@@ -21,6 +21,7 @@ All workspace routes start with `/v1/workspaces/{workspace}`. The table below om
 | GET | `/ready/{id}` | Readiness check for one task under the same rules |
 | GET | `/search?q=authentication` | Paginated full-text search across both kinds; optional shared filters |
 | POST | `/mutations` | Atomic ordered batch; `MutationRequest` |
+| POST | `/mutations/receipt` | Look up a committed result with the original `MutationRequest` |
 | POST | `/changesets` | Persist a named proposal; `DraftRequest` |
 | GET | `/changesets/{id}` | Proposal, author, operations, status, and applied result |
 | POST | `/changesets/{id}/validate` | Execute and roll back a proposal; return validated before/after preview |
@@ -33,6 +34,8 @@ All workspace routes start with `/v1/workspaces/{workspace}`. The table below om
 ## Mutations and optimistic concurrency
 
 A mutation envelope contains `idempotency_key`, optional `reason`, and 1–100 `operations`. The batch is all-or-nothing, executes operations in order, and can reference records created earlier in the same batch. The result is `{"change_set_id":"UUID","results":[...]}` with one resulting node or edge per operation. Required history and the idempotency receipt commit with current state.
+
+After a lost mutation response, submit the original envelope to `/mutations/receipt` with the same workspace and actor. Graph returns the historical committed result or HTTP 200 with `null` when no result has committed at the time of the lookup. A matching key with different input returns HTTP 409. The lookup checks current mutation permissions and leaves the database unchanged. An optional `X-AQ-Graph-Expected-Actor` header requires the authenticated actor to match on writes and receipt lookups. A `null` response can race an in-flight commit. Any write replay must use the original envelope.
 
 ```json
 {

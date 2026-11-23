@@ -2235,6 +2235,14 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "X-AQ-Graph-Expected-Actor",
+            "in": "header",
+            "description": "Require this authenticated actor.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2244,6 +2252,221 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MutationResult"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or unsupported API version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid workspace bearer credential",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              },
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Bearer challenge"
+              }
+            }
+          },
+          "403": {
+            "description": "Capability denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "409": {
+            "description": "Stale version, unresolved references, duplicate identity, applied draft, or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "413": {
+            "description": "Request or response exceeds byte limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error; no driver details disclosed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              }
+            }
+          },
+          "503": {
+            "description": "Admission, pool, lock, or request deadline exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "X-AQ-Graph-API-Version": {
+                "schema": {
+                  "const": "1"
+                },
+                "description": "API major version"
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "const": 1
+                },
+                "description": "Minimum suggested retry delay in seconds"
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MutationRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspace}/mutations/receipt": {
+      "post": {
+        "operationId": "post__v1_workspaces_workspace_mutations_receipt",
+        "description": "Look up a committed mutation for the same workspace, actor, key and request. This does not write or reserve a key.",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-AQ-Graph-Expected-Actor",
+            "in": "header",
+            "description": "Require this authenticated actor.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exact committed result or null when no matching write has committed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/MutationResult" },
+                    { "type": "null" }
+                  ]
                 }
               }
             },
