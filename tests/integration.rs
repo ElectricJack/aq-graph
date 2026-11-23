@@ -140,6 +140,76 @@ fn items(value: &Value) -> &Vec<Value> {
 }
 
 #[tokio::test]
+async fn mutation_receipt_reads_only_an_exact_committed_write_by_this_actor() {
+    let c = Client::new().await;
+    let id = Uuid::new_v4();
+    let task = c.create_task(id, "active", "settle once").await;
+    let version = task["version"].as_i64().unwrap();
+    let body = json!({"idempotency_key":"settle-once","operations":[patch(id,version,json!({"task_state":"completed"}))]});
+    let lookup = || c.request(Method::POST, "/mutations/receipt", Some(body.clone()));
+    assert_eq!(lookup().await, (StatusCode::OK, Value::Null));
+    for endpoint in ["/mutations", "/mutations/receipt"] {
+        let mismatched = Request::builder()
+            .method("POST")
+            .uri(format!("/v1/workspaces/{}{endpoint}", c.workspace))
+            .header("authorization", format!("Bearer {}", c.token))
+            .header("content-type", "application/json")
+            .header("X-AQ-Graph-Expected-Actor", "different-actor")
+            .body(Body::from(body.to_string()))
+            .unwrap();
+        assert_eq!(
+            c.app.clone().oneshot(mismatched).await.unwrap().status(),
+            StatusCode::FORBIDDEN
+        );
+    }
+    let node_path = format!("/nodes/{id}");
+    assert_eq!(c.request(Method::GET, &node_path, None).await.1, task);
+
+    let written = c
+        .request(Method::POST, "/mutations", Some(body.clone()))
+        .await;
+    assert_eq!(written.0, StatusCode::OK, "{}", written.1);
+    assert_eq!(lookup().await, written);
+    let edit = c
+        .mutation(
+            "rename",
+            vec![patch(id, version + 1, json!({"title":"renamed"}))],
+        )
+        .await;
+    assert_eq!(edit.0, StatusCode::OK, "{}", edit.1);
+    assert_eq!(lookup().await, written);
+
+    let mut mismatch = body.clone();
+    mismatch["reason"] = json!("different payload");
+    assert_eq!(
+        c.request(Method::POST, "/mutations/receipt", Some(mismatch))
+            .await
+            .0,
+        StatusCode::CONFLICT
+    );
+    for (capability, expected) in [("write", StatusCode::OK), ("read", StatusCode::FORBIDDEN)] {
+        let token = format!("receipt-{capability}-{}", Uuid::new_v4());
+        let grant = json!({"actor_id":capability,"capability":capability,"token":token});
+        assert_eq!(
+            c.request(Method::POST, "/credentials", Some(grant)).await.0,
+            StatusCode::OK
+        );
+        let (code, result) = c
+            .as_token(Some(&token))
+            .request(Method::POST, "/mutations/receipt", Some(body.clone()))
+            .await;
+        assert_eq!(code, expected);
+        if capability == "write" {
+            assert_eq!(result, Value::Null);
+        }
+    }
+    assert_eq!(
+        c.request(Method::GET, &node_path, None).await.1["version"],
+        version + 2
+    );
+}
+
+#[tokio::test]
 async fn authentication_workspace_capability_and_protocol_errors() {
     let c = Client::new().await;
     assert_eq!(

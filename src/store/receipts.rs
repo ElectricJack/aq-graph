@@ -16,7 +16,7 @@ impl Receipt<'_> {
         sqlx::query("INSERT INTO idempotency_receipts(workspace_id,actor_id,operation,key,payload_hash,result) VALUES($1,$2,$3,$4,'','null') ON CONFLICT(workspace_id,actor_id,operation,key) DO UPDATE SET key=EXCLUDED.key").bind(self.principal.workspace_id).bind(&self.principal.actor_id).bind(self.operation).bind(self.key).execute(&mut **tx).await?;
         self.load(tx).await
     }
-    async fn load(&self, tx: &mut Tx<'_>) -> Result<Option<Value>> {
+    pub(super) async fn load(&self, tx: &mut Tx<'_>) -> Result<Option<Value>> {
         let row=sqlx::query("SELECT payload_hash,result FROM idempotency_receipts WHERE workspace_id=$1 AND actor_id=$2 AND operation=$3 AND key=$4").bind(self.principal.workspace_id).bind(&self.principal.actor_id).bind(self.operation).bind(self.key).fetch_optional(&mut **tx).await?;
         let Some(row) = row else {
             return Ok(None);

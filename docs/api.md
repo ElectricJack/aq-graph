@@ -18,8 +18,10 @@ All workspace routes start with `/v1/workspaces/{workspace}`. The table below om
 | GET | `/nodes/{id}/revisions/{revision}` | Exact retained node and owned relationship versions, with legacy availability flag |
 | GET | `/nodes/{id}/diff?from=1&to=2` | Full before/after node snapshots and changes to content, lifecycle and owned links |
 | GET | `/ready` | Paginated intrinsically ready active tasks |
+| GET | `/ready/{id}` | Readiness check for one task under the same rules |
 | GET | `/search?q=authentication` | Paginated full-text search across both kinds; optional shared filters |
 | POST | `/mutations` | Atomic ordered batch; `MutationRequest` |
+| POST | `/mutations/receipt` | Look up a committed result with the original `MutationRequest` |
 | POST | `/changesets` | Persist a named proposal; `DraftRequest` |
 | GET | `/changesets/{id}` | Proposal, author, operations, status, and applied result |
 | POST | `/changesets/{id}/validate` | Execute and roll back a proposal; return validated before/after preview |
@@ -32,6 +34,8 @@ All workspace routes start with `/v1/workspaces/{workspace}`. The table below om
 ## Mutations and optimistic concurrency
 
 A mutation envelope contains `idempotency_key`, optional `reason`, and 1–100 `operations`. The batch is all-or-nothing, executes operations in order, and can reference records created earlier in the same batch. The result is `{"change_set_id":"UUID","results":[...]}` with one resulting node or edge per operation. Required history and the idempotency receipt commit with current state.
+
+After a lost mutation response, submit the original envelope to `/mutations/receipt` with the same workspace and actor. Graph returns the historical committed result or HTTP 200 with `null` when no result has committed at the time of the lookup. A matching key with different input returns HTTP 409. The lookup checks current mutation permissions and leaves the database unchanged. An optional `X-AQ-Graph-Expected-Actor` header requires the authenticated actor to match on writes and receipt lookups. A `null` response can race an in-flight commit. Any write replay must use the original envelope.
 
 ```json
 {
@@ -106,6 +110,8 @@ A retired node may name `successor_id` of either kind in the same workspace. The
 ## Queries, history, and limits
 
 List, ready, search, and history queries take `limit` (default 50, range 1–200) and an opaque `cursor`. Pages contain `items` and `next_cursor` (null when exhausted). Pass the returned cursor unchanged with the same filters. Current-record lists use stable UUID order; history uses an internal sequence cursor. Pagination is not a whole-graph snapshot or change subscription. Concurrent commits may change later pages, and sequence allocation is not commit order.
+
+`GET /ready/{id}` returns a `NodePage` with the requested node if it meets the same readiness rules as `/ready`. An unready or absent node produces an empty page. The exact lookup always has a null `next_cursor`.
 
 A revision read returns `{node,links,relationships_available}`. Owned links comprise all outgoing relationships plus incoming `blocks` and `parent-child` relationships; other incoming informational links are derived from their source records. Stored edges retain exact historical versions. Neighboring record content is not recursively frozen: floating targets stay floating and explicit endpoint revision pins stay pinned. Restoring one record does not rewind the whole graph.
 
