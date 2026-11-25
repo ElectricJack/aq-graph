@@ -205,6 +205,15 @@ impl Store {
         .await
     }
     pub async fn ready(&self, p: &Principal, q: ListQuery) -> Result<Page<Node>> {
+        self.ready_with_first_ready(p, q, false).await
+    }
+
+    pub async fn ready_with_first_ready(
+        &self,
+        p: &Principal,
+        q: ListQuery,
+        include_first_ready: bool,
+    ) -> Result<Page<Node>> {
         let n = limit(&q)?;
         let after = cursor(&q)?;
         self.ready_page(
@@ -213,13 +222,14 @@ impl Store {
             Uuid::from_u128(u128::MAX),
             after,
             n,
+            include_first_ready,
         )
         .await
     }
 
     /// Check the same readiness rules as a page at one exact task identity.
     pub async fn ready_task(&self, p: &Principal, task: Uuid) -> Result<Page<Node>> {
-        self.ready_page(p, task, task, None, 1).await
+        self.ready_page(p, task, task, None, 1, false).await
     }
 
     async fn ready_page(
@@ -229,6 +239,7 @@ impl Store {
         last: Uuid,
         after: Option<Uuid>,
         n: i64,
+        include_first_ready: bool,
     ) -> Result<Page<Node>> {
         // Schema 0004 and every structural mutation enforce at most three levels.
         // Two indexed ancestor joins suffice; a per-candidate recursive CTE can
@@ -242,7 +253,7 @@ WHERE workspace_id=$1 AND eligible AND live_child_count=0
 AND node_id >= $2 AND node_id <= $3
 AND ($4::uuid IS NULL OR node_id>$4)
 )
-SELECT to_jsonb(n)-'search_document' FROM candidates c
+SELECT (to_jsonb(n)-'search_document') || jsonb_build_object('first_ready_at', f.first_ready_at, 'first_ready_work_class', f.work_class) FROM candidates c
 CROSS JOIN LATERAL (SELECT n.* FROM nodes n WHERE n.workspace_id=$1 AND n.id=c.id AND NOT n.retired
 AND NOT EXISTS (
  SELECT 1 FROM edges pe JOIN nodes parent ON parent.id=pe.source AND parent.workspace_id=pe.workspace_id
@@ -250,7 +261,7 @@ AND NOT EXISTS (
  LEFT JOIN nodes grandparent ON grandparent.id=ge.source AND grandparent.workspace_id=ge.workspace_id
  WHERE pe.workspace_id=n.workspace_id AND pe.target=n.id AND pe.edge_type='parent-child' AND NOT pe.deleted
  AND (parent.deleted OR parent.retired OR parent.task_state='draft' OR grandparent.deleted OR grandparent.retired OR grandparent.task_state='draft'))
-AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id=e.source WHERE e.workspace_id=n.workspace_id AND e.target=n.id AND e.edge_type='blocks' AND NOT e.deleted AND (prerequisite.deleted OR prerequisite.task_state IS DISTINCT FROM 'completed')) LIMIT 1) n ORDER BY c.id LIMIT $5").bind(p.workspace_id).bind(first).bind(last).bind(after).bind(n+1).fetch_all(&self.pool).await?;
+AND NOT EXISTS (SELECT 1 FROM edges e JOIN nodes prerequisite ON prerequisite.id=e.source WHERE e.workspace_id=n.workspace_id AND e.target=n.id AND e.edge_type='blocks' AND NOT e.deleted AND (prerequisite.deleted OR prerequisite.task_state IS DISTINCT FROM 'completed')) LIMIT 1) n LEFT JOIN task_first_ready f ON $6 AND f.workspace_id=$1 AND f.node_id=c.id ORDER BY c.id LIMIT $5").bind(p.workspace_id).bind(first).bind(last).bind(after).bind(n+1).bind(include_first_ready).fetch_all(&self.pool).await?;
         node_page(vs, n)
     }
     pub async fn search(&self, p: &Principal, text: &str, q: ListQuery) -> Result<Page<Node>> {

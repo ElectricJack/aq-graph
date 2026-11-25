@@ -58,6 +58,30 @@ async fn upgrade_from_previous_schema_preserves_data() {
         assert_eq!(after, expected, "upgrade changed durable table {table}");
     }
     assert_projection(&mut tx).await;
+    sqlx::raw_sql(include_str!("../migrations/0009_task_list_recency.sql"))
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::raw_sql(include_str!("../migrations/0010_first_ready.sql"))
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::raw_sql(
+        "UPDATE nodes SET task_state='draft' WHERE id='00000000-0000-0000-0000-00000000000a';
+         UPDATE nodes SET task_state='active' WHERE id='00000000-0000-0000-0000-00000000000a';
+         SET CONSTRAINTS ALL IMMEDIATE;",
+    )
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+    let recorded_clocks: i64 = sqlx::query_scalar("SELECT count(*) FROM task_first_ready")
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    assert_eq!(
+        recorded_clocks, 0,
+        "older tasks must stay unknown even after reopening"
+    );
     tx.rollback().await.unwrap();
     let remains: bool =
         sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname=$1)")

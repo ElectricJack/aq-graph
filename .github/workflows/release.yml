@@ -45,7 +45,7 @@ jobs:
           python3 - <<'PY'
           import json, os
           with open('dist/COMPATIBILITY.json', 'w') as output:
-              json.dump({'release':os.environ['RELEASE_TAG'],'api_version':1,'schema_version':8}, output, indent=2)
+              json.dump({'release':os.environ['RELEASE_TAG'],'api_version':1,'schema_version':10}, output, indent=2)
           PY
           archive="aq-graph-${RELEASE_TAG}-${{ matrix.artifact }}.tar.gz"
           tar -C dist -czf "$archive" .

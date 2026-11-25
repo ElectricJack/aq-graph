@@ -1741,6 +1741,16 @@
         "description": "",
         "parameters": [
           {
+            "name": "X-AQ-Graph-First-Ready",
+            "in": "header",
+            "required": false,
+            "description": "Request authoritative first-ready evidence for tracked tasks.",
+            "schema": {
+              "type": "string",
+              "enum": ["1"]
+            }
+          },
+          {
             "name": "workspace",
             "in": "path",
             "required": true,
@@ -4484,6 +4494,17 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "first_ready_work_class": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Intake work class captured at first ready, when present."
+          },
+          "first_ready_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "First committed transition to ready, when tracked."
           },
           "updated_at": {
             "type": "string",

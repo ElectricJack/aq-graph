@@ -26,7 +26,7 @@ fn fixture_state(index: usize) -> &'static str {
 }
 
 impl Fixture {
-    async fn new() -> Self {
+    async fn empty() -> Self {
         let url =
             std::env::var("AQ_GRAPH_TEST_DATABASE_URL").expect("disposable PostgreSQL required");
         let store = Store::connect(&url, 1).await.unwrap();
@@ -38,12 +38,16 @@ impl Fixture {
             .await
             .unwrap();
         let p = store.authenticate(&token, workspace).await.unwrap();
-        let f = Self {
+        Self {
             store,
             p,
             token,
-            ids: (0..100).map(|_| Uuid::new_v4()).collect(),
-        };
+            ids: Vec::new(),
+        }
+    }
+    async fn new() -> Self {
+        let mut f = Self::empty().await;
+        f.ids = (0..100).map(|_| Uuid::new_v4()).collect();
         let ops=f.ids.iter().enumerate().map(|(i,id)| {
             let state = fixture_state(i);
             json!({"op":"create_node","id":id,"kind":"task","title":format!("Node {i}"),"body":"payload ".repeat(256),"task_state":state})
@@ -326,4 +330,110 @@ async fn seed_work_list(store: &Store, token: &str) -> ([Uuid; 3], [Uuid; 3]) {
         .await
         .unwrap();
     ([alpha, beta, denied], [first, tie, older])
+}
+
+#[tokio::test]
+async fn first_ready_evidence_is_opt_in_and_survives_retries_and_class_edits() {
+    let f = Fixture::empty().await;
+    let blocker = Uuid::new_v4();
+    let task = Uuid::new_v4();
+    f.apply(vec![
+        json!({"op":"create_node","id":blocker,"kind":"task","title":"Prerequisite","task_state":"active"}),
+        json!({"op":"create_node","id":task,"kind":"task","title":"Dependent","task_state":"active","metadata":{"aq:work_class":"initial"}}),
+        json!({"op":"add_edge","source":blocker,"target":task,"edge_type":"blocks"}),
+    ]).await;
+    let (before,): (Option<chrono::DateTime<chrono::Utc>>,) = sqlx::query_as(
+        "SELECT first_ready_at FROM task_first_ready WHERE workspace_id=$1 AND node_id=$2",
+    )
+    .bind(f.p.workspace_id)
+    .bind(task)
+    .fetch_one(&f.store.pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        before, None,
+        "an intermediate ready state must never start the clock"
+    );
+
+    let set_blocker = |version, state| json!({"op":"update_node","id":blocker,"expected_version":version,"patch":{"task_state":state}});
+    let earliest = chrono::Utc::now();
+    let version = f.store.get_node(&f.p, blocker).await.unwrap().version;
+    f.apply(vec![set_blocker(version, "completed")]).await;
+    let app = aq_graph::service::router(f.store.clone());
+    let read = |with_evidence: bool| {
+        let mut request = Request::builder()
+            .uri(format!(
+                "/v1/workspaces/{}/ready?limit=200",
+                f.p.workspace_id
+            ))
+            .header("authorization", format!("Bearer {}", f.token));
+        if with_evidence {
+            request = request.header("X-AQ-Graph-First-Ready", "1");
+        }
+        app.clone().oneshot(request.body(Body::empty()).unwrap())
+    };
+    let node = |value: Value| {
+        value["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|n| n["id"] == json!(task))
+            .unwrap()
+            .clone()
+    };
+    let plain = read(false)
+        .await
+        .unwrap()
+        .into_body()
+        .collect()
+        .await
+        .unwrap()
+        .to_bytes();
+    assert!(
+        node(serde_json::from_slice(&plain).unwrap())
+            .get("first_ready_at")
+            .is_none()
+    );
+    let observed = read(true)
+        .await
+        .unwrap()
+        .into_body()
+        .collect()
+        .await
+        .unwrap()
+        .to_bytes();
+    let observed = node(serde_json::from_slice(&observed).unwrap());
+    let timestamp: chrono::DateTime<chrono::Utc> =
+        serde_json::from_value(observed["first_ready_at"].clone()).unwrap();
+    assert!(timestamp >= earliest);
+    assert_eq!(observed["first_ready_work_class"], "initial");
+
+    let version = f.store.get_node(&f.p, task).await.unwrap().version;
+    let blocker_version = f.store.get_node(&f.p, blocker).await.unwrap().version;
+    f.apply(vec![
+        set_blocker(blocker_version, "active"),
+        json!({"op":"update_node","id":task,"expected_version":version,"patch":{"metadata":{"aq:work_class":"later"}}}),
+    ]).await;
+    assert!(
+        f.store
+            .ready_task(&f.p, task)
+            .await
+            .unwrap()
+            .items
+            .is_empty()
+    );
+    let version = f.store.get_node(&f.p, blocker).await.unwrap().version;
+    f.apply(vec![set_blocker(version, "completed")]).await;
+    let after = read(true)
+        .await
+        .unwrap()
+        .into_body()
+        .collect()
+        .await
+        .unwrap()
+        .to_bytes();
+    let after = node(serde_json::from_slice(&after).unwrap());
+    assert_eq!(after["first_ready_at"], observed["first_ready_at"]);
+    assert_eq!(after["first_ready_work_class"], "initial");
+    assert_eq!(after["metadata"]["aq:work_class"], "later");
 }

@@ -407,9 +407,17 @@ async fn tree(
 async fn ready(
     State(s): State<HttpState>,
     Extension(p): Extension<Principal>,
+    headers: HeaderMap,
     q: ApiQuery<ListQuery>,
-) -> Result<Json<Page<Node>>> {
-    Ok(Json(s.store.ready(&p, parse_query(q)?).await?))
+) -> Result<Response> {
+    let include_first_ready = headers
+        .get("X-AQ-Graph-First-Ready")
+        .is_some_and(|value| value == "1");
+    let page = s
+        .store
+        .ready_with_first_ready(&p, parse_query(q)?, include_first_ready)
+        .await?;
+    Ok(([("vary", "X-AQ-Graph-First-Ready")], Json(page)).into_response())
 }
 async fn ready_task(
     State(s): State<HttpState>,
