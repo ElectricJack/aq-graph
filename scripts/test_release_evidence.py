@@ -39,7 +39,7 @@ class ReleaseEvidenceTests(unittest.TestCase):
         self.assertEqual(record['base_images'], self.bases)
         self.assertEqual(record['dependency_inventory'], 'Cargo.lock')
         self.assertEqual((self.args['output'] / 'Cargo.lock').read_bytes(), (self.root / 'Cargo.lock').read_bytes())
-        self.assertEqual((record['api_version'], record['schema_version']), (1, 8))
+        self.assertEqual((record['api_version'], record['schema_version']), (1, 10))
         self.assertEqual((self.args['output'] / 'image-reference.txt').read_text(), record['image_reference'] + '\n')
         self.assertFalse(any('token' in key.lower() for key in record))
 

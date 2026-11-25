@@ -65,7 +65,7 @@ def write_evidence(root: Path, output: Path, image: str, digest: str,
         'dependency_inventory': 'Cargo.lock',
         'base_images': bases,
         'api_version': 1,
-        'schema_version': 8,
+        'schema_version': 10,
     }
     output.mkdir(parents=True, exist_ok=True)
     (output / 'Cargo.lock').write_bytes((root / 'Cargo.lock').read_bytes())

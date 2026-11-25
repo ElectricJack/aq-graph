@@ -140,6 +140,8 @@ impl<'a> MutationBatch<'a> {
                     deleted: false,
                     created_at: now,
                     updated_at: now,
+                    first_ready_at: None,
+                    first_ready_work_class: None,
                     created_by: self.principal.actor_id.clone(),
                     last_verified_by: None,
                     last_verified_at: None,

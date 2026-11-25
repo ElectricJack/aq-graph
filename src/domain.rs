@@ -183,6 +183,10 @@ pub struct Node {
     pub deleted: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_ready_at: Option<DateTime<Utc>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_ready_work_class: Option<String>,
     #[serde(default = "legacy_author")]
     pub created_by: String,
     #[serde(default)]
