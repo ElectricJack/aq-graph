@@ -1,22 +1,24 @@
 # aq-graph
 
-A standalone Rust service and CLI for a shared task and knowledge graph. PostgreSQL holds current records, immutable logical record revisions, lifecycle events, relationship history, atomic batches and named drafts. It runs independently of Agent Q and never reads AQ databases. AQ v2 is a fresh start. V1 import and migration support are outside this repository; any optional one-off transfer belongs in an external script. Normal aq-graph schema upgrades and backup/restore remain supported.
+aq-graph is AQ v2's task and knowledge graph service and CLI, providing shared records, relationships, history and intrinsic task readiness through an HTTP API backed by PostgreSQL. It lives at `aq-graph/` as one of six component submodules in the [aq-platform/agent-queue umbrella repository](https://github.com/aq-platform/agent-queue), which provides the platform overview. This component's repository is [aq-platform/aq-graph](https://github.com/aq-platform/aq-graph).
+
+The service owns its graph database and can run independently; AQ clients use its public API rather than accessing the database directly. PostgreSQL holds current records, immutable logical record revisions, lifecycle events, relationship history, atomic batches and named drafts. V1 import and migration support are outside this repository; any optional one-off transfer belongs in an external script. Normal aq-graph schema upgrades and backup/restore remain supported.
 
 The baseline includes workspace-scoped read/write/admin credentials, version-checked mutations, idempotency, dependency and parent-child cycle protection, intrinsic readiness, bounded context, full-text record search, shared source/date/summary metadata, history and content restoration. A ready task is an active, nonretired leaf with every blocking prerequisite completed and no draft or retired structural ancestor; readiness is not an execution claim. `A blocks B` means B depends on A.
 
-See [implementation status and verification limits](docs/implementation-status.md) for what is available and what remains before deployment and fresh AQ adoption.
+See [implementation notes and verification limits](docs/implementation-status.md) for the recorded implementation evidence; the interfaces below describe current behavior.
 
 [Local performance results](docs/performance/README.md) include the 100,000-node/500,000-edge benchmark and raw evidence.
 
 ## Start locally
 
-Requirements: Docker Engine with Compose v2, Python 3.10+, and the CLI binary (or Rust 1.96.1 to build it). The stack exposes only authenticated HTTP on `127.0.0.1:8741`. PostgreSQL has no published port.
+Requirements: Docker Engine with Compose v2, Python 3.10+, and the CLI binary (or Rust 1.96.1 to build it). The stack exposes HTTP on `127.0.0.1:8741`; graph operations require workspace credentials, while health endpoints are unauthenticated. PostgreSQL has no published port.
 
 ```sh
 scripts/local-init.sh
 # If building the CLI from source:
 cargo build --locked --release
-export PATH="$PWD/target/release:$PATH"
+export PATH="${CARGO_TARGET_DIR:-$PWD/target}/release:$PATH"
 export AQ_GRAPH_CONFIG="$PWD/.local/config.json"
 docker compose up --build -d --wait
 
@@ -91,7 +93,7 @@ aq-graph task restore TASK_UUID --expected-version 6 --revision 1
 
 Tasks and knowledge use the same revision engine. Every meaningful content, lifecycle, relationship-membership, parent or deletion change advances the affected record’s logical revision and CAS version; no-ops create no duplicate revision. The wire field `content_revision` is retained for compatibility and now identifies this complete logical record revision. `revision ID --revision N` returns the exact node snapshot plus its recorded relationship set; `diff` compares both node fields and relationships.
 
-Both `task restore` and `knowledge restore` restore content and recorded relationships as a new revision. Their default preserves current task state, retirement state/reason and deletion tombstone. Administrators can add `--include-lifecycle` to deliberately restore historical lifecycle/tombstone state for either kind. Verification remains subject to current policy on both kinds: a meaningful restore clears verification and never revives a historical badge or old administrative authority; a true no-op preserves current verification. History is never rewritten. Delete tombstones preserve identity and history; attached active edges must be explicitly removed first. Both kinds start with `content_type:note` and `verification:unverified`. Verification/dispute and retirement require admin authority and a nonempty reason for either kind. A meaningful protected correction clears verification; a no-op preserves it. Default restore of retired knowledge keeps it retired; use `--include-lifecycle` with an active historical revision when intentionally unretiring it. Ordinary task edits remain collaborative for workspace writers; unverified knowledge edits require its author or an admin. Protected or retired records require admin authority for either kind. Lists and search exclude retired records by default; search also excludes disputed records unless requested. Plain lists retain disputed records; direct authorized reads retain them.
+Both `task restore` and `knowledge restore` restore content and recorded relationships as a new revision. Their default preserves current task state, retirement state/reason and deletion tombstone. Administrators can add `--include-lifecycle` to deliberately restore historical lifecycle/tombstone state for either kind. Verification remains subject to current policy on both kinds: a meaningful restore clears verification and never revives a historical badge or old administrative authority; a true no-op preserves current verification. History is never rewritten. Delete tombstones preserve identity and history. Deleting a task atomically removes its incident active edges and clears successor pointers to it, preserving the other records; deleting knowledge requires attached active edges to be explicitly removed first. Both kinds start with `content_type:note` and `verification:unverified`. Verification/dispute and retirement require admin authority and a nonempty reason for either kind. A meaningful protected correction clears verification; a no-op preserves it. Default restore of retired knowledge keeps it retired; use `--include-lifecycle` with an active historical revision when intentionally unretiring it. Ordinary task edits remain collaborative for workspace writers; unverified knowledge edits require its author or an admin. Protected or retired records require admin authority for either kind. Lists and search exclude retired records by default; search also excludes disputed records unless requested. Plain lists retain disputed records; direct authorized reads retain them.
 
 Both kinds support typed provenance arrays through `--provenance-file`, and verification takes the same descriptor shape through `--evidence-file`. For example:
 
@@ -122,11 +124,13 @@ aq-graph knowledge retire OLD_UUID --expected-version 5 --reason "Replaced" \
 
 A summary must name the current logical revision before it is saved, so summarizing revision 3 creates revision 4 with `summary_of_revision:3`. It is nonblank UTF-8 text of at most 8192 bytes; no model runs in the service. Other meaningful source, content, verification, lifecycle, date or relationship changes clear the current summary and its pin. Historical snapshots retain it. An unchanged summary/pin or clearing an absent summary is a no-op after CAS/authority checks.
 
-Retirement preserves task execution state. A successor must be a distinct nondeleted record in the same workspace, with a `supersedes` edge directed successor→old; either endpoint may be task or knowledge. Existing retired successors permit forwarding chains, but cycles and removing a required edge or successor are refused unless pointers are corrected in the same batch. `--successor` uses an existing edge; `--link-successor` adds a new edge atomically and fails if that informational edge already exists. Retirement never completes a prerequisite or bypasses parent guards.
+Retirement preserves task execution state. A successor must be a distinct nondeleted record in the same workspace, with a `supersedes` edge directed successor→old; either endpoint may be task or knowledge. Existing retired successors permit forwarding chains, but cycles and removing a required edge are refused unless pointers are corrected in the same batch. Deleting a task successor clears pointers to it atomically; deleting a knowledge successor requires explicit pointer reconciliation. `--successor` uses an existing edge; `--link-successor` adds a new edge atomically and fails if that informational edge already exists. Retirement never completes a prerequisite or bypasses parent guards.
 
-Task parent changes are atomic and version checked. Each child has one live parent; the hierarchy has at most three levels and cannot jointly cycle with blocking edges. Completed parents refuse new children, and normal completion refuses open direct children. `task tree` returns structural children with truncation metadata. Informational edges do not affect readiness. Structural links cannot pin content revisions; see the API for the endpoint-kind matrix.
+Task parent changes are atomic and version checked. Each child has at most one live parent; the hierarchy has at most three levels and cannot jointly cycle with blocking edges. Completed or canceled parents refuse new children, and normal completion refuses open direct children. `task tree` returns structural children with truncation metadata. Informational edges do not affect readiness. Structural links cannot pin content revisions; see the API for the endpoint-kind matrix.
 
 Every command accepts global `--json`; success goes to stdout and errors to stderr. Human mode prints formatted JSON with all version and pagination metadata. List responses contain `next_cursor`; pass it using `--cursor`. Context discloses `truncated`. Limits and schemas are documented in the [API contract](docs/api.md) and [OpenAPI document](docs/openapi.json). The client sends API version 1 and rejects incompatible successful responses.
+
+The HTTP API also provides `POST /v1/task-list` for authenticated task lists across explicitly requested workspaces, with search, state filtering and recency pagination. The workspace ready endpoint supports opt-in first-ready timestamps via `X-AQ-Graph-First-Ready: 1`; tasks predating tracking have no recorded first-ready timestamp. These are API features, not additional CLI commands.
 
 Exit categories are stable: `0` success, `1` local/internal failure, `2` invalid input, `3` missing record, `4` conflict, `5` unauthenticated, `6` forbidden, `7` unavailable/timeout/protocol failure. HTTP details remain in the structured error code. Retry an uncertain mutation with the **identical payload and idempotency key**. Friendly mutations accept `--idempotency-key`; a generated key appears in errors if a request fails, including timeout. Rerunning without that key creates a new operation. Clients must re-read and deliberately revise stale writes rather than overwrite them.
 
@@ -157,8 +161,9 @@ Validation rolls proposed writes back. Application rechecks permissions, version
 
 ## Build, verify, operate
 
-Run Cargo from the checkout root. In an AQ slot, keep artifacts in that slot's
-own `target/`; do not point `CARGO_TARGET_DIR` at another slot or a shared target,
+Run Cargo from the checkout root. Keep artifacts in a private target directory
+for this checkout, either its own `target/` or an external directory selected
+with `CARGO_TARGET_DIR`; do not use another slot's target or a shared target,
 and clean only your own target. The dev profile (also inherited by tests) keeps
 file/line backtraces with line tables for workspace code and omits dependency
 debuginfo. Interactive builds are incremental (Cargo's dev default): an edit
@@ -168,7 +173,7 @@ one-shot. Do not alternate the two in one target directory; each switch
 rebuilds the crate. See the "Build health" section of `AGENTS.md`.
 
 ```sh
-export CARGO_TARGET_DIR="$PWD/target"
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$PWD/target}"
 export CARGO_BUILD_JOBS=2
 export RUST_TEST_THREADS=2
 cargo fmt --all -- --check
@@ -178,10 +183,14 @@ AQ_GRAPH_TEST_DATABASE_URL=postgres://USER@127.0.0.1/aq_graph_test cargo test --
 cargo build --locked --release
 ```
 
-CI runs Rust checks and PostgreSQL-backed tests in parallel with the production image build and isolated Compose backup/restore drill. Both jobs must succeed. The [deployment validation guide](docs/deployment-validation.md) links the [CI](.github/workflows/ci.yml) and [release](.github/workflows/release.yml) workflows and explains how to tell a passing isolated recovery drill from a published image or a healthy installed revision. Docker dependency layers are cached across runs; the drill uses the image built in that job, and ordinary CI does not build a second native release binary. Tag releases build Linux x86_64 and macOS arm64 CLI archives with SHA-256 checksums and a versioned GHCR image. The Linux release artifact targets glibc on Ubuntu 22.04 or newer. Windows and other targets are not yet release-tested. API v1 and schema migration `0008` are the initial compatibility contract. Schema-breaking upgrades need an explicit migration and recovery plan; never assume an older image can read a newer schema.
+The test suite requires a disposable PostgreSQL database in
+`AQ_GRAPH_TEST_DATABASE_URL`; database-backed tests fail rather than skip when
+it is missing.
+
+CI runs Rust checks and PostgreSQL-backed tests in parallel with a validation image build and isolated Compose backup/restore drill. Both jobs must succeed. The [deployment validation guide](docs/deployment-validation.md) links the [CI](.github/workflows/ci.yml) and [release](.github/workflows/release.yml) workflows and explains how to tell a passing isolated recovery drill from a published image or a healthy installed revision. Docker dependency layers are cached across runs; the drill uses the image built in that job, and ordinary CI does not build a second native release binary. The release workflow builds Linux x86_64 and macOS arm64 CLI archives with SHA-256 checksums and a versioned GHCR image for version tags. The Linux build uses Ubuntu 22.04 and targets glibc; the release matrix has no Windows or other targets. The current code serves API v1 and embeds schema migrations through `0010` (first-ready tracking). Schema-breaking upgrades need an explicit migration and recovery plan; never assume an older image can read a newer schema.
 
 The [shared node contract](docs/specs/0004-shared-node-model.md) defines the common field and validation rules.
 
 See [operations](docs/operations.md) for credentials, backup, restore, upgrades and failure handling, and [benchmarking](docs/benchmark.md) for reproducible fixtures, mixed load and limitations. The [specification](docs/specs/0001-aq-graph.md) describes intended scope. Semantic search, AQ execution, whole-graph time travel, offline merging and permanent erasure are outside this baseline.
 
-The [AQ integration contract](docs/aq-integration.md) and [example adapter](examples/agent_q_adapter.py) show how AQ can consume the public API without direct database access.
+The [AQ integration contract](docs/aq-integration.md) and [example adapter](examples/agent_q_adapter.py) describe API integration without direct database access. See the [umbrella repository](https://github.com/aq-platform/agent-queue) for the AQ v2 component layout and integration overview.
